@@ -1,0 +1,13 @@
+services:
+  asset-service:
+    build:
+      context: ./services/asset_service
+    container_name: ops-asset-service
+    ports:
+      - "8000:8000"
+    networks:
+      - ops-platform-network
+
+networks:
+  ops-platform-network:
+    driver: bridge
