@@ -1,10 +1,20 @@
 services:
+  reverse-proxy:
+    image: nginx:alpine
+    container_name: ops-reverse-proxy
+    ports:
+      - "8080:80"
+    volumes:
+      - ./infrastructure/reverse-proxy/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - asset-service
+    networks:
+      - ops-platform-network
+
   asset-service:
     build:
       context: ./services/asset_service
     container_name: ops-asset-service
-    ports:
-      - "8000:8000"
     networks:
       - ops-platform-network
 
