@@ -16,10 +16,25 @@ services:
       context: ./services/asset_service
     container_name: ops-asset-service
     expose:
-      - "8800"
+      - "8000"
+    networks:
+      - ops-platform-network
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: ops-postgres
+    environment:
+      POSTGRES_DB: ops_platform
+      POSTGRES_USER: ops_user
+      POSTGRES_PASSWORD: ops_password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
     networks:
       - ops-platform-network
 
 networks:
   ops-platform-network:
     driver: bridge
+
+volumes:
+  postgres-data:
