@@ -65,3 +65,28 @@ ops-platform-network
 Internal service discovery uses Docker DNS:
 
 http://asset-service:8000
+
+## Current Operational Flow
+
+Development Workflow:
+- VS Code connected through WSL Ubuntu
+- Docker Compose orchestrates platform services
+- NGINX acts as centralized ingress/reverse proxy
+- asset-service runs as a containerized FastAPI application
+
+Traffic Flow:
+Client
+    ↓
+localhost:8080
+    ↓
+NGINX reverse proxy
+    ↓
+asset-service container
+    ↓
+FastAPI endpoint
+
+Current Characteristics:
+- stateless service architecture
+- Docker bridge networking
+- environment-variable-driven configuration
+- local development environment
