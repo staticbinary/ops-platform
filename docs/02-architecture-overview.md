@@ -170,3 +170,34 @@ Current operational capabilities:
 - application-level database connectivity validation
 - internal PostgreSQL communication
 - persistent relational backend infrastructure
+
+## ORM and Application Data Layer
+
+The platform now includes ORM-backed relational data modeling through SQLAlchemy.
+
+Current application data flow:
+
+Client Request
+    ↓
+FastAPI endpoint
+    ↓
+Pydantic schema validation
+    ↓
+SQLAlchemy ORM layer
+    ↓
+PostgreSQL relational database
+    ↓
+persistent Docker volume
+
+Current ORM models:
+- Asset
+
+Current database tables:
+- assets
+
+Current data architecture capabilities:
+- ORM-backed relational modeling
+- automatic schema generation
+- persistent relational storage
+- API schema validation
+- application-to-database abstraction
