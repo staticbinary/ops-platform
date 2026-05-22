@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Environment files
+.env
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Docker
+*.log
