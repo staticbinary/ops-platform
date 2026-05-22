@@ -90,3 +90,24 @@ Current Characteristics:
 - Docker bridge networking
 - environment-variable-driven configuration
 - local development environment
+
+## Stateful Infrastructure Layer
+
+The platform now includes a PostgreSQL database service for persistent storage.
+
+Current database architecture:
+- PostgreSQL 17 running as a Docker container
+- persistent Docker volume for database durability
+- internal-only Docker network exposure
+- centralized environment-variable configuration
+
+Database persistence:
+postgres-data volume
+    ↓
+/var/lib/postgresql/data
+
+Current characteristics:
+- stateful infrastructure component
+- persistent storage survives container restarts
+- isolated internal service networking
+- local development database environment
