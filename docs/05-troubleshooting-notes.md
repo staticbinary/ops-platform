@@ -516,3 +516,137 @@ login token generation
 protected /auth/me
 failed login behavior
 missing token behavior
+
+## Phase 4.0 — JWT Authentication Foundation
+
+### Objective
+Begin securing the Asset Service by implementing JWT-based authentication and protected route support.
+
+---
+
+### Authentication Components Added
+
+Updated `main.py` to include:
+
+#### JWT Imports
+
+```python
+from datetime import datetime, timedelta, timezone
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from jose import JWTError, jwt
+
+returned:
+
+502 Bad Gateway
+
+from nginx.
+
+Initial Analysis
+
+A 502 Bad Gateway response indicated:
+
+nginx reverse proxy was reachable
+request forwarding occurred
+upstream FastAPI application failed internally
+
+Potential causes considered:
+
+missing dependency
+FastAPI startup failure
+OAuth2 form parsing issue
+broken auth import
+container runtime crash
+Root Cause
+
+OAuth2PasswordRequestForm requires multipart form parsing support through:
+
+python-multipart
+
+This dependency was missing from:
+
+services/asset_service/requirements.txt
+
+Without it, FastAPI failed while processing form-based login requests.
+
+Additional Issue Encountered
+
+Attempted to run:
+
+services/asset_service/requirements.txt
+
+which returned:
+
+Permission denied
+Root Cause
+
+requirements.txt is a dependency definition file and is not executable.
+
+Dependencies must be edited within the file itself and installed during Docker build execution.
+
+Resolution
+
+Updated:
+
+services/asset_service/requirements.txt
+
+Added:
+
+python-jose[cryptography]
+python-multipart
+
+Rebuilt containers:
+
+docker compose up -d --build
+
+Confirmed:
+
+dependency installation completed
+asset-service started successfully
+nginx reverse proxy reconnected to upstream service
+Validation
+Successful Login Validation
+curl -X POST http://localhost:8080/api/assets/auth/login \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=admin&password=password"
+
+Confirmed:
+
+200 OK
+JWT access token returned
+bearer token response structure valid
+Protected Route Validation
+curl http://localhost:8080/api/assets/auth/me \
+  -H "Authorization: Bearer <token>"
+
+Confirmed:
+
+authenticated request succeeded
+token validation worked correctly
+authenticated username returned
+Unauthorized Access Validation
+curl http://localhost:8080/api/assets/auth/me
+
+Returned expected response:
+
+{"detail":"Not authenticated"}
+
+Confirmed protected route enforcement works correctly.
+
+Result
+
+JWT authentication is functioning correctly with:
+
+OAuth2 password flow
+JWT token issuance
+protected route validation
+bearer token authentication
+unauthorized request rejection
+Lessons Learned
+FastAPI OAuth2 form handling requires python-multipart
+502 Bad Gateway commonly indicates upstream application failure
+Dependency issues inside containers often surface as proxy failures
+Authentication validation should always include:
+successful login
+token validation
+unauthorized access checks
+dependency verification

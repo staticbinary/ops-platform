@@ -336,6 +336,37 @@ Validate:
 - invalid login failure
 - missing token failure
 
+# Phase 4.0 — Authentication Foundation
+
+## Completed
+
+### JWT Authentication Setup
+- Added JWT authentication support to the Asset Service
+- Added OAuth2 password flow support
+- Added auth dependency handling with `OAuth2PasswordBearer`
+- Added token creation helper: `create_access_token()`
+- Added token validation helper: `verify_token()`
+
+### Auth Endpoints Added
+- Added `POST /auth/login`
+- Added `GET /auth/me`
+- Added Swagger grouping under `Auth`
+
+### Dependency Updates
+- Added JWT dependency support
+- Added form parsing support with `python-multipart`
+- Rebuilt containers successfully after dependency and auth changes
+
+### Validation Completed
+
+#### Successful Login
+Validated login endpoint:
+
+```bash
+curl -X POST http://localhost:8080/api/assets/auth/login \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=admin&password=password"
+
 ---
 
 ## Phase 5 — Frontend Platform Interface
