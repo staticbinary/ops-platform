@@ -306,39 +306,35 @@ Tested health endpoint with response headers:
 ```bash
 curl -i http://localhost:8080/api/assets/health
 
+# Phase 4.0 — Authentication Foundation
 
+## In Progress
 
----
+### JWT Authentication Setup
+- Added JWT-related imports
+- Added OAuth2 password flow imports
+- Added authentication configuration:
+  - `SECRET_KEY`
+  - `ALGORITHM`
+  - `ACCESS_TOKEN_EXPIRE_MINUTES`
+  - `oauth2_scheme`
+- Added JWT helper functions:
+  - `create_access_token()`
+  - `verify_token()`
+- Added authentication endpoints:
+  - `POST /auth/login`
+  - `GET /auth/me`
+- Rebuilt containers successfully after auth foundation updates
 
-# Upcoming Phases
+## Status
+Authentication foundation has been added to `main.py`.
 
-## Phase 4 — Advanced Asset Modeling
-
-Objectives:
-- expand asset schema
-- introduce relational data relationships
-- support real infrastructure metadata
-
-Planned:
-- serial numbers
-- BIOS versions
-- IP addresses
-- device status tracking
-- timestamps
-- ownership relationships
-- organizational hierarchy
-
-Potential Future Models:
-- User
-- Organization
-- TelemetryEvent
-- HardwareInventory
-
-Key Concepts:
-- relational modeling
-- foreign keys
-- data normalization
-- schema evolution
+## Next Step
+Validate:
+- successful login/token generation
+- protected route access
+- invalid login failure
+- missing token failure
 
 ---
 

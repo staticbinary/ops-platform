@@ -1,6 +1,9 @@
 import uuid
+from datetime import datetime, timedelta, timezone
 
 from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from jose import JWTError, jwt
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -15,7 +18,71 @@ app = FastAPI(
     root_path="/api/assets"
 )
 
+SECRET_KEY = "dev-secret-change-me"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+
 Base.metadata.create_all(bind=engine)
+
+
+def create_access_token(data: dict):
+    to_encode = data.copy()
+
+    expire = datetime.now(timezone.utc) + timedelta(
+        minutes=ACCESS_TOKEN_EXPIRE_MINUTES
+    )
+
+    to_encode.update({"exp": expire})
+
+    encoded_jwt = jwt.encode(
+        to_encode,
+        SECRET_KEY,
+        algorithm=ALGORITHM
+    )
+
+    return encoded_jwt
+
+
+def verify_token(token: str = Depends(oauth2_scheme)):
+    try:
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM]
+        )
+
+        username: str = payload.get("sub")
+
+        if username is None:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid authentication credentials"
+            )
+
+        return username
+
+    except JWTError:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid authentication credentials"
+        )
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    request_id = str(uuid.uuid4())
+
+    print(f"[request_id={request_id}] Incoming request: {request.method} {request.url}")
+
+    response = await call_next(request)
+
+    response.headers["X-Request-ID"] = request_id
+
+    print(f"[request_id={request_id}] Completed response: {response.status_code}")
+
+    return response
 
 
 @app.get("/health", tags=["Health"])
@@ -105,20 +172,31 @@ def delete_asset(asset_id: int, db: Session = Depends(get_db)):
     return {"message": f"Asset {asset_id} deleted successfully"}
 
 
+@app.post("/auth/login", tags=["Auth"])
+def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    if form_data.username != "admin" or form_data.password != "password":
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid username or password"
+        )
+
+    access_token = create_access_token(
+        data={"sub": form_data.username}
+    )
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
+
+
+@app.get("/auth/me", tags=["Auth"])
+def read_me(current_user: str = Depends(verify_token)):
+    return {
+        "username": current_user
+    }
+
+
 @app.get("/", tags=["Root"])
 def root():
     return {"message": "Asset Service running"}
-
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    request_id = str(uuid.uuid4())
-
-    print(f"[request_id={request_id}] Incoming request: {request.method} {request.url}")
-
-    response = await call_next(request)
-
-    response.headers["X-Request-ID"] = request_id
-
-    print(f"[request_id={request_id}] Completed response: {response.status_code}")
-
-    return response

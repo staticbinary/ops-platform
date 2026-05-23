@@ -464,3 +464,55 @@ HTTP responses
 application logs
 reverse proxy flow
 future multi-service communication
+
+## Phase 4.0 Auth Foundation Setup
+
+### Objective
+Begin securing the Asset Service by adding JWT-based authentication support.
+
+### Implemented
+Updated `main.py` with:
+- JWT imports
+- OAuth2 password flow support
+- authentication configuration
+- token creation helper
+- token validation helper
+- `/auth/login` endpoint
+- `/auth/me` protected endpoint
+
+### File Structure Reminder
+Current `main.py` order:
+1. Imports
+2. App configuration
+3. Auth constants
+4. OAuth2 scheme
+5. Database initialization
+6. Helper functions
+7. Middleware
+8. API routes
+
+### Issue Encountered
+Attempted to run:
+
+```bash
+services/asset_service/requirements.txt
+
+This returned:
+
+Permission denied
+Root Cause
+
+requirements.txt is a dependency list, not an executable script.
+
+Resolution
+
+Open/edit the file in VS Code and add dependencies there.
+
+Next Validation
+
+Rebuild and test:
+
+login token generation
+protected /auth/me
+failed login behavior
+missing token behavior
