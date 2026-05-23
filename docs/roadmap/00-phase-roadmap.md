@@ -289,6 +289,25 @@ middleware request logging
 operational telemetry visibility
 reverse proxy request tracing
 
+# Phase 3.10 — Request IDs and Correlation Logging
+
+## Completed
+
+### Request ID Middleware
+- Added UUID-based request IDs to middleware
+- Added `X-Request-ID` response header
+- Updated logs to include matching request IDs for each request lifecycle
+- Confirmed request and response logs share the same correlation ID
+
+### Validation Completed
+
+Tested health endpoint with response headers:
+
+```bash
+curl -i http://localhost:8080/api/assets/health
+
+
+
 ---
 
 # Upcoming Phases

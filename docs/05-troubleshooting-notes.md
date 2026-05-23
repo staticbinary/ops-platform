@@ -388,3 +388,79 @@ request IDs
 correlation IDs
 audit trails
 observability pipelines
+
+
+## Troubleshooting / Implementation Notes
+
+```markdown
+## Request ID Correlation Logging
+
+### Objective
+Improve request logging by assigning each API request a unique correlation ID.
+
+### Implementation
+Added:
+
+```python
+import uuid
+
+Updated middleware to generate a request ID:
+
+request_id = str(uuid.uuid4())
+
+Added the request ID to:
+
+incoming request logs
+completed response logs
+HTTP response headers
+
+Header added:
+
+X-Request-ID
+Issue Encountered
+
+Initial test returned:
+
+500 Internal Server Error
+
+Service logs showed:
+
+NameError: name 'uuid' is not defined
+Root Cause
+
+The running container did not yet have the updated code with:
+
+import uuid
+Resolution
+
+Confirmed import uuid existed at the top of main.py, then rebuilt containers:
+
+docker compose up -d --build
+Validation
+
+Ran:
+
+curl -i http://localhost:8080/api/assets/health
+
+Confirmed:
+
+x-request-id: <uuid>
+
+Checked logs:
+
+docker compose logs asset-service
+
+Confirmed the same request ID appeared in both request and response log entries.
+
+Result
+
+Request correlation logging is functioning correctly.
+
+Lesson Learned
+
+Correlation IDs make it much easier to trace a single request across:
+
+HTTP responses
+application logs
+reverse proxy flow
+future multi-service communication

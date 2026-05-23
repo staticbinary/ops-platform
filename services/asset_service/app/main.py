@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi import Depends, FastAPI, HTTPException, Request
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -109,10 +111,14 @@ def root():
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    print(f"Incoming request: {request.method} {request.url}")
+    request_id = str(uuid.uuid4())
+
+    print(f"[request_id={request_id}] Incoming request: {request.method} {request.url}")
 
     response = await call_next(request)
 
-    print(f"Completed response: {response.status_code}")
+    response.headers["X-Request-ID"] = request_id
+
+    print(f"[request_id={request_id}] Completed response: {response.status_code}")
 
     return response
