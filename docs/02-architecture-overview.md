@@ -201,3 +201,38 @@ Current data architecture capabilities:
 - persistent relational storage
 - API schema validation
 - application-to-database abstraction
+
+## CRUD Application Capabilities
+
+The asset-service now supports persistent relational CRUD operations through FastAPI, SQLAlchemy, and PostgreSQL.
+
+Current API capabilities:
+- create asset records
+- retrieve asset records
+- persistent relational storage
+- API request validation
+- ORM-backed database operations
+
+Current CRUD endpoints:
+
+POST /api/assets/assets
+- create asset record
+
+GET /api/assets/assets
+- retrieve all asset records
+
+Current relational persistence flow:
+
+Client Request
+    ↓
+NGINX reverse proxy
+    ↓
+FastAPI route
+    ↓
+Pydantic schema validation
+    ↓
+SQLAlchemy ORM session
+    ↓
+PostgreSQL relational database
+    ↓
+persistent Docker volume storage

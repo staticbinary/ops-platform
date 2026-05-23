@@ -15,3 +15,9 @@ class AssetResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class AssetUpdate(BaseModel):
+    hostname: str
+    owner: str
+    status: str

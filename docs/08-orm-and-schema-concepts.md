@@ -76,3 +76,55 @@ FastAPI route
 SQLAlchemy ORM
     ↓
 PostgreSQL relational storage
+
+## CRUD Operations
+
+CRUD stands for:
+- Create
+- Read
+- Update
+- Delete
+
+Current implemented CRUD operations:
+- Create
+- Read
+
+Current CRUD architecture:
+- FastAPI route handlers
+- Pydantic request validation
+- SQLAlchemy ORM persistence
+- PostgreSQL relational storage
+
+Current implemented routes:
+
+POST /assets
+- create persistent asset records
+
+GET /assets
+- retrieve persistent asset records
+
+---
+
+## Database Session Management
+
+Current database sessions are managed through FastAPI dependency injection.
+
+Current dependency:
+get_db()
+
+Purpose:
+- safely create database sessions
+- inject sessions into API routes
+- automatically close sessions after request completion
+
+Current request lifecycle:
+
+API request
+    ↓
+database session created
+    ↓
+ORM operation executed
+    ↓
+session committed
+    ↓
+session closed

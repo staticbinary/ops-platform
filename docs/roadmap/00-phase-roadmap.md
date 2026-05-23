@@ -1,0 +1,447 @@
+# Ops Platform — Phase Roadmap
+
+## Project Vision
+
+Build a modular enterprise-style operations platform capable of:
+
+- device inventory management
+- telemetry and monitoring
+- media hosting/catalog services
+- authentication and identity management
+- storefront/e-commerce experimentation
+- observability and analytics
+- AI-assisted operational tooling
+- homelab/self-hosted deployment
+- real-world infrastructure demonstrations
+
+Long-term deployment goals:
+- public domain exposure
+- HTTPS/TLS
+- authentication-protected services
+- T5500 homelab deployment
+- production-style operational workflows
+
+---
+
+# Architectural Principles
+
+Core platform goals:
+
+- modular service-oriented architecture
+- infrastructure-first development
+- operational discipline
+- persistent relational data modeling
+- centralized ingress management
+- environment-driven configuration
+- separation of concerns
+- controlled complexity growth
+- documentation-first operational workflows
+
+---
+
+# Completed Phases
+
+## Phase 1 — Platform Foundation ✔
+
+Objectives:
+- establish Linux development environment
+- initialize Git repository
+- create project structure
+- containerize first backend service
+
+Completed:
+- Ubuntu WSL2 development environment
+- Git initialization/configuration
+- VS Code WSL integration
+- Docker Compose foundation
+- FastAPI asset-service
+- initial health endpoints
+- container build/runtime validation
+
+Key Concepts Learned:
+- WSL/Linux development
+- container runtimes
+- FastAPI service architecture
+- Git workflow basics
+- Docker image lifecycle
+
+---
+
+## Phase 1.5 — Operational Foundation ✔
+
+Objectives:
+- improve repository hygiene
+- establish operational workflows
+- centralize runtime configuration
+- begin engineering documentation
+
+Completed:
+- .env runtime configuration
+- compose parameterization
+- operational runbooks
+- architecture overview documentation
+- troubleshooting notes
+- Git checkpoint discipline
+
+Key Concepts Learned:
+- environment configuration management
+- operational workflows
+- infrastructure-as-code concepts
+- documentation discipline
+- rollback/checkpoint strategy
+
+---
+
+## Phase 2 — Stateful Infrastructure ✔
+
+Objectives:
+- introduce persistent infrastructure
+- establish database connectivity
+- implement ORM foundation
+
+Completed:
+- PostgreSQL container deployment
+- persistent Docker volumes
+- SQLAlchemy integration
+- DB health validation
+- ORM model creation
+- automatic schema generation
+- assets relational table creation
+
+Key Concepts Learned:
+- stateful vs stateless architecture
+- persistent storage
+- ORM concepts
+- relational schema design
+- container networking
+- database abstraction layers
+- direct infrastructure verification
+
+---
+
+# Active Development Phase
+
+# Phase 3.5 — Operational Maturity & Service Decoupling
+
+## Completed
+
+### CRUD API Improvements
+- Added `GET /assets/{asset_id}`
+- Implemented proper `404` handling
+- Rebuilt services successfully
+- Validated retrieval of known asset
+- Validated expected failure behavior for unknown asset IDs
+
+## In Progress
+- PUT endpoint implementation
+- DELETE endpoint implementation
+
+## Upcoming
+- RBAC foundation
+- JWT auth
+- Observability stack
+- Worker service
+- Event bus
+
+# Phase 3.6 — Asset Update Lifecycle
+
+## Completed
+
+### Asset Update Endpoint
+- Added `PUT /assets/{asset_id}`
+- Added `AssetUpdate` schema model
+- Implemented database-backed asset update logic
+- Added proper `404` handling for unknown asset updates
+- Rebuilt containers successfully after endpoint implementation
+
+### Validation Completed
+
+#### Successful Asset Update
+Validated successful update of existing asset:
+
+```bash
+curl -X PUT http://localhost:8080/api/assets/assets/1 \
+  -H "Content-Type: application/json" \
+  -d '{"hostname":"t5500-lab-node","owner":"ops-team","status":"maintenance"}'
+
+  # Phase 3.7 — Asset Deletion Lifecycle
+
+## Completed
+
+### Asset Delete Endpoint
+- Added `DELETE /assets/{asset_id}`
+- Implemented database-backed asset deletion logic
+- Added proper `404` handling for unknown asset deletion
+- Rebuilt containers successfully after endpoint implementation
+
+### Validation Completed
+
+#### Successful Asset Delete
+Validated successful deletion of existing asset:
+
+```bash
+curl -X DELETE http://localhost:8080/api/assets/assets/1
+
+---
+
+# Upcoming Phases
+
+## Phase 4 — Advanced Asset Modeling
+
+Objectives:
+- expand asset schema
+- introduce relational data relationships
+- support real infrastructure metadata
+
+Planned:
+- serial numbers
+- BIOS versions
+- IP addresses
+- device status tracking
+- timestamps
+- ownership relationships
+- organizational hierarchy
+
+Potential Future Models:
+- User
+- Organization
+- TelemetryEvent
+- HardwareInventory
+
+Key Concepts:
+- relational modeling
+- foreign keys
+- data normalization
+- schema evolution
+
+---
+
+## Phase 5 — Frontend Platform Interface
+
+Objectives:
+- create operational web interface
+- expose platform functionality visually
+
+Planned:
+- React frontend
+- dashboard layout
+- asset inventory UI
+- service overview panels
+- navigation shell
+- responsive layouts
+
+Key Concepts:
+- frontend/backend separation
+- API consumption
+- component architecture
+- operational dashboard design
+
+---
+
+## Phase 6 — Identity & Access Management
+
+Objectives:
+- implement enterprise-style authentication
+- centralize identity management
+
+Planned:
+- Keycloak integration
+- JWT authentication
+- RBAC
+- protected API routes
+- SSO concepts
+- user/session management
+
+Key Concepts:
+- OAuth2/OpenID Connect
+- token-based authentication
+- identity separation
+- authorization boundaries
+
+---
+
+## Phase 7 — Telemetry & Monitoring Platform
+
+Objectives:
+- collect operational telemetry
+- visualize infrastructure health
+
+Planned:
+- Prometheus
+- Grafana
+- telemetry ingestion APIs
+- hardware/system metrics
+- alerting concepts
+- monitoring dashboards
+
+Potential Data:
+- CPU usage
+- memory usage
+- temperatures
+- service status
+- disk health
+- uptime
+
+Key Concepts:
+- observability
+- telemetry pipelines
+- metrics collection
+- monitoring architecture
+
+---
+
+## Phase 8 — Homelab Deployment (T5500)
+
+Objectives:
+- deploy platform onto dedicated hardware
+- separate dev vs server environments
+
+Planned:
+- Ubuntu Server deployment
+- Docker host configuration
+- SSH administration
+- remote management
+- persistent storage setup
+- backup strategy
+
+Key Concepts:
+- infrastructure deployment
+- server administration
+- remote operations
+- persistent infrastructure hosting
+
+---
+
+## Phase 9 — Public Exposure & Domain Integration
+
+Objectives:
+- expose platform publicly and securely
+- implement internet-facing ingress
+
+Planned:
+- domain registration
+- Cloudflare integration
+- HTTPS/TLS
+- reverse proxy hardening
+- DNS management
+- secure public ingress
+
+Key Concepts:
+- DNS
+- TLS certificates
+- internet ingress
+- edge security
+- reverse proxy hardening
+
+---
+
+## Phase 10 — Media Platform Services
+
+Objectives:
+- support media hosting/catalog functionality
+- integrate persistent media metadata
+
+Planned:
+- media metadata database
+- catalog APIs
+- storage indexing
+- streaming architecture concepts
+- media dashboard
+
+Key Concepts:
+- metadata systems
+- storage abstraction
+- media indexing
+- content organization
+
+---
+
+## Phase 11 — Storefront/E-Commerce Service
+
+Objectives:
+- build isolated commerce-oriented service
+
+Planned:
+- product catalog
+- order schemas
+- cart workflows
+- payment flow simulation
+- service isolation
+
+Key Concepts:
+- transactional systems
+- service decomposition
+- relational commerce modeling
+
+---
+
+## Phase 12 — AI & Operational Intelligence Layer
+
+Objectives:
+- integrate AI-assisted operational tooling
+
+Planned:
+- local LLM experimentation
+- RAG architecture
+- operational assistant
+- telemetry summarization
+- documentation retrieval
+- infrastructure reasoning
+
+Key Concepts:
+- AI service integration
+- vector databases
+- retrieval systems
+- operational automation
+
+---
+
+# Long-Term Platform Vision
+
+Final architecture direction:
+
+Internet
+    ↓
+Cloudflare
+    ↓
+NGINX ingress
+    ↓
+Keycloak identity layer
+    ↓
+platform services
+    ├── asset-service
+    ├── telemetry-service
+    ├── media-service
+    ├── storefront-service
+    ├── AI-service
+    └── monitoring stack
+
+Shared infrastructure:
+- PostgreSQL
+- Docker networking
+- persistent storage
+- observability stack
+- centralized auth
+- operational dashboards
+
+---
+
+# End Goal
+
+Create a fully self-hosted modular operations platform demonstrating:
+
+- infrastructure engineering
+- backend architecture
+- operational workflows
+- service-oriented architecture
+- observability
+- identity management
+- persistence modeling
+- container orchestration
+- real-world deployment strategy
+
+Primary professional objective:
+- demonstrate practical platform engineering capability
+- expand beyond escalation/support specialization
+- create portfolio-grade operational infrastructure experience
+
