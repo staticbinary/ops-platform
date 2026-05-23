@@ -650,3 +650,22 @@ successful login
 token validation
 unauthorized access checks
 dependency verification
+
+## Phase 4.1 Auth Service Troubleshooting
+
+### Issue: Auth service not reachable after adding OAuth2 token endpoint
+
+**Symptom**
+
+`localhost:8001/docs` refused to connect after rebuilding the auth service.
+
+**Cause**
+
+The `/token` endpoint used `OAuth2PasswordRequestForm`, which requires the `python-multipart` package. Without it, FastAPI fails during startup.
+
+**Fix**
+
+Added `python-multipart` to:
+
+```txt
+services/auth_service/requirements.txt

@@ -367,6 +367,71 @@ curl -X POST http://localhost:8080/api/assets/auth/login \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "username=admin&password=password"
 
+  
+For roadmap, add this under Phase 4.1:
+
+```md
+## Phase 4.1 — Enterprise Identity & Access Foundation
+
+**Status:** In Progress
+
+### Completed
+
+- Created dedicated `auth_service`
+- Added auth service Dockerfile and requirements
+- Added auth service to Docker Compose
+- Confirmed auth service health endpoint at `localhost:8001/health`
+- Implemented user model with RBAC role field
+- Implemented user registration endpoint
+- Added bcrypt password hashing
+- Pinned bcrypt dependency for passlib compatibility
+- Implemented JSON login endpoint
+- Implemented JWT access token generation
+- Added OAuth2 password flow support with `/token`
+- Added `python-multipart` for form-based OAuth2 login support
+- Added bearer token validation
+- Added authenticated `/me` endpoint
+- Added role-protected `/admin` endpoint
+- Confirmed Swagger OAuth2 authorization flow
+- Confirmed protected endpoint access using bearer tokens
+- Confirmed viewer role receives `403 Insufficient permissions` on admin-only route
+
+### Current Architecture
+
+The platform now includes a dedicated authentication microservice alongside the asset service.
+
+Current running services:
+
+- `reverse-proxy`
+- `asset-service`
+- `auth-service`
+- `postgres`
+
+### Security Capabilities Added
+
+- Password hashing
+- Stateless JWT-based authentication
+- Bearer token validation
+- OAuth2 password flow support
+- Role claim embedded in JWT
+- Basic RBAC enforcement
+- Protected API endpoints
+
+### Next Planned Work
+
+Phase 4.1B will add audit logging.
+
+Planned audit logging capabilities:
+
+- Successful login events
+- Failed login events
+- Protected endpoint access events
+- Admin access denial events
+- Event timestamps
+- User/email association
+- Event type categorization
+- Future support for IP address and user-agent tracking
+
 ---
 
 ## Phase 5 — Frontend Platform Interface
