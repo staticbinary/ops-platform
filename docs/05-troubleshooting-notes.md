@@ -669,3 +669,124 @@ Added `python-multipart` to:
 
 ```txt
 services/auth_service/requirements.txt
+
+---
+
+## Phase 4.1B Audit Logging & RBAC Troubleshooting
+
+### Issue: Audit endpoint returned `401 Not authenticated`
+
+**Symptom**
+
+Authenticated user attempting to access:
+
+```txt
+GET /audit
+
+received:
+
+{
+  "detail": "Not authenticated"
+}
+
+Cause
+
+Swagger authorization state had expired or bearer auth had not been re-applied after rebuilding/restarting services.
+
+Fix
+
+Re-authorized using Swagger OAuth2 flow:
+
+Click Authorize
+Authenticate via /token
+Retry protected endpoint
+Issue: Audit endpoint returned 403 Insufficient permissions
+
+Symptom
+
+Authenticated user attempting to access:
+
+GET /audit
+
+received:
+
+{
+  "detail": "Insufficient permissions"
+}
+
+Cause
+
+The authenticated JWT contained:
+
+{
+  "role": "viewer"
+}
+
+while /audit required:
+
+auth.require_role("admin")
+
+Fix
+
+Created temporary development-only admin promotion endpoint:
+
+POST /dev/promote-admin/{email}
+
+Then re-authenticated to generate a new JWT containing:
+
+{
+  "role": "admin"
+}
+Issue: Auth users disappeared after rebuilds
+
+Symptom
+
+Previously registered users no longer existed after rebuilding the auth service.
+
+User IDs restarted from:
+
+id = 1
+
+indicating a fresh database.
+
+Cause
+
+Auth service currently uses local SQLite storage:
+
+sqlite:///./auth.db
+
+The SQLite database exists only inside the container filesystem and is not attached to a persistent Docker volume.
+
+Container recreation wipes:
+
+users
+roles
+audit logs
+
+Future Fix Options
+
+Short-term
+
+Add Docker volume persistence for SQLite.
+
+Long-term (preferred)
+
+Migrate auth service to PostgreSQL like the asset service.
+
+Confirmed Working Audit Capabilities
+
+The following audit events were verified:
+
+Successful login events
+Failed login events
+OAuth2 token issuance events
+Role promotion events
+Admin-only audit access
+RBAC enforcement on audit endpoints
+
+Audit log entries currently include:
+
+event type
+user email
+success/failure outcome
+event detail

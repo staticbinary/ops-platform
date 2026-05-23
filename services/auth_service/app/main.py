@@ -59,6 +59,14 @@ def login_user(
     )
 
     if not existing_user:
+        auth.create_audit_log(
+            db=db,
+            event_type="login",
+            outcome="failure",
+            user_email=user.email,
+            detail="User not found"
+        )
+
         raise HTTPException(
             status_code=401,
             detail="Invalid email or password"
@@ -68,6 +76,14 @@ def login_user(
         user.password,
         existing_user.hashed_password
     ):
+        auth.create_audit_log(
+            db=db,
+            event_type="login",
+            outcome="failure",
+            user_email=user.email,
+            detail="Invalid password"
+        )
+
         raise HTTPException(
             status_code=401,
             detail="Invalid email or password"
@@ -80,11 +96,20 @@ def login_user(
         }
     )
 
+    auth.create_audit_log(
+        db=db,
+        event_type="login",
+        outcome="success",
+        user_email=existing_user.email,
+        detail="JWT issued"
+    )
+
     return {
         "access_token": access_token,
         "token_type": "bearer",
         "role": existing_user.role
     }
+
 
 @app.post("/token")
 def token_login(
@@ -98,6 +123,14 @@ def token_login(
     )
 
     if not existing_user:
+        auth.create_audit_log(
+            db=db,
+            event_type="token_login",
+            outcome="failure",
+            user_email=form_data.username,
+            detail="User not found"
+        )
+
         raise HTTPException(
             status_code=401,
             detail="Invalid email or password"
@@ -107,6 +140,14 @@ def token_login(
         form_data.password,
         existing_user.hashed_password
     ):
+        auth.create_audit_log(
+            db=db,
+            event_type="token_login",
+            outcome="failure",
+            user_email=form_data.username,
+            detail="Invalid password"
+        )
+
         raise HTTPException(
             status_code=401,
             detail="Invalid email or password"
@@ -119,10 +160,19 @@ def token_login(
         }
     )
 
+    auth.create_audit_log(
+        db=db,
+        event_type="token_login",
+        outcome="success",
+        user_email=existing_user.email,
+        detail="OAuth2 token issued"
+    )
+
     return {
         "access_token": access_token,
         "token_type": "bearer"
     }
+
 
 @app.get("/me")
 def read_current_user(
@@ -139,3 +189,48 @@ def admin_only(
         "message": "Admin access granted",
         "user": current_user
     }
+
+@app.get("/audit", response_model=list[schemas.AuditLogResponse])
+def read_audit_logs(
+    current_user: dict = Depends(auth.require_role("admin")),
+    db: Session = Depends(get_db)
+):
+    logs = (
+        db.query(models.AuditLog)
+        .order_by(models.AuditLog.id.desc())
+        .all()
+    )
+
+    return logs
+
+@app.post("/dev/promote-admin/{email}", response_model=schemas.UserResponse)
+def promote_user_to_admin(
+    email: str,
+    db: Session = Depends(get_db)
+):
+    user = (
+        db.query(models.User)
+        .filter(models.User.email == email)
+        .first()
+    )
+
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+
+    user.role = "admin"
+
+    db.commit()
+    db.refresh(user)
+
+    auth.create_audit_log(
+        db=db,
+        event_type="role_change",
+        outcome="success",
+        user_email=user.email,
+        detail="User promoted to admin via dev endpoint"
+    )
+
+    return user

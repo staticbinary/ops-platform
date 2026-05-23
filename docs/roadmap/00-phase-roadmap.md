@@ -432,6 +432,54 @@ Planned audit logging capabilities:
 - Event type categorization
 - Future support for IP address and user-agent tracking
 
+### Phase 4.1B — Audit Logging & Security Observability
+
+**Status:** Completed (Initial Implementation)
+
+### Completed
+
+- Added `AuditLog` database model
+- Added reusable audit logging helper function
+- Added login success/failure audit events
+- Added OAuth2 token issuance audit events
+- Added role change audit events
+- Added `/audit` endpoint
+- Added admin-only RBAC protection for audit access
+- Added newest-first audit ordering
+- Added development admin promotion endpoint
+- Confirmed audit event visibility through authenticated admin access
+
+### Current Audit Event Coverage
+
+The platform now records:
+
+- Login successes
+- Login failures
+- OAuth2 token issuance
+- Role promotion events
+
+### Current Audit Event Structure
+
+Audit entries currently contain:
+
+- Event type
+- User email
+- Outcome status
+- Detail message
+
+### Planned Enhancements
+
+Future audit logging improvements:
+
+- Event timestamps
+- Source IP tracking
+- User-agent logging
+- Pagination and filtering
+- Persistent storage migration
+- Centralized telemetry service
+- Security alert generation
+- SIEM-style aggregation
+
 ---
 
 ## Phase 5 — Frontend Platform Interface
