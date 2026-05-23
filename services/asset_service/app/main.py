@@ -6,29 +6,40 @@ from .database import Base, engine, get_db
 from .models import Asset
 from .schemas import AssetCreate, AssetUpdate, AssetResponse
 
-app = FastAPI(title="Asset Service")
+app = FastAPI(
+    title="Asset Service",
+    description="Operations platform asset management service",
+    version="1.0.0",
+    root_path="/api/assets"
+)
 
 Base.metadata.create_all(bind=engine)
 
 
-@app.get("/health")
+@app.get("/health", tags=["Health"])
 def health():
     return {"status": "ok", "service": "asset-service"}
 
 
-@app.get("/db-health")
+@app.get("/db-health", tags=["Health"])
 def db_health():
     try:
         with engine.connect() as connection:
             connection.execute(text("SELECT 1"))
 
-        return {"status": "ok", "database": "connected"}
+        return {
+            "status": "ok",
+            "database": "connected"
+        }
 
     except Exception as e:
-        return {"status": "error", "database": str(e)}
+        return {
+            "status": "error",
+            "database": str(e)
+        }
 
 
-@app.post("/assets", response_model=AssetResponse)
+@app.post("/assets", response_model=AssetResponse, tags=["Assets"])
 def create_asset(asset: AssetCreate, db: Session = Depends(get_db)):
     db_asset = Asset(
         hostname=asset.hostname,
@@ -43,12 +54,12 @@ def create_asset(asset: AssetCreate, db: Session = Depends(get_db)):
     return db_asset
 
 
-@app.get("/assets", response_model=list[AssetResponse])
+@app.get("/assets", response_model=list[AssetResponse], tags=["Assets"])
 def get_assets(db: Session = Depends(get_db)):
     return db.query(Asset).all()
 
 
-@app.get("/assets/{asset_id}", response_model=AssetResponse)
+@app.get("/assets/{asset_id}", response_model=AssetResponse, tags=["Assets"])
 def get_asset(asset_id: int, db: Session = Depends(get_db)):
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
 
@@ -58,7 +69,7 @@ def get_asset(asset_id: int, db: Session = Depends(get_db)):
     return asset
 
 
-@app.put("/assets/{asset_id}", response_model=AssetResponse)
+@app.put("/assets/{asset_id}", response_model=AssetResponse, tags=["Assets"])
 def update_asset(
     asset_id: int,
     updated_asset: AssetUpdate,
@@ -79,7 +90,7 @@ def update_asset(
     return asset
 
 
-@app.delete("/assets/{asset_id}")
+@app.delete("/assets/{asset_id}", tags=["Assets"])
 def delete_asset(asset_id: int, db: Session = Depends(get_db)):
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
 
@@ -92,6 +103,6 @@ def delete_asset(asset_id: int, db: Session = Depends(get_db)):
     return {"message": f"Asset {asset_id} deleted successfully"}
 
 
-@app.get("/")
+@app.get("/", tags=["Root"])
 def root():
     return {"message": "Asset Service running"}

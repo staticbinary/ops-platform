@@ -235,3 +235,79 @@ success path
 retrieval validation
 failure path testing
 Proper API lifecycle validation improves confidence in service reliability and operational behavior
+
+## Swagger/OpenAPI Docs Failed Behind Reverse Proxy
+
+### Symptoms
+
+Opening Swagger through the gateway initially failed:
+
+```text
+http://localhost:8080/api/assets/docs
+
+Swagger UI loaded partially, but showed:
+
+Failed to load API definition
+Fetch error
+Not Found /openapi.json
+Root Cause
+
+FastAPI was generating the OpenAPI path as:
+
+/openapi.json
+
+but the service is exposed through the reverse proxy under:
+
+/api/assets
+
+So Swagger needed to know the app was running behind a path prefix.
+
+Resolution
+
+Updated services/asset_service/app/main.py FastAPI configuration:
+
+app = FastAPI(
+    title="Asset Service",
+    description="Operations platform asset management service",
+    version="1.0.0",
+    root_path="/api/assets"
+)
+
+Also added Swagger route organization with tags:
+
+tags=["Health"]
+tags=["Assets"]
+tags=["Root"]
+Rebuild
+docker compose up -d --build
+Validation
+
+Confirmed Swagger loads successfully at:
+
+http://localhost:8080/api/assets/docs
+
+Confirmed OpenAPI exposes:
+
+GET     /health
+GET     /db-health
+GET     /assets
+POST    /assets
+GET     /assets/{asset_id}
+PUT     /assets/{asset_id}
+DELETE  /assets/{asset_id}
+GET     /
+Result
+
+Swagger now displays clean grouped sections:
+
+Health
+Assets
+Root
+Schemas
+Lesson Learned
+
+When FastAPI runs behind a reverse proxy path prefix, set:
+
+root_path="/api/assets"
+
+so Swagger/OpenAPI generates the correct API definition path.

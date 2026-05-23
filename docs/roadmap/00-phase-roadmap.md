@@ -182,6 +182,47 @@ Validated successful deletion of existing asset:
 ```bash
 curl -X DELETE http://localhost:8080/api/assets/assets/1
 
+# Phase 3.8 — API Documentation and OpenAPI Hardening
+
+## Completed
+
+### FastAPI Metadata
+- Added service title, description, and version metadata
+- Confirmed Swagger UI displays service information correctly
+- Confirmed OpenAPI schema generation is active
+
+### Reverse Proxy Swagger Support
+- Added `root_path="/api/assets"` to FastAPI configuration
+- Resolved Swagger/OpenAPI failure behind reverse proxy
+- Confirmed `/api/assets/openapi.json` loads successfully
+- Confirmed Swagger UI loads at:
+
+```text
+http://localhost:8080/api/assets/docs
+
+Swagger Organization
+Added route tags for API grouping
+Organized endpoints into:
+Health
+Assets
+Root
+Schemas
+Validation Completed
+
+Confirmed Swagger displays:
+
+GET     /health
+GET     /db-health
+GET     /assets
+POST    /assets
+GET     /assets/{asset_id}
+PUT     /assets/{asset_id}
+DELETE  /assets/{asset_id}
+GET     /
+Status
+
+Asset Service now has discoverable API documentation through Swagger/OpenAPI.
+
 ---
 
 # Upcoming Phases
