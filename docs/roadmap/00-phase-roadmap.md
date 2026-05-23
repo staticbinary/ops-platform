@@ -223,6 +223,72 @@ Status
 
 Asset Service now has discoverable API documentation through Swagger/OpenAPI.
 
+# Phase 3.9 — Middleware and Request Logging Foundation
+
+## Completed
+
+### Request Logging Middleware
+- Added FastAPI HTTP middleware layer
+- Implemented request/response lifecycle logging
+- Added request interception using:
+
+```python
+@app.middleware("http")
+
+Added request logging for:
+HTTP method
+request URL
+response status code
+FastAPI Middleware Integration
+
+Updated imports:
+
+from fastapi import Depends, FastAPI, HTTPException, Request
+
+Implemented middleware:
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+
+Middleware now logs:
+
+Incoming request: GET http://asset-service:8000/health
+Completed response: 200
+Validation Completed
+Health Endpoint Test
+curl http://localhost:8080/api/assets/health
+
+Returned expected response:
+
+{"status":"ok","service":"asset-service"}
+Container Log Validation
+docker compose logs asset-service
+
+Confirmed:
+
+middleware execution
+request interception
+response interception
+container log visibility
+reverse proxy request forwarding
+Operational Validation
+
+Confirmed nginx reverse proxy correctly forwards requests internally to:
+
+http://asset-service:8000
+
+within the Docker network.
+
+Status
+
+Asset Service now supports:
+
+full CRUD lifecycle
+OpenAPI/Swagger documentation
+middleware request logging
+operational telemetry visibility
+reverse proxy request tracing
+
 ---
 
 # Upcoming Phases

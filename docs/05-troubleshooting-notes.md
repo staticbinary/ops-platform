@@ -311,3 +311,80 @@ When FastAPI runs behind a reverse proxy path prefix, set:
 root_path="/api/assets"
 
 so Swagger/OpenAPI generates the correct API definition path.
+
+## Request Logging Middleware Implementation
+
+### Objective
+
+Add basic operational visibility to the Asset Service by logging each HTTP request and response.
+
+---
+
+### Implementation
+
+Updated FastAPI import in:
+
+```text
+services/asset_service/app/main.py
+
+Added Request:
+
+from fastapi import Depends, FastAPI, HTTPException, Request
+
+Added HTTP middleware:
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    print(f"Incoming request: {request.method} {request.url}")
+
+    response = await call_next(request)
+
+    print(f"Completed response: {response.status_code}")
+
+    return response
+Issue Encountered
+
+Base.metadata.create_all(bind=engine) was accidentally pasted near the top of the file before Base and engine were imported.
+
+This was corrected by removing the misplaced line and keeping only the proper instance after the FastAPI app initialization.
+
+Validation
+
+Rebuilt containers:
+
+docker compose up -d --build
+
+Generated test traffic:
+
+curl http://localhost:8080/api/assets/health
+
+Checked service logs:
+
+docker compose logs asset-service
+
+Confirmed middleware output:
+
+Incoming request: GET http://asset-service:8000/health
+Completed response: 200
+Result
+
+Request logging middleware is functioning correctly.
+
+Confirmed:
+
+middleware registration
+request interception
+response interception
+reverse proxy forwarding
+container log visibility
+Lesson Learned
+
+FastAPI middleware provides a clean foundation for operational telemetry.
+
+This basic logging can later evolve into:
+
+structured logging
+request IDs
+correlation IDs
+audit trails
+observability pipelines

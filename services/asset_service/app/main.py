@@ -1,4 +1,4 @@
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -106,3 +106,13 @@ def delete_asset(asset_id: int, db: Session = Depends(get_db)):
 @app.get("/", tags=["Root"])
 def root():
     return {"message": "Asset Service running"}
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    print(f"Incoming request: {request.method} {request.url}")
+
+    response = await call_next(request)
+
+    print(f"Completed response: {response.status_code}")
+
+    return response
