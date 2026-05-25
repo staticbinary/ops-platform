@@ -621,6 +621,54 @@ Operational Outcomes:
 - Database inspection workflow established
 - Error handling significantly hardened
 
+# Phase 4.5 — Enterprise Logging & Observability Foundation
+
+## Objective
+
+Transition the Ops Platform from basic application logging into a more modular, enterprise-style observability foundation by implementing structured logging, reusable logging utilities, request tracing, and centralized middleware orchestration.
+
+This phase focuses on improving maintainability, troubleshooting visibility, operational telemetry, and future scalability across services.
+
+---
+
+# Goals
+
+- Replace ad-hoc logging patterns with structured JSON logging
+- Centralize logging functionality into reusable utilities
+- Improve request visibility and traceability
+- Prepare the platform for future observability integrations
+- Reduce logic duplication inside `main.py`
+- Establish foundational telemetry architecture for future services
+
+---
+
+# Features Implemented
+
+## Structured JSON Logging
+
+Implemented centralized JSON log formatting to standardize application logs across the platform.
+
+Structured logs now include:
+- timestamps
+- log levels
+- request methods
+- request paths
+- response status codes
+- execution timing
+- event messaging
+
+Example log structure:
+
+```json
+{
+  "timestamp": "2026-05-25T20:41:12Z",
+  "level": "INFO",
+  "method": "POST",
+  "path": "/assets",
+  "status_code": 201,
+  "duration_ms": 42
+}
+
 ---
 
 ## Phase 5 — Frontend Platform Interface

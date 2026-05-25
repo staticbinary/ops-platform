@@ -942,3 +942,206 @@ Future hardening work:
 - actor attribution improvements
 - structured JSON logging
 - org/tenant-aware telemetry
+
+# Phase 4.5 — Troubleshooting Notes
+
+---
+
+## Issue
+Logging Middleware Import / Initialization Problems
+
+### Symptoms
+- FastAPI application startup failures
+- middleware registration errors
+- import-related exceptions during container startup
+
+### Root Cause
+Logging utilities and request logging logic were originally embedded directly inside `main.py`, causing organizational complexity and dependency issues as the application expanded.
+
+### Resolution
+Created centralized logging utility module:
+
+`app/logging_utils.py`
+
+Separated:
+- JSON formatting
+- timestamp generation
+- helper functions
+- middleware support logic
+
+Reduced logging complexity inside `main.py`.
+
+### Validation
+- FastAPI application started successfully
+- middleware loaded correctly
+- request logging executed consistently across endpoints
+
+### Lessons Learned
+Separating platform utilities early prevents architectural sprawl and significantly improves maintainability as backend services grow.
+
+---
+
+## Issue
+JSON Serialization Failures in Structured Logging
+
+### Symptoms
+- internal server errors during request logging
+- serialization exceptions in container logs
+- failed logging events during API requests
+
+### Root Cause
+Certain request/response objects and datetime values were not automatically JSON serializable.
+
+### Resolution
+Implemented:
+- explicit timestamp formatting
+- controlled dictionary construction
+- JSON-safe serialization handling
+
+Ensured only serializable values are written into structured logs.
+
+### Validation
+- structured logs generated successfully
+- no additional serialization exceptions observed
+- logs displayed correctly in Docker container output
+
+### Lessons Learned
+Structured logging requires careful control of serialized object types, especially when working with request lifecycle objects and datetime handling.
+
+---
+
+## Issue
+Duplicate Log Entries
+
+### Symptoms
+- repeated request log entries
+- duplicate middleware logging output
+- cluttered container logs
+
+### Root Cause
+Multiple logger handlers were being attached during application startup or reload cycles.
+
+### Resolution
+Added safeguards to prevent duplicate handler registration before logger initialization.
+
+### Validation
+- duplicate log entries stopped
+- request telemetry normalized
+- logging output became consistent
+
+### Lessons Learned
+Python logging handlers can unintentionally stack during development reloads if initialization safeguards are not implemented.
+
+---
+
+## Issue
+Inconsistent Request Timing Metrics
+
+### Symptoms
+- inaccurate request duration values
+- inconsistent middleware timing calculations
+
+### Root Cause
+Timing calculations were not consistently initialized before request execution.
+
+### Resolution
+Moved request timing initialization to the start of middleware execution and standardized duration calculations.
+
+### Validation
+- request duration values became consistent
+- middleware timing metrics aligned with expected API behavior
+
+### Lessons Learned
+Middleware timing instrumentation must initialize before any request processing occurs to ensure reliable telemetry.
+
+---
+
+## Issue
+Docker Cache / Rebuild Inconsistencies
+
+### Symptoms
+- updated logging code not appearing
+- stale middleware behavior after code changes
+- old log formats persisting
+
+### Root Cause
+Docker containers were still using cached image layers or mounted application state.
+
+### Resolution
+Performed container rebuilds using:
+
+`docker compose up -d --build`
+
+In some cases:
+- full teardown
+- container recreation
+- volume reset
+
+were required.
+
+### Validation
+- updated logging behavior appeared correctly
+- middleware changes reflected immediately
+- latest code executed successfully
+
+### Lessons Learned
+Docker layer caching can preserve outdated application behavior if containers are not rebuilt properly after backend architecture changes.
+
+---
+
+## Issue
+Audit Log Date Filtering Inconsistencies
+
+### Symptoms
+- incomplete date filtering behavior
+- unexpected audit log query results
+- inconsistent search output
+
+### Root Cause
+Date parsing and filtering logic lacked consistent validation handling during initial implementation.
+
+### Resolution
+Improved:
+- datetime parsing logic
+- query parameter validation
+- filtering conditions
+
+Validated filtering behavior using multiple date range test cases.
+
+### Validation
+- date range filtering worked correctly
+- audit queries returned expected results
+- filtering logic behaved consistently across tests
+
+### Lessons Learned
+Date handling introduces subtle edge cases that require strict validation and consistent formatting standards.
+
+---
+
+## Issue
+Main.py Becoming Monolithic
+
+### Symptoms
+- increasing difficulty navigating `main.py`
+- mixed concerns across logging and API logic
+- reduced maintainability
+
+### Root Cause
+Application responsibilities accumulated inside a single file as features expanded.
+
+### Resolution
+Began modularization process by extracting:
+- logging utilities
+- middleware helper logic
+
+into reusable application modules.
+
+### Validation
+- `main.py` became cleaner and easier to navigate
+- logging logic became reusable
+- backend structure improved significantly
+
+### Lessons Learned
+Modularization should begin early in backend projects to avoid technical debt and reduce future refactoring complexity.
+
+---

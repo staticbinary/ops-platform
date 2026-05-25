@@ -1,6 +1,7 @@
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
+from jose.exceptions import ExpiredSignatureError
 
 SECRET_KEY = "super-secret-dev-key"
 ALGORITHM = "HS256"
@@ -18,6 +19,12 @@ def verify_token(token: str):
 
         return payload
 
+    except ExpiredSignatureError:
+        raise HTTPException(
+            status_code=401,
+            detail="Token has expired"
+        )
+
     except JWTError:
         raise HTTPException(
             status_code=401,
@@ -30,9 +37,24 @@ def get_current_user(
 ):
     payload = verify_token(credentials.credentials)
 
+    email = payload.get("sub")
+    role = payload.get("role")
+
+    if not email:
+        raise HTTPException(
+            status_code=401,
+            detail="Token missing subject claim"
+        )
+
+    if not role:
+        raise HTTPException(
+            status_code=401,
+            detail="Token missing role claim"
+        )
+
     return {
-        "email": payload.get("sub"),
-        "role": payload.get("role")
+        "email": email,
+        "role": role
     }
 
 

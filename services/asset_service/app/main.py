@@ -1,12 +1,21 @@
+import time
 import uuid
+from datetime import datetime
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from . import auth
 from .database import Base, engine, get_db
+from .logging_utils import (
+    build_request_completed_log,
+    build_request_started_log,
+    log_event
+)
 from .models import Asset, AuditLog
 from .schemas import AssetCreate, AssetUpdate, AssetResponse
 
@@ -20,8 +29,47 @@ app = FastAPI(
 Base.metadata.create_all(bind=engine)
 
 
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": exc.detail,
+            "status_code": exc.status_code
+        }
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(
+        status_code=422,
+        content={
+            "error": "Request validation failed",
+            "status_code": 422,
+            "details": exc.errors()
+        }
+    )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "Internal server error",
+            "status_code": 500
+        }
+    )
+
+
 def get_actor(current_user: dict) -> str:
-    return current_user.get("username") or current_user.get("sub") or "unknown"
+    return (
+        current_user.get("email")
+        or current_user.get("username")
+        or current_user.get("sub")
+        or "unknown"
+    )
 
 
 def write_audit_log(
@@ -44,14 +92,32 @@ def write_audit_log(
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     request_id = str(uuid.uuid4())
+    start_time = time.time()
 
-    print(f"[request_id={request_id}] Incoming request: {request.method} {request.url}")
+    log_event(
+        build_request_started_log(
+            request_id=request_id,
+            method=request.method,
+            path=request.url.path,
+            client=request.client.host if request.client else None
+        )
+    )
 
     response = await call_next(request)
 
+    duration_ms = round((time.time() - start_time) * 1000, 2)
+
     response.headers["X-Request-ID"] = request_id
 
-    print(f"[request_id={request_id}] Completed response: {response.status_code}")
+    log_event(
+        build_request_completed_log(
+            request_id=request_id,
+            method=request.method,
+            path=request.url.path,
+            status_code=response.status_code,
+            duration_ms=duration_ms
+        )
+    )
 
     return response
 
@@ -231,12 +297,79 @@ def delete_asset(
 
 @app.get("/audit-logs", tags=["Audit"])
 def get_audit_logs(
+    action: str | None = Query(default=None),
+    actor: str | None = Query(default=None),
+    result: str | None = Query(default=None),
+    asset_id: int | None = Query(default=None),
+    start_date: str | None = Query(default=None),
+    end_date: str | None = Query(default=None),
+    sort_order: str = Query(default="desc"),
+    limit: int = Query(default=50, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
     current_user: dict = Depends(auth.require_role("admin"))
 ):
-    logs = db.query(AuditLog).order_by(AuditLog.timestamp.desc()).all()
+    query = db.query(AuditLog)
 
-    return logs
+    if action:
+        query = query.filter(AuditLog.action == action)
+
+    if actor:
+        query = query.filter(AuditLog.actor == actor)
+
+    if result:
+        query = query.filter(AuditLog.result == result)
+
+    if asset_id is not None:
+        query = query.filter(AuditLog.asset_id == asset_id)
+
+    if start_date:
+        try:
+            parsed_start = datetime.fromisoformat(start_date)
+            query = query.filter(AuditLog.timestamp >= parsed_start)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid start_date format. Use ISO format."
+            )
+
+    if end_date:
+        try:
+            parsed_end = datetime.fromisoformat(end_date)
+            query = query.filter(AuditLog.timestamp <= parsed_end)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid end_date format. Use ISO format."
+            )
+
+    if sort_order not in ["asc", "desc"]:
+        raise HTTPException(
+            status_code=400,
+            detail="sort_order must be either 'asc' or 'desc'"
+        )
+
+    if sort_order == "asc":
+        query = query.order_by(AuditLog.timestamp.asc())
+    else:
+        query = query.order_by(AuditLog.timestamp.desc())
+
+    total = query.count()
+
+    logs = (
+        query
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+
+    return {
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "sort_order": sort_order,
+        "items": logs
+    }
 
 
 @app.get("/", tags=["Root"])
