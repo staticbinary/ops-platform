@@ -1253,27 +1253,118 @@ Toward:
 - Scalable observability groundwork
 - Integration-capable backend structure
 
-## Phase 5 — Frontend Platform Interface
+# Phase 5.3 — Structured Logging + Request Correlation
 
-Objectives:
-- create operational web interface
-- expose platform functionality visually
+## Goal
+Improve backend observability by making service logs structured, consistent, traceable, and useful for future monitoring/SIEM integrations.
 
-Planned:
-- React frontend
-- dashboard layout
-- asset inventory UI
-- service overview panels
-- navigation shell
-- responsive layouts
+## Planned Work
+- standardize JSON log output
+- add request ID/correlation ID support
+- log request start/completion events
+- include method/path/status/duration
+- include client IP where available
+- avoid logging sensitive data
+- prepare logs for future tools like Datadog, Splunk, OpenTelemetry, or Grafana/Loki
 
-Key Concepts:
-- frontend/backend separation
-- API consumption
-- component architecture
-- operational dashboard design
+## Why This Matters
+This gives the platform enterprise-style troubleshooting visibility before additional services, integrations, or frontend workflows are added.
 
----
+# Phase 5.4 — Security Hardening Foundation
+
+## Objectives
+- strengthen backend API security posture
+- establish production-style middleware protections
+- improve operational trust boundaries
+- prepare platform for frontend exposure
+
+## Completed
+- proxy-aware client IP handling
+- secure response headers middleware
+- CORS restriction policies
+- request correlation IDs
+- IP-aware rate limiting
+- request body size enforcement
+- structured auth/security telemetry
+- sensitive log field redaction
+- trusted host groundwork
+- reverse proxy security validation
+
+## Security Features Implemented
+- `X-Content-Type-Options`
+- `X-Frame-Options`
+- `Referrer-Policy`
+- `Permissions-Policy`
+- request throttling protections
+- request size protections
+- correlation-aware error responses
+- sensitive value masking
+
+## Key Concepts
+- API hardening
+- browser security controls
+- proxy trust boundaries
+- middleware layering
+- operational telemetry
+- abuse prevention
+- frontend security readiness
+
+## Remaining / Future Enhancements
+- strict TrustedHost enforcement
+- Redis-backed distributed rate limiting
+- API key management
+- refresh token architecture
+- MFA/OIDC groundwork
+- advanced request filtering
+- centralized secret management
+
+# Phase 5.5 — Observability & Platform Telemetry Expansion
+
+## Objectives
+- expand operational visibility
+- prepare platform for centralized monitoring
+- improve service diagnostics and metrics collection
+- establish observability integration readiness
+
+## Planned
+- Prometheus metrics integration
+- request counters
+- latency histograms
+- service uptime metrics
+- error-rate tracking
+- response size telemetry
+- request sampling controls
+- OpenTelemetry groundwork
+- centralized logging compatibility
+- structured metrics export
+
+## Key Concepts
+- observability engineering
+- metrics-driven operations
+- distributed tracing groundwork
+- telemetry pipelines
+- operational diagnostics
+- platform health visibility
+- performance instrumentation
+
+## Future Integration Readiness
+- Datadog
+- Prometheus
+- Grafana
+- OpenTelemetry
+- Jaeger / Grafana Tempo
+- Splunk
+- SIEM/SOC integration pipelines
+
+
+
+
+
+
+
+
+
+
 
 ## Phase 6 — Identity & Access Management
 

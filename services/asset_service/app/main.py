@@ -6,8 +6,13 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
+from app.security_headers import SecurityHeadersMiddleware
+from app.rate_limit import RateLimitMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.middleware.cors import CORSMiddleware
+from app.body_size_limit import BodySizeLimitMiddleware
 
-from app.request_context import RequestIDMiddleware
+from app.request_context import RequestIDMiddleware, get_request_id
 
 from . import auth
 from .database import get_db
@@ -20,10 +25,42 @@ app = FastAPI(
     description="Operations platform asset management service",
     version="1.0.0",
     root_path="/api/assets",
+    docs_url="/docs",
+    openapi_url="/openapi.json",
+)
+
+app.add_middleware(SecurityHeadersMiddleware)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
+)
+
+app.add_middleware(
+    BodySizeLimitMiddleware,
+    max_body_size_bytes=1_048_576,
+)
+
+app.add_middleware(
+    RateLimitMiddleware,
+    max_requests=100,
+    window_seconds=60,
 )
 
 app.add_middleware(RequestIDMiddleware)
 
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=["*"],
+)
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
@@ -32,6 +69,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         content={
             "error": exc.detail,
             "status_code": exc.status_code,
+            "request_id": get_request_id(),
         },
     )
 
@@ -43,6 +81,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         content={
             "error": "Request validation failed",
             "status_code": 422,
+            "request_id": get_request_id(),
             "details": exc.errors(),
         },
     )
@@ -55,6 +94,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
         content={
             "error": "Internal server error",
             "status_code": 500,
+            "request_id": get_request_id(),
         },
     )
 

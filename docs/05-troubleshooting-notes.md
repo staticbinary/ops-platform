@@ -1481,3 +1481,106 @@ Health monitoring endpoints lacked consistency, readiness support, and secure fa
 Removed legacy implementation:
 ```python
 with engine.connect()
+
+## Issue
+### Symptoms
+Swagger UI failed to load correctly behind the nginx reverse proxy. `/docs` attempted to retrieve `/openapi.json` from an invalid location, causing broken API documentation rendering.
+
+### Root Cause
+FastAPI `root_path` and `openapi_url` settings conflicted with nginx reverse proxy path handling.
+
+### Resolution
+Updated FastAPI configuration to properly support reverse proxy routing:
+
+```python
+root_path="/api/assets"
+docs_url="/docs"
+openapi_url="/openapi.json"
+```
+
+Validated nginx routing and rebuilt reverse proxy containers.
+
+### Validation
+Verified:
+- `/api/assets/docs`
+- `/api/assets/openapi.json`
+
+Swagger UI loaded successfully behind nginx.
+
+### Lessons Learned
+FastAPI `root_path` already prepends proxied paths internally. `openapi_url` should remain local to the application rather than including the proxy prefix itself.
+
+## Issue
+### Symptoms
+nginx returned `502 Bad Gateway` after TrustedHostMiddleware configuration changes.
+
+### Root Cause
+Malformed Python syntax inside the `TrustedHostMiddleware` configuration block prevented the asset service container from starting.
+
+### Resolution
+Removed leftover host entries and simplified the configuration to:
+
+```python
+allowed_hosts=["*"]
+```
+
+Rebuilt the asset service container.
+
+### Validation
+Verified:
+- asset service container healthy
+- reverse proxy routing restored
+- `/api/assets/health` returned expected responses
+
+### Lessons Learned
+Successful Docker rebuilds do not guarantee successful application startup. Container logs should always be inspected after middleware or syntax modifications.
+
+## Issue
+### Symptoms
+TrustedHostMiddleware rejected valid localhost requests with:
+
+```text
+400 Invalid host header
+```
+
+### Root Cause
+nginx forwarded host headers differently than initially expected, causing TrustedHostMiddleware validation mismatches.
+
+### Resolution
+Temporarily relaxed trusted host enforcement using:
+
+```python
+allowed_hosts=["*"]
+```
+
+Added nginx debug headers for future host validation troubleshooting.
+
+### Validation
+Validated successful requests through:
+- localhost browser access
+- curl testing
+- nginx reverse proxy routing
+- direct container access
+
+### Lessons Learned
+Reverse proxy host forwarding behavior must be fully understood before strict host validation rules are enforced.
+
+## Issue
+### Symptoms
+Rate limiting behavior initially appeared inconsistent during rapid request testing.
+
+### Root Cause
+Request bursts exceeded configured thresholds very quickly, producing expected 429 responses without immediately obvious confirmation.
+
+### Resolution
+Performed controlled request flood testing using repeated curl loops and validated middleware enforcement behavior through structured logs.
+
+### Validation
+Observed:
+- `429 Too Many Requests`
+- structured warning logs
+- request correlation IDs
+- consistent middleware enforcement
+
+### Lessons Learned
+Structured request telemetry significantly improves validation and troubleshooting during security hardening implementation.

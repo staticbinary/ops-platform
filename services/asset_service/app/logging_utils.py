@@ -1,12 +1,14 @@
 import json
 from datetime import datetime, timezone
+from app.log_redaction import redact_log_data
 
 SERVICE_NAME = "asset-service"
 ENVIRONMENT = "development"
 
 
 def log_event(event_data: dict):
-    print(json.dumps(event_data))
+    safe_event_data = redact_log_data(event_data)
+    print(json.dumps(safe_event_data))
 
 
 def base_log_event(
@@ -26,7 +28,7 @@ def build_request_started_log(
     request_id: str,
     method: str,
     path: str,
-    client: str | None
+    client: str | None,
 ):
     event = base_log_event("request.started", "info")
     event.update({
@@ -43,7 +45,7 @@ def build_request_completed_log(
     method: str,
     path: str,
     status_code: int,
-    duration_ms: float
+    duration_ms: float,
 ):
     severity = "info"
 
@@ -70,7 +72,6 @@ def build_request_failed_log(
     duration_ms: float,
     error_type: str,
     error_message: str,
-    stack_trace: str,
 ):
     event = base_log_event("request.failed", "error")
     event.update({
@@ -80,9 +81,9 @@ def build_request_failed_log(
         "duration_ms": duration_ms,
         "error_type": error_type,
         "error_message": error_message,
-        "stack_trace": stack_trace,
     })
     return event
+
 
 def build_auth_failure_log(
     request_id: str | None,

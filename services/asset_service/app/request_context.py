@@ -1,5 +1,4 @@
 import time
-import traceback
 import uuid
 from contextvars import ContextVar
 
@@ -28,8 +27,21 @@ source_ip_context: ContextVar[str | None] = ContextVar(
 def get_request_id() -> str | None:
     return request_id_context.get()
 
+
 def get_source_ip() -> str | None:
     return source_ip_context.get()
+
+
+def get_client_ip(request: Request) -> str | None:
+    forwarded_for = request.headers.get("x-forwarded-for")
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()
+
+    real_ip = request.headers.get("x-real-ip")
+    if real_ip:
+        return real_ip.strip()
+
+    return request.client.host if request.client else None
 
 
 class RequestIDMiddleware(BaseHTTPMiddleware):
@@ -39,8 +51,9 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
 
         method = request.method
         path = request.url.path
-        client = request.client.host if request.client else None
+        client = get_client_ip(request)
         source_ip_context.set(client)
+
         start_time = time.perf_counter()
 
         log_event(
@@ -67,6 +80,7 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
             )
 
             response.headers["x-request-id"] = request_id
+
             return response
 
         except Exception as exc:
@@ -80,7 +94,6 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
                     duration_ms=duration_ms,
                     error_type=type(exc).__name__,
                     error_message=str(exc),
-                    stack_trace=traceback.format_exc(),
                 )
             )
 
