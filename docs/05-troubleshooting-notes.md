@@ -1,1255 +1,944 @@
+# Operations Platform — Troubleshooting & Implementation Notes
+
+---
+
 ## Module Import Troubleshooting
 
-Issue:
-- FastAPI container failed with:
-  ModuleNotFoundError: No module named 'app.database'
+### Symptoms
 
-Root Cause:
-- database.py created in incorrect nested directory:
-  services/asset_service/services/asset_service/app/
+Asset service failed during startup with:
 
-Resolution:
-- moved database.py into:
-  services/asset_service/app/
-- removed accidental nested services directory
-- rebuilt containers using:
-  docker compose up -d --build
+```text
+ModuleNotFoundError: No module named 'app.database'
+```
 
-Key Lesson:
-- Python module import paths depend on correct project structure alignment
-- containerized application paths must match runtime import expectations
+### Root Cause
+
+`database.py` was accidentally created inside:
+
+```text
+services/asset_service/services/asset_service/app/
+```
+
+instead of:
+
+```text
+services/asset_service/app/
+```
+
+### Resolution
+
+Moved `database.py` into the correct application package:
+
+```text
+services/asset_service/app/
+```
+
+Removed the accidental nested `services` directory and rebuilt containers:
+
+```bash
+docker compose up -d --build
+```
+
+### Validation
+
+Confirmed:
+- asset-service container started successfully
+- imports resolved correctly
+- FastAPI initialized normally
+
+### Lessons Learned
+
+Python module imports inside containers are highly dependent on correct package structure and runtime path alignment.
+
+---
 
 ## PostgreSQL Table Verification
 
-Validation Steps:
-- entered PostgreSQL container directly using docker exec
-- connected to database through psql
-- validated automatic ORM table creation using:
-  \dt
+### Objective
 
-Result:
-- confirmed assets table successfully generated through SQLAlchemy metadata initialization
+Validate ORM-generated PostgreSQL table creation.
 
-Key Lesson:
-- ORM models dynamically generate relational database schema structures
-- direct infrastructure verification is important during backend development
+### Validation Steps
 
-## CRUD Endpoint Debugging
-
-Issue:
-- FastAPI container returned 502 Bad Gateway during CRUD implementation
-
-Root Cause:
-- malformed indentation in database.py dependency function
-
-Validation Steps:
-- inspected container logs using:
-  docker compose logs asset-service
-
-Resolution:
-- corrected indentation within get_db() dependency function
-- rebuilt containers using:
-  docker compose up -d --build
-
-Result:
-- CRUD endpoints successfully created persistent PostgreSQL records
-
-Key Lesson:
-- container log inspection is critical for backend runtime debugging
-- dependency injection lifecycle errors can prevent application startup
-
-### Symptoms
-# PUT Endpoint Returned 405 Method Not Allowed
-
-## Symptoms
-
-Attempting to update an asset with:
+Entered the PostgreSQL container:
 
 ```bash
-curl -X PUT http://localhost:8080/api/assets/assets/1 \
-  -H "Content-Type: application/json" \
-  -d '{"hostname":"t5500-lab-node","owner":"ops-team","status":"maintenance"}'
+docker exec -it ops-postgres sh
+```
 
-  Root Cause
+Connected using:
 
-PUT /assets/{asset_id} endpoint had not actually been added to:
+```bash
+psql -U postgres
+```
 
-services/asset_service/app/main.py
+Verified generated tables:
 
-Additionally:
+```sql
+\dt
+```
 
-AssetUpdate import was missing
-update logic was not registered in FastAPI
-container rebuild succeeded, but application lacked PUT handler
+### Result
 
-FastAPI therefore recognized the route path, but not the PUT method.
+Confirmed SQLAlchemy successfully generated the `assets` table using:
 
-Resolution
+```python
+Base.metadata.create_all(bind=engine)
+```
 
-Updated:
+### Lessons Learned
 
-from .schemas import AssetCreate, AssetUpdate, AssetResponse
+Direct infrastructure validation is important during backend development to verify ORM behavior and persistence.
+
+---
+
+## CRUD Endpoint Startup Failure
+
+### Symptoms
+
+CRUD implementation caused:
+
+```text
+502 Bad Gateway
+```
+
+through nginx.
+
+### Root Cause
+
+Malformed indentation inside the `get_db()` dependency function prevented FastAPI from starting.
+
+### Resolution
+
+Reviewed logs:
+
+```bash
+docker compose logs asset-service
+```
+
+Corrected dependency indentation and rebuilt containers:
+
+```bash
+docker compose up -d --build
+```
+
+### Validation
+
+Confirmed:
+- FastAPI started successfully
+- CRUD endpoints became reachable
+- PostgreSQL persistence functioned correctly
+
+### Lessons Learned
+
+Container log inspection is critical for diagnosing backend runtime failures.
+
+---
+
+## PUT Endpoint Returned 405 Method Not Allowed
+
+### Symptoms
+
+Updating assets returned:
+
+```text
+405 Method Not Allowed
+```
+
+### Root Cause
+
+`PUT /assets/{asset_id}` had not actually been implemented in `main.py`.
+
+Missing components included:
+- `AssetUpdate` schema import
+- update route registration
+- SQLAlchemy update logic
+
+### Resolution
 
 Added:
 
+```python
 @app.put("/assets/{asset_id}", response_model=AssetResponse)
+```
 
 Implemented:
+- database lookup logic
+- SQLAlchemy update handling
+- commit/refresh logic
+- 404 handling
 
-database update logic
-SQLAlchemy commit/refresh
-proper 404 handling for unknown assets
-Rebuild Procedure
+Rebuilt containers:
+
+```bash
 docker compose up -d --build
+```
 
-Verified:
-
-asset-service rebuilt successfully
-containers restarted cleanly
-reverse proxy remained healthy
-Validation
-Successful Asset Update
-curl -X PUT http://localhost:8080/api/assets/assets/1 \
-  -H "Content-Type: application/json" \
-  -d '{"hostname":"t5500-lab-node","owner":"ops-team","status":"maintenance"}'
-
-Returned successful updated asset response.
+### Validation
 
 Confirmed:
+- successful asset updates
+- request parsing
+- database persistence
+- API response serialization
 
-endpoint registration
-request parsing
-database update behavior
-API serialization
+### Lessons Learned
+
+A 405 response commonly indicates:
+- route path exists
+- HTTP method is not registered
+
+---
 
 ## DELETE Endpoint Returned 405 Method Not Allowed
 
 ### Symptoms
 
-Attempting to delete an asset with:
+Deleting assets returned:
 
-```bash
-curl -X DELETE http://localhost:8080/api/assets/assets/1
+```text
+405 Method Not Allowed
+```
 
-The route path existed and was reachable through the reverse proxy, but the DELETE method was not being accepted by FastAPI.
+### Root Cause
 
-Initial Analysis
+The DELETE route was not properly registered in the running FastAPI application.
 
-A 405 Method Not Allowed response indicated:
+### Resolution
 
-route path existed
-reverse proxy routing was functioning
-FastAPI application was reachable
-HTTP method was not registered for the route
-
-Potential causes considered:
-
-DELETE endpoint not properly registered
-indentation/placement issue in main.py
-failed container reload
-stale container image
-invalid decorator placement
-Root Cause
-
-The DELETE endpoint was not properly registered in the running FastAPI application.
-
-To eliminate possible indentation or placement issues, the entire:
-
-services/asset_service/app/main.py
-
-file was replaced with a known-good full application version containing:
-
-GET endpoints
-POST endpoint
-PUT endpoint
-DELETE endpoint
-
-This ensured all route decorators existed at proper root indentation level.
-
-Resolution
+Replaced the full `main.py` file with a verified application version containing:
+- GET routes
+- POST route
+- PUT route
+- DELETE route
 
 Implemented:
 
+```python
 @app.delete("/assets/{asset_id}")
+```
 
 Added:
+- database lookup logic
+- delete handling
+- commit operations
+- proper 404 responses
 
-database lookup logic
-SQLAlchemy delete operation
-commit handling
-proper 404 behavior
-deletion success response
+Performed a full rebuild:
 
-Performed full container teardown and rebuild:
-
+```bash
 docker compose down
 docker compose up -d --build
+```
 
-This ensured:
-
-stale containers were removed
-fresh application image was rebuilt
-updated routes loaded cleanly
-Validation
-Successful Asset Delete
-curl -X DELETE http://localhost:8080/api/assets/assets/1
-
-Returned expected response:
-
-{"message":"Asset 1 deleted successfully"}
+### Validation
 
 Confirmed:
+- asset deletion succeeded
+- deleted assets returned 404 on retrieval
+- nonexistent assets returned proper 404 responses
 
-DELETE endpoint registration
-database delete behavior
-SQLAlchemy commit operation
-API response serialization
-Deleted Asset Verification
-curl http://localhost:8080/api/assets/assets/1
+### Lessons Learned
 
-Returned expected response:
+Full-file replacement can eliminate hidden decorator or indentation issues during early FastAPI development.
 
-{"detail":"Asset not found"}
+---
 
-Confirmed:
-
-asset removal persisted in database
-GET endpoint correctly handled deleted object state
-Unknown Asset Delete Validation
-curl -X DELETE http://localhost:8080/api/assets/assets/999
-
-Returned expected response:
-
-{"detail":"Asset not found"}
-
-Confirmed proper 404 behavior for nonexistent asset deletion attempts.
-
-Lessons Learned
-405 Method Not Allowed commonly indicates:
-route exists
-HTTP method not registered
-Full-file replacement can quickly eliminate hidden indentation or decorator placement problems during early FastAPI development
-docker compose down followed by rebuild helps eliminate stale container/runtime issues during endpoint troubleshooting
-CRUD endpoint validation should always include:
-success path
-retrieval validation
-failure path testing
-Proper API lifecycle validation improves confidence in service reliability and operational behavior
-
-## Swagger/OpenAPI Docs Failed Behind Reverse Proxy
+## Swagger/OpenAPI Failed Behind Reverse Proxy
 
 ### Symptoms
 
-Opening Swagger through the gateway initially failed:
+Swagger UI loaded partially through nginx but failed with:
 
 ```text
-http://localhost:8080/api/assets/docs
-
-Swagger UI loaded partially, but showed:
-
 Failed to load API definition
-Fetch error
-Not Found /openapi.json
-Root Cause
+/openapi.json not found
+```
 
-FastAPI was generating the OpenAPI path as:
+### Root Cause
 
-/openapi.json
+FastAPI generated OpenAPI paths relative to `/` while the service operated behind:
 
-but the service is exposed through the reverse proxy under:
-
+```text
 /api/assets
+```
 
-So Swagger needed to know the app was running behind a path prefix.
+through the reverse proxy.
 
-Resolution
+### Resolution
 
-Updated services/asset_service/app/main.py FastAPI configuration:
+Updated FastAPI initialization:
 
+```python
 app = FastAPI(
     title="Asset Service",
     description="Operations platform asset management service",
     version="1.0.0",
     root_path="/api/assets"
 )
+```
 
-Also added Swagger route organization with tags:
+Also organized Swagger sections using route tags.
 
-tags=["Health"]
-tags=["Assets"]
-tags=["Root"]
-Rebuild
-docker compose up -d --build
-Validation
+### Validation
 
-Confirmed Swagger loads successfully at:
+Confirmed Swagger loads correctly at:
 
+```text
 http://localhost:8080/api/assets/docs
+```
 
-Confirmed OpenAPI exposes:
+### Lessons Learned
 
-GET     /health
-GET     /db-health
-GET     /assets
-POST    /assets
-GET     /assets/{asset_id}
-PUT     /assets/{asset_id}
-DELETE  /assets/{asset_id}
-GET     /
-Result
-
-Swagger now displays clean grouped sections:
-
-Health
-Assets
-Root
-Schemas
-Lesson Learned
-
-When FastAPI runs behind a reverse proxy path prefix, set:
-
-root_path="/api/assets"
-
-so Swagger/OpenAPI generates the correct API definition path.
-
-## Request Logging Middleware Implementation
-
-### Objective
-
-Add basic operational visibility to the Asset Service by logging each HTTP request and response.
+When running FastAPI behind a reverse proxy path prefix, `root_path` must be configured correctly for Swagger/OpenAPI generation.
 
 ---
 
-### Implementation
-
-Updated FastAPI import in:
-
-```text
-services/asset_service/app/main.py
-
-Added Request:
-
-from fastapi import Depends, FastAPI, HTTPException, Request
-
-Added HTTP middleware:
-
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    print(f"Incoming request: {request.method} {request.url}")
-
-    response = await call_next(request)
-
-    print(f"Completed response: {response.status_code}")
-
-    return response
-Issue Encountered
-
-Base.metadata.create_all(bind=engine) was accidentally pasted near the top of the file before Base and engine were imported.
-
-This was corrected by removing the misplaced line and keeping only the proper instance after the FastAPI app initialization.
-
-Validation
-
-Rebuilt containers:
-
-docker compose up -d --build
-
-Generated test traffic:
-
-curl http://localhost:8080/api/assets/health
-
-Checked service logs:
-
-docker compose logs asset-service
-
-Confirmed middleware output:
-
-Incoming request: GET http://asset-service:8000/health
-Completed response: 200
-Result
-
-Request logging middleware is functioning correctly.
-
-Confirmed:
-
-middleware registration
-request interception
-response interception
-reverse proxy forwarding
-container log visibility
-Lesson Learned
-
-FastAPI middleware provides a clean foundation for operational telemetry.
-
-This basic logging can later evolve into:
-
-structured logging
-request IDs
-correlation IDs
-audit trails
-observability pipelines
-
-
-## Troubleshooting / Implementation Notes
-
-```markdown
-## Request ID Correlation Logging
+## Request Logging Middleware
 
 ### Objective
-Improve request logging by assigning each API request a unique correlation ID.
+
+Add operational visibility for incoming requests and responses.
 
 ### Implementation
+
+Added FastAPI middleware:
+
+```python
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+```
+
+Middleware logs:
+- incoming requests
+- completed responses
+- HTTP status codes
+
+### Issue Encountered
+
+`Base.metadata.create_all(bind=engine)` was temporarily pasted before imports were initialized.
+
+### Resolution
+
+Removed the misplaced line and kept the proper initialization after app creation.
+
+### Validation
+
+Confirmed:
+- middleware registration
+- request interception
+- response interception
+- reverse proxy forwarding
+- container log visibility
+
+### Lessons Learned
+
+Middleware provides the foundation for:
+- operational telemetry
+- structured logging
+- observability pipelines
+
+---
+
+## Request Correlation IDs
+
+### Objective
+
+Improve operational tracing using unique request identifiers.
+
+### Implementation
+
 Added:
 
 ```python
 import uuid
+```
 
-Updated middleware to generate a request ID:
-
-request_id = str(uuid.uuid4())
-
-Added the request ID to:
-
-incoming request logs
-completed response logs
-HTTP response headers
-
-Header added:
-
-X-Request-ID
-Issue Encountered
-
-Initial test returned:
-
-500 Internal Server Error
-
-Service logs showed:
-
-NameError: name 'uuid' is not defined
-Root Cause
-
-The running container did not yet have the updated code with:
-
-import uuid
-Resolution
-
-Confirmed import uuid existed at the top of main.py, then rebuilt containers:
-
-docker compose up -d --build
-Validation
-
-Ran:
-
-curl -i http://localhost:8080/api/assets/health
-
-Confirmed:
-
-x-request-id: <uuid>
-
-Checked logs:
-
-docker compose logs asset-service
-
-Confirmed the same request ID appeared in both request and response log entries.
-
-Result
-
-Request correlation logging is functioning correctly.
-
-Lesson Learned
-
-Correlation IDs make it much easier to trace a single request across:
-
-HTTP responses
-application logs
-reverse proxy flow
-future multi-service communication
-
-## Phase 4.0 Auth Foundation Setup
-
-### Objective
-Begin securing the Asset Service by adding JWT-based authentication support.
-
-### Implemented
-Updated `main.py` with:
-- JWT imports
-- OAuth2 password flow support
-- authentication configuration
-- token creation helper
-- token validation helper
-- `/auth/login` endpoint
-- `/auth/me` protected endpoint
-
-### File Structure Reminder
-Current `main.py` order:
-1. Imports
-2. App configuration
-3. Auth constants
-4. OAuth2 scheme
-5. Database initialization
-6. Helper functions
-7. Middleware
-8. API routes
+Middleware now:
+- generates unique request IDs
+- logs request IDs
+- adds `X-Request-ID` response headers
 
 ### Issue Encountered
-Attempted to run:
+
+Initial requests returned:
+
+```text
+500 Internal Server Error
+```
+
+### Root Cause
+
+Container rebuild had not yet included:
+
+```python
+import uuid
+```
+
+### Resolution
+
+Confirmed imports and rebuilt containers:
+
+```bash
+docker compose up -d --build
+```
+
+### Validation
+
+Confirmed:
+- request IDs appear in logs
+- request IDs appear in HTTP headers
+- request correlation functions correctly
+
+### Lessons Learned
+
+Correlation IDs significantly improve debugging across:
+- logs
+- reverse proxies
+- future multi-service communication
+
+---
+
+## OAuth2 Login Returned 502 Bad Gateway
+
+### Symptoms
+
+Submitting login requests through Swagger returned:
+
+```text
+502 Bad Gateway
+```
+
+### Root Cause
+
+`OAuth2PasswordRequestForm` requires:
+
+```text
+python-multipart
+```
+
+which was missing from `requirements.txt`.
+
+### Resolution
+
+Updated dependencies:
+
+```text
+python-jose[cryptography]
+python-multipart
+```
+
+Rebuilt containers:
+
+```bash
+docker compose up -d --build
+```
+
+### Validation
+
+Confirmed:
+- JWT token issuance
+- bearer token responses
+- protected route authentication
+- unauthorized request rejection
+
+### Lessons Learned
+
+Dependency failures inside FastAPI containers frequently surface as reverse proxy errors.
+
+---
+
+## requirements.txt Permission Denied
+
+### Symptoms
+
+Attempting to run:
 
 ```bash
 services/asset_service/requirements.txt
-
-This returned:
-
-Permission denied
-Root Cause
-
-requirements.txt is a dependency list, not an executable script.
-
-Resolution
-
-Open/edit the file in VS Code and add dependencies there.
-
-Next Validation
-
-Rebuild and test:
-
-login token generation
-protected /auth/me
-failed login behavior
-missing token behavior
-
-## Phase 4.0 — JWT Authentication Foundation
-
-### Objective
-Begin securing the Asset Service by implementing JWT-based authentication and protected route support.
-
----
-
-### Authentication Components Added
-
-Updated `main.py` to include:
-
-#### JWT Imports
-
-```python
-from datetime import datetime, timedelta, timezone
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from jose import JWTError, jwt
+```
 
 returned:
 
-502 Bad Gateway
-
-from nginx.
-
-Initial Analysis
-
-A 502 Bad Gateway response indicated:
-
-nginx reverse proxy was reachable
-request forwarding occurred
-upstream FastAPI application failed internally
-
-Potential causes considered:
-
-missing dependency
-FastAPI startup failure
-OAuth2 form parsing issue
-broken auth import
-container runtime crash
-Root Cause
-
-OAuth2PasswordRequestForm requires multipart form parsing support through:
-
-python-multipart
-
-This dependency was missing from:
-
-services/asset_service/requirements.txt
-
-Without it, FastAPI failed while processing form-based login requests.
-
-Additional Issue Encountered
-
-Attempted to run:
-
-services/asset_service/requirements.txt
-
-which returned:
-
+```text
 Permission denied
-Root Cause
+```
 
-requirements.txt is a dependency definition file and is not executable.
+### Root Cause
 
-Dependencies must be edited within the file itself and installed during Docker build execution.
+`requirements.txt` is a dependency definition file, not an executable script.
 
-Resolution
+### Resolution
 
-Updated:
+Edited dependencies directly inside the file and rebuilt containers.
 
-services/asset_service/requirements.txt
+### Lessons Learned
 
-Added:
-
-python-jose[cryptography]
-python-multipart
-
-Rebuilt containers:
-
-docker compose up -d --build
-
-Confirmed:
-
-dependency installation completed
-asset-service started successfully
-nginx reverse proxy reconnected to upstream service
-Validation
-Successful Login Validation
-curl -X POST http://localhost:8080/api/assets/auth/login \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "username=admin&password=password"
-
-Confirmed:
-
-200 OK
-JWT access token returned
-bearer token response structure valid
-Protected Route Validation
-curl http://localhost:8080/api/assets/auth/me \
-  -H "Authorization: Bearer <token>"
-
-Confirmed:
-
-authenticated request succeeded
-token validation worked correctly
-authenticated username returned
-Unauthorized Access Validation
-curl http://localhost:8080/api/assets/auth/me
-
-Returned expected response:
-
-{"detail":"Not authenticated"}
-
-Confirmed protected route enforcement works correctly.
-
-Result
-
-JWT authentication is functioning correctly with:
-
-OAuth2 password flow
-JWT token issuance
-protected route validation
-bearer token authentication
-unauthorized request rejection
-Lessons Learned
-FastAPI OAuth2 form handling requires python-multipart
-502 Bad Gateway commonly indicates upstream application failure
-Dependency issues inside containers often surface as proxy failures
-Authentication validation should always include:
-successful login
-token validation
-unauthorized access checks
-dependency verification
-
-## Phase 4.1 Auth Service Troubleshooting
-
-### Issue: Auth service not reachable after adding OAuth2 token endpoint
-
-**Symptom**
-
-`localhost:8001/docs` refused to connect after rebuilding the auth service.
-
-**Cause**
-
-The `/token` endpoint used `OAuth2PasswordRequestForm`, which requires the `python-multipart` package. Without it, FastAPI fails during startup.
-
-**Fix**
-
-Added `python-multipart` to:
-
-```txt
-services/auth_service/requirements.txt
+Python dependencies are installed during Docker image build execution, not by directly running `requirements.txt`.
 
 ---
 
-## Phase 4.1B Audit Logging & RBAC Troubleshooting
+## Auth Service Failed After OAuth2 Integration
 
-### Issue: Audit endpoint returned `401 Not authenticated`
+### Symptoms
 
-**Symptom**
+```text
+localhost:8001/docs
+```
 
-Authenticated user attempting to access:
+refused connections after rebuild.
 
-```txt
-GET /audit
+### Root Cause
 
-received:
+`python-multipart` was also missing from the auth-service dependency list.
 
+### Resolution
+
+Added:
+
+```text
+python-multipart
+```
+
+to:
+
+```text
+services/auth_service/requirements.txt
+```
+
+Rebuilt services successfully.
+
+---
+
+## Audit Endpoint Returned 401 Not Authenticated
+
+### Symptoms
+
+Authenticated users received:
+
+```json
 {
   "detail": "Not authenticated"
 }
+```
 
-Cause
+### Root Cause
 
-Swagger authorization state had expired or bearer auth had not been re-applied after rebuilding/restarting services.
+Swagger authorization state expired after rebuilds or restart cycles.
 
-Fix
+### Resolution
 
-Re-authorized using Swagger OAuth2 flow:
+Re-authorized using Swagger OAuth2 flow and retried requests.
 
-Click Authorize
-Authenticate via /token
-Retry protected endpoint
-Issue: Audit endpoint returned 403 Insufficient permissions
+### Lessons Learned
 
-Symptom
-
-Authenticated user attempting to access:
-
-GET /audit
-
-received:
-
-{
-  "detail": "Insufficient permissions"
-}
-
-Cause
-
-The authenticated JWT contained:
-
-{
-  "role": "viewer"
-}
-
-while /audit required:
-
-auth.require_role("admin")
-
-Fix
-
-Created temporary development-only admin promotion endpoint:
-
-POST /dev/promote-admin/{email}
-
-Then re-authenticated to generate a new JWT containing:
-
-{
-  "role": "admin"
-}
-Issue: Auth users disappeared after rebuilds
-
-Symptom
-
-Previously registered users no longer existed after rebuilding the auth service.
-
-User IDs restarted from:
-
-id = 1
-
-indicating a fresh database.
-
-Cause
-
-Auth service currently uses local SQLite storage:
-
-sqlite:///./auth.db
-
-The SQLite database exists only inside the container filesystem and is not attached to a persistent Docker volume.
-
-Container recreation wipes:
-
-users
-roles
-audit logs
-
-Future Fix Options
-
-Short-term
-
-Add Docker volume persistence for SQLite.
-
-Long-term (preferred)
-
-Migrate auth service to PostgreSQL like the asset service.
-
-Confirmed Working Audit Capabilities
-
-The following audit events were verified:
-
-Successful login events
-Failed login events
-OAuth2 token issuance events
-Role promotion events
-Admin-only audit access
-RBAC enforcement on audit endpoints
-
-Audit log entries currently include:
-
-event type
-user email
-success/failure outcome
-event detail
+Swagger authorization state does not persist reliably across rebuilds and service restarts.
 
 ---
 
-## Phase 4.2 Auth Persistence & Audit Timestamp Troubleshooting
+## Audit Endpoint Returned 403 Insufficient Permissions
 
-### Issue: Docker command not found in WSL
+### Symptoms
 
-**Symptom**
+Viewer users attempting to access admin endpoints received:
 
-Running:
+```json
+{
+  "detail": "Insufficient permissions"
+}
+```
 
-```bash
-docker compose up -d --build
+### Root Cause
 
-returned:
+JWT tokens contained:
 
-The command 'docker' could not be found in this WSL 2 distro.
+```json
+{
+  "role": "viewer"
+}
+```
 
-Cause
+while endpoints required:
 
-Docker Desktop was not running, so the Docker CLI was unavailable inside WSL.
+```python
+auth.require_role("admin")
+```
 
-Fix
+### Resolution
 
-Started Docker Desktop. When Docker appeared stuck starting the engine, Docker-related processes were killed and Docker Desktop was restarted. After restart, Docker engine loaded normally and WSL access resumed.
+Added temporary admin promotion endpoint:
 
-Issue: Docker Compose volume validation failed
+```text
+POST /dev/promote-admin/{email}
+```
 
-Symptom
+Re-authenticated after promotion to generate a new JWT containing updated role claims.
 
-Running Docker Compose returned:
+### Lessons Learned
 
-validating docker-compose.yml:
-volumes.postgres-data Additional property auth-data is not allowed
+JWT role claims reflect role state at token issuance time.
 
-Cause
+---
 
-The auth-data volume was accidentally nested under postgres-data instead of being defined as a separate top-level volume.
+## Auth Users Disappeared After Rebuilds
 
-Incorrect:
+### Symptoms
 
-volumes:
-  postgres-data:
-    auth-data:
+Users and roles reset after rebuilding containers.
 
-Correct:
+### Root Cause
 
-volumes:
-  postgres-data:
-  auth-data:
+Auth service initially stored SQLite data inside the container filesystem without persistent volumes.
 
-Fix
+### Resolution
 
-Corrected the bottom-level volumes: section so both Docker volumes are aligned at the same indentation level.
+Added persistent Docker volume:
 
-Issue: Auth users disappeared after rebuilds
-
-Symptom
-
-Previously registered users were lost after rebuilding/recreating the auth service. New registrations restarted at:
-
-id = 1
-
-Cause
-
-The auth service originally stored SQLite data at:
-
-sqlite:///./auth.db
-
-inside the container filesystem. Container recreation wiped the local SQLite database.
-
-Fix
-
-Moved auth SQLite storage to a mounted Docker volume.
-
-Updated auth database path:
-
-DATABASE_URL = "sqlite:///./data/auth.db"
-
-Updated auth-service in docker-compose.yml:
-
+```yaml
 auth-service:
   volumes:
     - auth-data:/app/data
+```
 
-Added top-level Docker volume:
+Updated SQLite path:
 
-volumes:
-  postgres-data:
-  auth-data:
+```python
+DATABASE_URL = "sqlite:///./data/auth.db"
+```
 
-Validation
+### Validation
 
-After rebuilding, attempting to register the same user returned:
-
-{
-  "detail": "Email already registered"
-}
-
-confirming auth persistence was working.
-
-Issue: Login returned 500 after adding audit timestamp column
-
-Symptom
-
-After adding created_at to the AuditLog model, login returned:
-
-500 Internal Server Error
-
-Cause
-
-The existing persistent SQLite database had already created the audit_logs table before the created_at column existed.
-
-Base.metadata.create_all() creates missing tables but does not modify existing table schemas.
-
-Fix
-
-Reset the development auth volume once so SQLite could recreate the table with the new column:
-
-docker compose down
-docker volume rm ops-platform_auth-data
-docker compose up -d --build
-
-Future Fix
-
-Use Alembic migrations for schema changes instead of resetting development volumes.
-
-Issue: Audit endpoint returned 403 after user promotion
-
-Symptom
-
-After promoting a user to admin, /audit still returned:
-
-{
-  "detail": "Insufficient permissions"
-}
-
-Cause
-
-The existing JWT was issued before the role change and still contained:
-
-{
-  "role": "viewer"
-}
-
-Fix
-
-Logged out of Swagger authorization and re-authenticated after promotion so the new JWT contained:
-
-{
-  "role": "admin"
-}
-Confirmed Working After Fixes
-
-The following were verified:
-
-Auth SQLite data persists across rebuilds
-Registered users survive container recreation
-Roles persist across rebuilds
-Audit logs persist across rebuilds
-Audit events include created_at timestamps
-Admin-only /audit endpoint works after re-authentication
-JWT role claims correctly reflect role state at token issuance time
+Confirmed:
+- users persist across rebuilds
+- roles persist across rebuilds
+- audit logs persist across rebuilds
 
 ---
 
-## Phase 4.3 Cross-Service Auth & Asset-Service Troubleshooting
+## Docker Not Found Inside WSL
 
-### Issue: Asset service was not reachable at `localhost:8000`
+### Symptoms
 
-**Symptom**
+Running Docker commands inside WSL returned:
 
-Attempting to open:
+```text
+docker: command not found
+```
 
-```txt
-http://localhost:8000/docsfailed or showed the wrong service.
+### Root Cause
 
-Causes Encountered
+Docker Desktop engine was not running.
 
-Multiple issues contributed during troubleshooting:
+### Resolution
 
-asset-service was configured with expose instead of ports
-auth-service was temporarily mapped to host port 8000
-Docker Compose output was wrapped in the terminal, making port mappings difficult to read
-asset-service crashed during startup due to an import error
+Restarted Docker Desktop and confirmed WSL integration resumed normally.
 
-Fix
+---
 
-Updated docker-compose.yml so services use distinct host ports:
+## Docker Compose Volume Validation Failed
 
+### Symptoms
+
+Docker Compose returned:
+
+```text
+Additional property auth-data is not allowed
+```
+
+### Root Cause
+
+`auth-data` volume was incorrectly nested under `postgres-data`.
+
+### Resolution
+
+Corrected top-level volume alignment:
+
+```yaml
+volumes:
+  postgres-data:
+  auth-data:
+```
+
+---
+
+## Audit Timestamp Migration Failure
+
+### Symptoms
+
+Adding `created_at` to the audit model caused login requests to return:
+
+```text
+500 Internal Server Error
+```
+
+### Root Cause
+
+Persistent SQLite tables already existed without the new column.
+
+`Base.metadata.create_all()` does not alter existing schemas.
+
+### Resolution
+
+Reset development volume:
+
+```bash
+docker compose down
+docker volume rm ops-platform_auth-data
+docker compose up -d --build
+```
+
+### Future Improvement
+
+Use Alembic migrations for schema evolution.
+
+---
+
+## Asset Service Not Reachable On Port 8000
+
+### Root Cause
+
+Multiple contributing issues:
+- incorrect Docker Compose `expose` usage
+- conflicting host ports
+- startup crashes from import failures
+
+### Resolution
+
+Updated Docker Compose to use explicit host port mappings:
+
+```yaml
 asset-service:
   ports:
     - "8000:8000"
+```
 
-auth-service:
-  ports:
-    - "8001:8000"
+Validated using:
 
-reverse-proxy:
-  ports:
-    - "${REVERSE_PROXY_PORT}:80"
-
-Final local service mapping:
-
-Asset Service:   http://localhost:8000
-Auth Service:    http://localhost:8001
-Reverse Proxy:   http://localhost:8080
-
-Verified with:
-
+```bash
 docker compose ps
 docker compose config
-Issue: docker compose config still showed expose for asset-service
+```
 
-Symptom
+---
 
-Even after editing Docker Compose, rendered config showed:
+## Asset Service ImportError After Adding Auth Module
 
-asset-service:
-  expose:
-    - "8000"
+### Symptoms
 
-Cause
+Asset service failed with:
 
-The active docker-compose.yml file still had the old expose configuration on disk.
-
-Fix
-
-Used grep to confirm the actual file contents:
-
-grep -n -A8 -B2 "asset-service:" docker-compose.yml
-grep -n -A8 -B2 "auth-service:" docker-compose.yml
-
-Then replaced:
-
-expose:
-  - "8000"
-
-with:
-
-ports:
-  - "8000:8000"
-Issue: Asset service crashed after adding auth import
-
-Symptom
-
-Asset service failed to start, and localhost:8000 would not connect.
-
-Logs showed:
-
+```text
 ImportError: cannot import name 'auth' from 'app'
+```
 
-Cause
+### Root Cause
 
-main.py included:
+`auth.py` existed outside the FastAPI app package.
 
-from . import auth
+### Resolution
 
-which expects:
+Moved:
 
-services/asset_service/app/auth.py
-
-But auth.py was initially created outside the app package:
-
+```text
 services/asset_service/auth.py
+```
 
-Fix
+into:
 
-Moved auth.py into:
-
+```text
 services/asset_service/app/auth.py
+```
 
-Confirmed final structure:
+---
 
-services/asset_service/
-├── app/
-│   ├── auth.py
-│   ├── database.py
-│   ├── main.py
-│   ├── models.py
-│   └── schemas.py
-├── Dockerfile
-└── requirements.txt
-Issue: Asset-service Swagger OAuth login failed with TypeError: Failed to fetch
+## Swagger OAuth Flow Failed Across Services
 
-Symptom
+### Symptoms
 
-Trying to authorize from asset-service Swagger using OAuth2 password flow failed with:
+Swagger authorization failed with:
 
-Auth Error: TypeError: Failed to fetch
+```text
+TypeError: Failed to fetch
+```
 
-Cause
+### Root Cause
 
-Asset-service Swagger attempted to fetch the auth-service token endpoint cross-origin:
+Cross-origin OAuth requests between:
+- asset-service Swagger
+- auth-service token endpoint
 
-http://localhost:8001/token
+caused browser/CORS failures.
 
-from the asset-service docs at:
+### Resolution
 
-http://localhost:8000/docs
+Switched asset-service authentication from OAuth2 password flow to direct Bearer token validation using:
 
-Browser/CORS behavior caused Swagger’s OAuth flow to fail.
-
-Fix
-
-Changed asset-service auth handling from OAuth2 password flow to direct Bearer token validation using:
-
+```python
 HTTPBearer
 HTTPAuthorizationCredentials
+```
 
-This allows the user to:
+### Result
 
-Authenticate through auth-service
-Copy the JWT
-Paste the token into asset-service Swagger authorization
-Test protected asset endpoints
-Issue: Asset service crashed after switching to HTTPBearer
+Users now:
+- authenticate through auth-service
+- copy JWT tokens
+- authorize asset-service Swagger manually
 
-Symptom
+---
 
-localhost:8000 stopped connecting after editing asset_service/app/auth.py.
+## Asset Service Failed After HTTPBearer Migration
 
-Cause
+### Root Cause
 
-The old get_current_user() function still referenced:
+Legacy references to:
 
+```python
 oauth2_scheme
+```
 
-after switching to HTTPBearer.
+remained after switching to `HTTPBearer`.
 
-Also, bearer_scheme had not been defined.
+### Resolution
 
-Fix
+Replaced the auth module with a clean bearer-token validation implementation.
 
-Replaced the full asset-service auth module with a clean bearer-token version:
+---
 
-from fastapi import Depends, HTTPException
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError, jwt
+## Asset Creation Returned 500 Internal Server Error
 
-SECRET_KEY = "super-secret-dev-key"
-ALGORITHM = "HS256"
+### Symptoms
 
-bearer_scheme = HTTPBearer()
+Admin POST requests returned:
 
-
-def verify_token(token: str):
-    try:
-        payload = jwt.decode(
-            token,
-            SECRET_KEY,
-            algorithms=[ALGORITHM]
-        )
-
-        return payload
-
-    except JWTError:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid token"
-        )
-
-
-def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)
-):
-    payload = verify_token(credentials.credentials)
-
-    return {
-        "email": payload.get("sub"),
-        "role": payload.get("role")
-    }
-
-
-def require_role(required_role: str):
-    def role_checker(
-        current_user: dict = Depends(get_current_user)
-    ):
-        if current_user["role"] != required_role:
-            raise HTTPException(
-                status_code=403,
-                detail="Insufficient permissions"
-            )
-
-        return current_user
-
-    return role_checker
-Issue: Admin POST /assets returned 500 Internal Server Error
-
-Symptom
-
-Using an admin token to create an asset returned:
-
+```text
 500 Internal Server Error
+```
 
-Logs showed:
+### Root Cause
 
-sqlalchemy.exc.IntegrityError:
-duplicate key value violates unique constraint "ix_assets_hostname"
-DETAIL: Key (hostname)=(string) already exists.
+Swagger default payload reused duplicate unique hostname values:
 
-Cause
-
-Swagger default payload used:
-
+```json
 {
-  "hostname": "string",
-  "owner": "string",
-  "status": "string"
+  "hostname": "string"
 }
+```
 
-The hostname field is unique, and "string" already existed.
+### Resolution
 
-Fix
+Retested using unique hostnames.
 
-Retested with a unique hostname:
+### Future Improvement
 
-{
-  "hostname": "device-001",
-  "owner": "admin5@test.com",
-  "status": "active"
-}
+Add explicit duplicate hostname handling.
 
-Result:
+---
 
-{
-  "id": 5,
-  "hostname": "device-001",
-  "owner": "admin5@test.com",
-  "status": "active"
-}
+## CRUD Error Handling Improvements
 
-Future Fix
+### Objective
 
-Add explicit duplicate hostname handling so asset-service returns:
+Replace raw database failures with clean operational responses.
 
-{
-  "detail": "Hostname already exists"
-}
+### Implementation
 
-instead of a raw 500.
+Added:
+- `409 Conflict` handling
+- graceful SQLAlchemy exception handling
+- rollback protection
+- structured HTTP error responses
 
-Confirmed Working Cross-Service Auth Behavior
+### Validation
 
-The following behavior was validated:
+Confirmed:
+- duplicate hostname conflicts return clean 409 responses
+- missing assets return 404 responses
+- rollback protection functions correctly
 
-Scenario	Result
-No token accessing GET /assets	401 Not authenticated
-Viewer token accessing POST /assets	403 Insufficient permissions
-Admin token accessing POST /assets	200 Success
-Admin token creating unique asset	Asset created
-Duplicate hostname	Current result: 500; future result should be clean 400
-Confirmed Architecture
+---
 
-The platform now supports:
+## PostgreSQL External Access For DBeaver
 
-Centralized JWT issuance from auth-service
-Bearer token validation inside asset-service
-Shared JWT trust across services
-RBAC enforcement across service boundaries
-Public read protection for asset inventory
-Admin-only asset mutation routes
-Independent local Swagger testing for both services
+### Symptoms
+
+DBeaver connected successfully but tables were not visible.
+
+### Root Causes
+
+Two separate issues:
+1. Connected to default `postgres` database instead of the application database
+2. PostgreSQL container port was not externally exposed
+
+### Resolution
+
+Added Docker port mapping:
+
+```yaml
+ports:
+  - "5432:5432"
+```
+
+Updated DBeaver connection to use the application database instead of the default PostgreSQL database.
+
+### Validation
+
+Confirmed visibility of:
+- assets
+- audit_logs
+
+tables.
+
+---
+
+## Audit Telemetry Implementation
+
+### Objective
+
+Implement persistent operational audit logging.
+
+### Implementation
+
+Added:
+- `AuditLog` SQLAlchemy model
+- CRUD audit event generation
+- timestamped audit records
+- `/audit-logs` admin endpoint
+- PostgreSQL-backed telemetry storage
+
+Tracked events:
+- asset.create
+- asset.update
+- asset.delete
+
+### Validation
+
+Confirmed:
+- audit entries persist in PostgreSQL
+- audit events accessible through Swagger
+- timestamps populate correctly
+- asset IDs tracked correctly
+
+### Current Limitation
+
+Audit actor currently resolves as:
+
+```text
+unknown
+```
+
+because JWT payloads do not yet contain:
+- `username`
+- `sub`
+
+claims in the expected format.
+
+### Planned Improvements
+
+Future hardening work:
+- JWT expiration support
+- identity-aware JWT claims
+- actor attribution improvements
+- structured JSON logging
+- org/tenant-aware telemetry

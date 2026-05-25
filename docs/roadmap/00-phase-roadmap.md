@@ -367,10 +367,6 @@ curl -X POST http://localhost:8080/api/assets/auth/login \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "username=admin&password=password"
 
-  
-For roadmap, add this under Phase 4.1:
-
-```md
 ## Phase 4.1 — Enterprise Identity & Access Foundation
 
 **Status:** In Progress
@@ -544,10 +540,6 @@ to:
 - Add centralized audit aggregation
 - Add admin audit filtering/search endpoints
 
-
-Then add this to `roadmap/00-phase-roadmap.md`:
-
-```md
 ### Phase 4.3 — Cross-Service Authentication & RBAC Enforcement [Completed]
 
 #### Objectives
@@ -604,6 +596,30 @@ asset-service
   └── validates JWT
   └── enforces RBAC locally
   └── protects asset APIs
+
+  ## Phase 4.4 — Operational Hardening & Audit Telemetry
+
+Completed:
+- Added structured request middleware with request IDs
+- Added database health endpoint validation
+- Implemented graceful SQLAlchemy error handling
+- Added transaction rollback protections
+- Added HTTP 404/409 handling for asset CRUD
+- Implemented persistent audit logging system
+- Added AuditLog database model
+- Added CRUD audit event generation
+- Added admin-only /audit-logs endpoint
+- Integrated PostgreSQL inspection workflow using DBeaver
+- Validated API ↔ PostgreSQL persistence pipeline
+- Added operational telemetry visibility through Swagger
+- Validated reverse proxy + RBAC integration stability
+
+Operational Outcomes:
+- CRUD operations now fully audited
+- Request tracing IDs available in responses
+- Platform telemetry exposed via protected API endpoints
+- Database inspection workflow established
+- Error handling significantly hardened
 
 ---
 

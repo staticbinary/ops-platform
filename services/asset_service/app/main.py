@@ -2,11 +2,12 @@ import uuid
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from . import auth
 from .database import Base, engine, get_db
-from .models import Asset
+from .models import Asset, AuditLog
 from .schemas import AssetCreate, AssetUpdate, AssetResponse
 
 app = FastAPI(
@@ -17,6 +18,27 @@ app = FastAPI(
 )
 
 Base.metadata.create_all(bind=engine)
+
+
+def get_actor(current_user: dict) -> str:
+    return current_user.get("username") or current_user.get("sub") or "unknown"
+
+
+def write_audit_log(
+    db: Session,
+    action: str,
+    actor: str,
+    result: str,
+    asset_id: int | None = None
+):
+    audit_log = AuditLog(
+        action=action,
+        actor=actor,
+        result=result,
+        asset_id=asset_id
+    )
+
+    db.add(audit_log)
 
 
 @app.middleware("http")
@@ -63,17 +85,44 @@ def create_asset(
     db: Session = Depends(get_db),
     current_user: dict = Depends(auth.require_role("admin"))
 ):
-    db_asset = Asset(
-        hostname=asset.hostname,
-        owner=asset.owner,
-        status=asset.status
-    )
+    actor = get_actor(current_user)
 
-    db.add(db_asset)
-    db.commit()
-    db.refresh(db_asset)
+    try:
+        db_asset = Asset(
+            hostname=asset.hostname,
+            owner=asset.owner,
+            status=asset.status
+        )
 
-    return db_asset
+        db.add(db_asset)
+        db.flush()
+
+        write_audit_log(
+            db=db,
+            action="asset.create",
+            actor=actor,
+            result="success",
+            asset_id=db_asset.id
+        )
+
+        db.commit()
+        db.refresh(db_asset)
+
+        return db_asset
+
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Asset could not be created because it conflicts with an existing record"
+        )
+
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Database error while creating asset"
+        )
 
 
 @app.get("/assets", response_model=list[AssetResponse], tags=["Assets"])
@@ -105,19 +154,44 @@ def update_asset(
     db: Session = Depends(get_db),
     current_user: dict = Depends(auth.require_role("admin"))
 ):
+    actor = get_actor(current_user)
+
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
 
     if asset is None:
         raise HTTPException(status_code=404, detail="Asset not found")
 
-    asset.hostname = updated_asset.hostname
-    asset.owner = updated_asset.owner
-    asset.status = updated_asset.status
+    try:
+        asset.hostname = updated_asset.hostname
+        asset.owner = updated_asset.owner
+        asset.status = updated_asset.status
 
-    db.commit()
-    db.refresh(asset)
+        write_audit_log(
+            db=db,
+            action="asset.update",
+            actor=actor,
+            result="success",
+            asset_id=asset.id
+        )
 
-    return asset
+        db.commit()
+        db.refresh(asset)
+
+        return asset
+
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Asset update conflicts with an existing record"
+        )
+
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Database error while updating asset"
+        )
 
 
 @app.delete("/assets/{asset_id}", tags=["Assets"])
@@ -126,15 +200,43 @@ def delete_asset(
     db: Session = Depends(get_db),
     current_user: dict = Depends(auth.require_role("admin"))
 ):
+    actor = get_actor(current_user)
+
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
 
     if asset is None:
         raise HTTPException(status_code=404, detail="Asset not found")
 
-    db.delete(asset)
-    db.commit()
+    try:
+        write_audit_log(
+            db=db,
+            action="asset.delete",
+            actor=actor,
+            result="success",
+            asset_id=asset.id
+        )
 
-    return {"message": f"Asset {asset_id} deleted successfully"}
+        db.delete(asset)
+        db.commit()
+
+        return {"message": f"Asset {asset_id} deleted successfully"}
+
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Database error while deleting asset"
+        )
+
+
+@app.get("/audit-logs", tags=["Audit"])
+def get_audit_logs(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(auth.require_role("admin"))
+):
+    logs = db.query(AuditLog).order_by(AuditLog.timestamp.desc()).all()
+
+    return logs
 
 
 @app.get("/", tags=["Root"])
