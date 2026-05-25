@@ -669,6 +669,55 @@ Example log structure:
   "duration_ms": 42
 }
 
+# Phase 4.6 — Alembic Migrations & Schema Lifecycle Management
+
+## Objective
+
+Transition the Ops Platform from automatic ORM-based table creation into production-style schema lifecycle management using Alembic and PostgreSQL-backed migrations.
+
+This phase establishes:
+- version-controlled database schema evolution
+- migration tracking
+- upgrade/downgrade workflows
+- production-safe schema management practices
+
+The platform no longer relies on automatic runtime table creation through SQLAlchemy.
+
+---
+
+# Goals
+
+- Integrate Alembic into the asset service
+- Connect Alembic to PostgreSQL
+- Enable migration autogeneration from SQLAlchemy models
+- Establish migration version tracking
+- Remove dependency on `Base.metadata.create_all()`
+- Transition database lifecycle management to migration-driven workflows
+
+---
+
+# Features Implemented
+
+## Alembic Initialization
+
+Initialized Alembic migration environment inside the asset service.
+
+Generated:
+- `alembic.ini`
+- `alembic/env.py`
+- migration version directories
+- migration templates
+
+---
+
+## PostgreSQL Migration Integration
+
+Configured Alembic to connect directly to the PostgreSQL container used by the asset service.
+
+Implemented dynamic runtime database URL injection using:
+
+```python
+os.getenv("DATABASE_URL")
 ---
 
 ## Phase 5 — Frontend Platform Interface

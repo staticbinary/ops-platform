@@ -1145,3 +1145,49 @@ into reusable application modules.
 Modularization should begin early in backend projects to avoid technical debt and reduce future refactoring complexity.
 
 ---
+
+# Phase 4.6 — Troubleshooting Notes
+
+---
+
+## Issue
+Alembic Files Created Only Inside Container
+
+### Symptoms
+- `alembic.ini` not visible locally
+- Alembic directories missing from VS Code
+- `find . -name "alembic.ini"` returned no results on host
+
+### Root Cause
+Alembic was initialized inside a non-bind-mounted container filesystem path instead of the project-mounted application directory.
+
+### Resolution
+- Identified actual runtime working directory
+- Reinitialized Alembic inside `/app/app`
+- Copied Alembic files from container to host repository using `docker cp`
+
+### Validation
+- `alembic.ini` appeared locally
+- Alembic directories became visible in VS Code
+- migration files persisted correctly after container restarts
+
+### Lessons Learned
+Docker bind mount boundaries directly impact filesystem persistence. Runtime-generated files must exist inside mounted directories to persist locally.
+
+---
+
+## Issue
+Alembic Could Not Locate Configuration File
+
+### Symptoms
+- `FAILED: No config file 'alembic.ini' found`
+
+### Root Cause
+Alembic commands were executed from incorrect working directories inside the container.
+
+### Resolution
+Executed Alembic commands from:
+
+```bash
+cd /app
+alembic -c app/alembic.ini

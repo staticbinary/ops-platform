@@ -26,7 +26,7 @@ app = FastAPI(
     root_path="/api/assets"
 )
 
-Base.metadata.create_all(bind=engine)
+# Base.metadata.create_all(bind=engine)
 
 
 @app.exception_handler(HTTPException)
