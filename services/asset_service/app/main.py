@@ -1,12 +1,10 @@
 import uuid
-from datetime import datetime, timedelta, timezone
 
 from fastapi import Depends, FastAPI, HTTPException, Request
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from jose import JWTError, jwt
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from . import auth
 from .database import Base, engine, get_db
 from .models import Asset
 from .schemas import AssetCreate, AssetUpdate, AssetResponse
@@ -18,56 +16,7 @@ app = FastAPI(
     root_path="/api/assets"
 )
 
-SECRET_KEY = "dev-secret-change-me"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
-
 Base.metadata.create_all(bind=engine)
-
-
-def create_access_token(data: dict):
-    to_encode = data.copy()
-
-    expire = datetime.now(timezone.utc) + timedelta(
-        minutes=ACCESS_TOKEN_EXPIRE_MINUTES
-    )
-
-    to_encode.update({"exp": expire})
-
-    encoded_jwt = jwt.encode(
-        to_encode,
-        SECRET_KEY,
-        algorithm=ALGORITHM
-    )
-
-    return encoded_jwt
-
-
-def verify_token(token: str = Depends(oauth2_scheme)):
-    try:
-        payload = jwt.decode(
-            token,
-            SECRET_KEY,
-            algorithms=[ALGORITHM]
-        )
-
-        username: str = payload.get("sub")
-
-        if username is None:
-            raise HTTPException(
-                status_code=401,
-                detail="Invalid authentication credentials"
-            )
-
-        return username
-
-    except JWTError:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid authentication credentials"
-        )
 
 
 @app.middleware("http")
@@ -109,7 +58,11 @@ def db_health():
 
 
 @app.post("/assets", response_model=AssetResponse, tags=["Assets"])
-def create_asset(asset: AssetCreate, db: Session = Depends(get_db)):
+def create_asset(
+    asset: AssetCreate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(auth.require_role("admin"))
+):
     db_asset = Asset(
         hostname=asset.hostname,
         owner=asset.owner,
@@ -124,12 +77,19 @@ def create_asset(asset: AssetCreate, db: Session = Depends(get_db)):
 
 
 @app.get("/assets", response_model=list[AssetResponse], tags=["Assets"])
-def get_assets(db: Session = Depends(get_db)):
+def get_assets(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(auth.get_current_user)
+):
     return db.query(Asset).all()
 
 
 @app.get("/assets/{asset_id}", response_model=AssetResponse, tags=["Assets"])
-def get_asset(asset_id: int, db: Session = Depends(get_db)):
+def get_asset(
+    asset_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(auth.get_current_user)
+):
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
 
     if asset is None:
@@ -142,7 +102,8 @@ def get_asset(asset_id: int, db: Session = Depends(get_db)):
 def update_asset(
     asset_id: int,
     updated_asset: AssetUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(auth.require_role("admin"))
 ):
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
 
@@ -160,7 +121,11 @@ def update_asset(
 
 
 @app.delete("/assets/{asset_id}", tags=["Assets"])
-def delete_asset(asset_id: int, db: Session = Depends(get_db)):
+def delete_asset(
+    asset_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(auth.require_role("admin"))
+):
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
 
     if asset is None:
@@ -170,31 +135,6 @@ def delete_asset(asset_id: int, db: Session = Depends(get_db)):
     db.commit()
 
     return {"message": f"Asset {asset_id} deleted successfully"}
-
-
-@app.post("/auth/login", tags=["Auth"])
-def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    if form_data.username != "admin" or form_data.password != "password":
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid username or password"
-        )
-
-    access_token = create_access_token(
-        data={"sub": form_data.username}
-    )
-
-    return {
-        "access_token": access_token,
-        "token_type": "bearer"
-    }
-
-
-@app.get("/auth/me", tags=["Auth"])
-def read_me(current_user: str = Depends(verify_token)):
-    return {
-        "username": current_user
-    }
 
 
 @app.get("/", tags=["Root"])

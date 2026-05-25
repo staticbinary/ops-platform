@@ -544,6 +544,67 @@ to:
 - Add centralized audit aggregation
 - Add admin audit filtering/search endpoints
 
+
+Then add this to `roadmap/00-phase-roadmap.md`:
+
+```md
+### Phase 4.3 — Cross-Service Authentication & RBAC Enforcement [Completed]
+
+#### Objectives
+- Extend centralized authentication beyond auth-service
+- Protect asset-service endpoints using auth-service JWTs
+- Validate service-to-service trust through shared token validation
+- Enforce RBAC on asset operations
+- Separate read and write permissions for asset inventory
+
+#### Completed Work
+- Added JWT validation module to asset-service
+- Removed local hardcoded asset-service login/auth flow
+- Updated asset-service to trust tokens issued by auth-service
+- Protected asset-service read routes with authenticated access
+- Protected asset-service write routes with admin-only RBAC
+- Changed asset-service Swagger auth from OAuth2 password flow to direct bearer token input
+- Updated Docker Compose to expose:
+  - asset-service on `localhost:8000`
+  - auth-service on `localhost:8001`
+  - reverse proxy on `localhost:8080`
+- Resolved asset-service import/package structure issue
+- Validated unauthorized, viewer, and admin behavior across services
+- Confirmed successful admin asset creation through centralized JWT auth
+
+#### Current Asset-Service RBAC Rules
+
+| Endpoint | Required Access |
+|---|---|
+| `GET /assets` | Authenticated user |
+| `GET /assets/{asset_id}` | Authenticated user |
+| `POST /assets` | Admin |
+| `PUT /assets/{asset_id}` | Admin |
+| `DELETE /assets/{asset_id}` | Admin |
+
+#### Confirmed Test Results
+
+| Test | Result |
+|---|---|
+| No token against `GET /assets` | `401 Not authenticated` |
+| Viewer token against `POST /assets` | `403 Insufficient permissions` |
+| Admin token against `POST /assets` | `200 Success` |
+| Admin token with unique hostname | Asset created successfully |
+| Duplicate hostname | `500` due to unique constraint; needs cleaner handling |
+
+#### Architectural Milestone
+
+The platform now has a working centralized authentication model:
+
+```txt
+auth-service
+  └── issues JWT with user + role claims
+
+asset-service
+  └── validates JWT
+  └── enforces RBAC locally
+  └── protects asset APIs
+
 ---
 
 ## Phase 5 — Frontend Platform Interface

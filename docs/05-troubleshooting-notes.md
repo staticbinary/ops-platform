@@ -953,3 +953,303 @@ Audit logs persist across rebuilds
 Audit events include created_at timestamps
 Admin-only /audit endpoint works after re-authentication
 JWT role claims correctly reflect role state at token issuance time
+
+---
+
+## Phase 4.3 Cross-Service Auth & Asset-Service Troubleshooting
+
+### Issue: Asset service was not reachable at `localhost:8000`
+
+**Symptom**
+
+Attempting to open:
+
+```txt
+http://localhost:8000/docsfailed or showed the wrong service.
+
+Causes Encountered
+
+Multiple issues contributed during troubleshooting:
+
+asset-service was configured with expose instead of ports
+auth-service was temporarily mapped to host port 8000
+Docker Compose output was wrapped in the terminal, making port mappings difficult to read
+asset-service crashed during startup due to an import error
+
+Fix
+
+Updated docker-compose.yml so services use distinct host ports:
+
+asset-service:
+  ports:
+    - "8000:8000"
+
+auth-service:
+  ports:
+    - "8001:8000"
+
+reverse-proxy:
+  ports:
+    - "${REVERSE_PROXY_PORT}:80"
+
+Final local service mapping:
+
+Asset Service:   http://localhost:8000
+Auth Service:    http://localhost:8001
+Reverse Proxy:   http://localhost:8080
+
+Verified with:
+
+docker compose ps
+docker compose config
+Issue: docker compose config still showed expose for asset-service
+
+Symptom
+
+Even after editing Docker Compose, rendered config showed:
+
+asset-service:
+  expose:
+    - "8000"
+
+Cause
+
+The active docker-compose.yml file still had the old expose configuration on disk.
+
+Fix
+
+Used grep to confirm the actual file contents:
+
+grep -n -A8 -B2 "asset-service:" docker-compose.yml
+grep -n -A8 -B2 "auth-service:" docker-compose.yml
+
+Then replaced:
+
+expose:
+  - "8000"
+
+with:
+
+ports:
+  - "8000:8000"
+Issue: Asset service crashed after adding auth import
+
+Symptom
+
+Asset service failed to start, and localhost:8000 would not connect.
+
+Logs showed:
+
+ImportError: cannot import name 'auth' from 'app'
+
+Cause
+
+main.py included:
+
+from . import auth
+
+which expects:
+
+services/asset_service/app/auth.py
+
+But auth.py was initially created outside the app package:
+
+services/asset_service/auth.py
+
+Fix
+
+Moved auth.py into:
+
+services/asset_service/app/auth.py
+
+Confirmed final structure:
+
+services/asset_service/
+├── app/
+│   ├── auth.py
+│   ├── database.py
+│   ├── main.py
+│   ├── models.py
+│   └── schemas.py
+├── Dockerfile
+└── requirements.txt
+Issue: Asset-service Swagger OAuth login failed with TypeError: Failed to fetch
+
+Symptom
+
+Trying to authorize from asset-service Swagger using OAuth2 password flow failed with:
+
+Auth Error: TypeError: Failed to fetch
+
+Cause
+
+Asset-service Swagger attempted to fetch the auth-service token endpoint cross-origin:
+
+http://localhost:8001/token
+
+from the asset-service docs at:
+
+http://localhost:8000/docs
+
+Browser/CORS behavior caused Swagger’s OAuth flow to fail.
+
+Fix
+
+Changed asset-service auth handling from OAuth2 password flow to direct Bearer token validation using:
+
+HTTPBearer
+HTTPAuthorizationCredentials
+
+This allows the user to:
+
+Authenticate through auth-service
+Copy the JWT
+Paste the token into asset-service Swagger authorization
+Test protected asset endpoints
+Issue: Asset service crashed after switching to HTTPBearer
+
+Symptom
+
+localhost:8000 stopped connecting after editing asset_service/app/auth.py.
+
+Cause
+
+The old get_current_user() function still referenced:
+
+oauth2_scheme
+
+after switching to HTTPBearer.
+
+Also, bearer_scheme had not been defined.
+
+Fix
+
+Replaced the full asset-service auth module with a clean bearer-token version:
+
+from fastapi import Depends, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jose import JWTError, jwt
+
+SECRET_KEY = "super-secret-dev-key"
+ALGORITHM = "HS256"
+
+bearer_scheme = HTTPBearer()
+
+
+def verify_token(token: str):
+    try:
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM]
+        )
+
+        return payload
+
+    except JWTError:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid token"
+        )
+
+
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)
+):
+    payload = verify_token(credentials.credentials)
+
+    return {
+        "email": payload.get("sub"),
+        "role": payload.get("role")
+    }
+
+
+def require_role(required_role: str):
+    def role_checker(
+        current_user: dict = Depends(get_current_user)
+    ):
+        if current_user["role"] != required_role:
+            raise HTTPException(
+                status_code=403,
+                detail="Insufficient permissions"
+            )
+
+        return current_user
+
+    return role_checker
+Issue: Admin POST /assets returned 500 Internal Server Error
+
+Symptom
+
+Using an admin token to create an asset returned:
+
+500 Internal Server Error
+
+Logs showed:
+
+sqlalchemy.exc.IntegrityError:
+duplicate key value violates unique constraint "ix_assets_hostname"
+DETAIL: Key (hostname)=(string) already exists.
+
+Cause
+
+Swagger default payload used:
+
+{
+  "hostname": "string",
+  "owner": "string",
+  "status": "string"
+}
+
+The hostname field is unique, and "string" already existed.
+
+Fix
+
+Retested with a unique hostname:
+
+{
+  "hostname": "device-001",
+  "owner": "admin5@test.com",
+  "status": "active"
+}
+
+Result:
+
+{
+  "id": 5,
+  "hostname": "device-001",
+  "owner": "admin5@test.com",
+  "status": "active"
+}
+
+Future Fix
+
+Add explicit duplicate hostname handling so asset-service returns:
+
+{
+  "detail": "Hostname already exists"
+}
+
+instead of a raw 500.
+
+Confirmed Working Cross-Service Auth Behavior
+
+The following behavior was validated:
+
+Scenario	Result
+No token accessing GET /assets	401 Not authenticated
+Viewer token accessing POST /assets	403 Insufficient permissions
+Admin token accessing POST /assets	200 Success
+Admin token creating unique asset	Asset created
+Duplicate hostname	Current result: 500; future result should be clean 400
+Confirmed Architecture
+
+The platform now supports:
+
+Centralized JWT issuance from auth-service
+Bearer token validation inside asset-service
+Shared JWT trust across services
+RBAC enforcement across service boundaries
+Public read protection for asset inventory
+Admin-only asset mutation routes
+Independent local Swagger testing for both services
