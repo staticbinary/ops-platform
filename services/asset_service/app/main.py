@@ -1,5 +1,3 @@
-import time
-import uuid
 from datetime import datetime
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
@@ -8,14 +6,10 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
+from app.request_context import RequestIDMiddleware
 
 from . import auth
 from .database import Base, engine, get_db
-from .logging_utils import (
-    build_request_completed_log,
-    build_request_started_log,
-    log_event
-)
 from .models import Asset, AuditLog
 from .schemas import AssetCreate, AssetUpdate, AssetResponse
 
@@ -25,6 +19,8 @@ app = FastAPI(
     version="1.0.0",
     root_path="/api/assets"
 )
+
+app.add_middleware(RequestIDMiddleware)
 
 # Base.metadata.create_all(bind=engine)
 
@@ -88,40 +84,6 @@ def write_audit_log(
 
     db.add(audit_log)
 
-
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    request_id = str(uuid.uuid4())
-    start_time = time.time()
-
-    log_event(
-        build_request_started_log(
-            request_id=request_id,
-            method=request.method,
-            path=request.url.path,
-            client=request.client.host if request.client else None
-        )
-    )
-
-    response = await call_next(request)
-
-    duration_ms = round((time.time() - start_time) * 1000, 2)
-
-    response.headers["X-Request-ID"] = request_id
-
-    log_event(
-        build_request_completed_log(
-            request_id=request_id,
-            method=request.method,
-            path=request.url.path,
-            status_code=response.status_code,
-            duration_ms=duration_ms
-        )
-    )
-
-    return response
-
-
 @app.get("/health", tags=["Health"])
 def health():
     return {"status": "ok", "service": "asset-service"}
@@ -149,7 +111,7 @@ def db_health():
 def create_asset(
     asset: AssetCreate,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(auth.require_role("admin"))
+    current_user: dict = Depends(auth.require_permission("asset:create"))
 ):
     actor = get_actor(current_user)
 
@@ -194,7 +156,7 @@ def create_asset(
 @app.get("/assets", response_model=list[AssetResponse], tags=["Assets"])
 def get_assets(
     db: Session = Depends(get_db),
-    current_user: dict = Depends(auth.get_current_user)
+    current_user: dict = Depends(auth.require_permission("asset:read"))
 ):
     return db.query(Asset).all()
 
@@ -203,7 +165,7 @@ def get_assets(
 def get_asset(
     asset_id: int,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(auth.get_current_user)
+    current_user: dict = Depends(auth.require_permission("asset:read"))
 ):
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
 
@@ -218,7 +180,7 @@ def update_asset(
     asset_id: int,
     updated_asset: AssetUpdate,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(auth.require_role("admin"))
+    current_user: dict = Depends(auth.require_permission("asset:update"))
 ):
     actor = get_actor(current_user)
 
@@ -264,7 +226,7 @@ def update_asset(
 def delete_asset(
     asset_id: int,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(auth.require_role("admin"))
+    current_user: dict = Depends(auth.require_permission("asset:delete"))
 ):
     actor = get_actor(current_user)
 
@@ -307,7 +269,7 @@ def get_audit_logs(
     limit: int = Query(default=50, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
-    current_user: dict = Depends(auth.require_role("admin"))
+    current_user: dict = Depends(auth.require_permission("audit:read"))
 ):
     query = db.query(AuditLog)
 

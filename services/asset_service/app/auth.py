@@ -1,12 +1,35 @@
-from fastapi import Depends, HTTPException
+from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from jose.exceptions import ExpiredSignatureError
 
+from app.error_utils import forbidden_error, unauthorized_error
+from app.logging_utils import (
+    build_auth_failure_log,
+    build_permission_denied_log,
+    log_event,
+)
+from app.request_context import get_request_id, get_source_ip
+
 SECRET_KEY = "super-secret-dev-key"
 ALGORITHM = "HS256"
 
-bearer_scheme = HTTPBearer()
+bearer_scheme = HTTPBearer(auto_error=False)
+
+ROLE_PERMISSIONS = {
+    "admin": {
+        "asset:read",
+        "asset:create",
+        "asset:update",
+        "asset:delete",
+        "audit:read",
+        "user:manage",
+    },
+    "viewer": {
+        "asset:read",
+        "audit:read",
+    },
+}
 
 
 def verify_token(token: str):
@@ -14,60 +37,123 @@ def verify_token(token: str):
         payload = jwt.decode(
             token,
             SECRET_KEY,
-            algorithms=[ALGORITHM]
+            algorithms=[ALGORITHM],
         )
 
         return payload
 
     except ExpiredSignatureError:
-        raise HTTPException(
-            status_code=401,
-            detail="Token has expired"
+        log_event(
+            build_auth_failure_log(
+                request_id=get_request_id(),
+                actor=None,
+                role=None,
+                source_ip=get_source_ip(),
+                reason="token_expired",
+            )
         )
 
+        unauthorized_error("Token has expired")
+
     except JWTError:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid token"
+        log_event(
+            build_auth_failure_log(
+                request_id=get_request_id(),
+                actor=None,
+                role=None,
+                source_ip=get_source_ip(),
+                reason="invalid_token",
+            )
         )
+
+        unauthorized_error("Invalid token")
 
 
 def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
 ):
+    if credentials is None:
+        log_event(
+            build_auth_failure_log(
+                request_id=get_request_id(),
+                actor=None,
+                role=None,
+                source_ip=get_source_ip(),
+                reason="missing_authorization_token",
+            )
+        )
+
+        unauthorized_error("Missing authorization token")
+
     payload = verify_token(credentials.credentials)
 
     email = payload.get("sub")
     role = payload.get("role")
 
     if not email:
-        raise HTTPException(
-            status_code=401,
-            detail="Token missing subject claim"
+        log_event(
+            build_auth_failure_log(
+                request_id=get_request_id(),
+                actor=None,
+                role=role,
+                source_ip=get_source_ip(),
+                reason="missing_subject_claim",
+            )
         )
 
+        unauthorized_error("Token missing subject claim")
+
     if not role:
-        raise HTTPException(
-            status_code=401,
-            detail="Token missing role claim"
+        log_event(
+            build_auth_failure_log(
+                request_id=get_request_id(),
+                actor=email,
+                role=None,
+                source_ip=get_source_ip(),
+                reason="missing_role_claim",
+            )
         )
+
+        unauthorized_error("Token missing role claim")
 
     return {
         "email": email,
-        "role": role
+        "role": role,
+        "permissions": ROLE_PERMISSIONS.get(role, set()),
     }
 
 
 def require_role(required_role: str):
     def role_checker(
-        current_user: dict = Depends(get_current_user)
+        current_user: dict = Depends(get_current_user),
     ):
         if current_user["role"] != required_role:
-            raise HTTPException(
-                status_code=403,
-                detail="Insufficient permissions"
-            )
+            forbidden_error()
 
         return current_user
 
     return role_checker
+
+
+def require_permission(required_permission: str):
+    def permission_checker(
+        current_user: dict = Depends(get_current_user),
+    ):
+        user_permissions = current_user.get("permissions", set())
+
+        if required_permission not in user_permissions:
+            log_event(
+                build_permission_denied_log(
+                    request_id=get_request_id(),
+                    actor=current_user.get("email"),
+                    role=current_user.get("role"),
+                    source_ip=get_source_ip(),
+                    permission=required_permission,
+                )
+            )
+
+            forbidden_error()
+
+        return current_user
+
+    return permission_checker

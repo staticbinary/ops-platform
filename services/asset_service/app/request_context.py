@@ -1,0 +1,87 @@
+import time
+import traceback
+import uuid
+from contextvars import ContextVar
+
+from fastapi import Request
+from starlette.middleware.base import BaseHTTPMiddleware
+
+from app.logging_utils import (
+    build_request_completed_log,
+    build_request_failed_log,
+    build_request_started_log,
+    log_event,
+)
+
+
+request_id_context: ContextVar[str | None] = ContextVar(
+    "request_id",
+    default=None,
+)
+
+source_ip_context: ContextVar[str | None] = ContextVar(
+    "source_ip",
+    default=None,
+)
+
+
+def get_request_id() -> str | None:
+    return request_id_context.get()
+
+def get_source_ip() -> str | None:
+    return source_ip_context.get()
+
+
+class RequestIDMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
+        request_id_context.set(request_id)
+
+        method = request.method
+        path = request.url.path
+        client = request.client.host if request.client else None
+        source_ip_context.set(client)
+        start_time = time.perf_counter()
+
+        log_event(
+            build_request_started_log(
+                request_id=request_id,
+                method=method,
+                path=path,
+                client=client,
+            )
+        )
+
+        try:
+            response = await call_next(request)
+            duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
+
+            log_event(
+                build_request_completed_log(
+                    request_id=request_id,
+                    method=method,
+                    path=path,
+                    status_code=response.status_code,
+                    duration_ms=duration_ms,
+                )
+            )
+
+            response.headers["x-request-id"] = request_id
+            return response
+
+        except Exception as exc:
+            duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
+
+            log_event(
+                build_request_failed_log(
+                    request_id=request_id,
+                    method=method,
+                    path=path,
+                    duration_ms=duration_ms,
+                    error_type=type(exc).__name__,
+                    error_message=str(exc),
+                    stack_trace=traceback.format_exc(),
+                )
+            )
+
+            raise
