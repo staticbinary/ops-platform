@@ -11,8 +11,7 @@ from app.logging_utils import (
 )
 from app.request_context import get_request_id, get_source_ip
 
-SECRET_KEY = "super-secret-dev-key"
-ALGORITHM = "HS256"
+from app.config import settings
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -36,8 +35,8 @@ def verify_token(token: str):
     try:
         payload = jwt.decode(
             token,
-            SECRET_KEY,
-            algorithms=[ALGORITHM],
+            settings.SECRET_KEY,
+            algorithms=[settings.JWT_ALGORITHM],    
         )
 
         return payload

@@ -720,6 +720,539 @@ Implemented dynamic runtime database URL injection using:
 os.getenv("DATABASE_URL")
 ---
 
+# Phase 4.7 — RBAC & Permission Enforcement Hardening
+
+## Objectives
+- Reinforce authorization architecture
+- Expand RBAC flexibility
+- Standardize auth failure handling
+- Prepare platform for security telemetry integration
+- Improve permission scalability before integrations
+
+## Completed
+
+### Permission-Based RBAC
+Implemented granular permission enforcement layer.
+
+#### Added
+- `require_permission()`
+- centralized `ROLE_PERMISSIONS`
+- permission-aware endpoint protection
+- reusable authorization abstraction
+
+#### Roles
+- `admin`
+- `viewer`
+
+#### Permissions
+- `asset:read`
+- `asset:create`
+- `asset:update`
+- `asset:delete`
+- `audit:read`
+- `user:manage`
+
+---
+
+### Standardized Error Utilities
+Centralized auth-related error handling.
+
+#### Added
+- `forbidden_error()`
+- `unauthorized_error()`
+
+#### Benefits
+- cleaner auth middleware
+- reusable HTTP error responses
+- easier telemetry integration later
+
+---
+
+### RBAC Validation Testing
+Validated:
+- viewer token restrictions
+- admin token elevation
+- endpoint-level authorization enforcement
+- proper `401` vs `403` separation
+
+---
+
+## Architectural Improvements
+- permission-first authorization design
+- future-ready RBAC scaling
+- cleaner dependency injection flow
+- improved security boundary enforcement
+
+---
+
+# Phase 4.8 — Request Correlation & Exception Observability
+
+## Objectives
+- Centralize request lifecycle telemetry
+- Introduce request correlation IDs
+- Standardize exception handling visibility
+- Improve observability architecture
+- Prepare for distributed tracing and SIEM integrations
+
+## Completed
+
+### Request Correlation Middleware
+Implemented centralized request middleware using `ContextVar`.
+
+#### Added
+- request UUID generation
+- `x-request-id` response headers
+- async-safe request context propagation
+- middleware-based request instrumentation
+
+#### Files
+- `request_context.py`
+- `main.py`
+
+---
+
+### Structured Request Lifecycle Logging
+Implemented:
+- `request.started`
+- `request.completed`
+- `request.failed`
+
+#### Logged Metadata
+- request_id
+- method
+- path
+- source IP
+- status code
+- request duration
+- stack traces
+- exception types/messages
+
+---
+
+### Exception Telemetry
+Added centralized failure-event handling.
+
+#### Improvements
+- sanitized `500` responses
+- structured stack trace logging
+- middleware exception persistence
+- lifecycle telemetry during failures
+
+---
+
+### Middleware Cleanup
+Removed duplicate request middleware.
+
+#### Result
+- single centralized observability pipeline
+- cleaner telemetry
+- reduced logging noise
+- easier future integrations
+
+---
+
+### Circular Import Resolution
+Resolved middleware startup failures caused by:
+- `request_context.py`
+- `logging_utils.py`
+
+#### Result
+- stable service startup
+- improved module separation
+- cleaner observability architecture
+
+---
+
+## Architectural Improvements
+- centralized observability layer
+- request traceability foundation
+- distributed tracing readiness
+- improved debugging visibility
+- SIEM integration groundwork
+
+---
+
+# Phase 4.9 — Security Telemetry & Observability Hardening
+
+## Overview
+
+Implemented centralized security telemetry, request correlation tracking, structured request lifecycle logging, and authentication/authorization event auditing across the asset service.
+
+This phase significantly improved observability maturity, middleware architecture, and SIEM-readiness while reinforcing RBAC enforcement and exception handling behavior.
+
+---
+
+# Features Added
+
+## Request Correlation IDs
+
+Implemented request correlation tracking using middleware and `ContextVar`.
+
+### Added
+- Per-request UUID generation
+- `x-request-id` response headers
+- Async-safe request context propagation
+- Request ID persistence across request lifecycle events
+
+### Files
+- `request_context.py`
+- `main.py`
+
+---
+
+## Centralized Request Middleware
+
+Migrated request lifecycle logging into dedicated middleware.
+
+### Added
+- `request.started`
+- `request.completed`
+- `request.failed`
+
+### Logged Metadata
+- request_id
+- HTTP method
+- request path
+- client/source IP
+- response status codes
+- request duration
+- exception type/message
+- stack traces
+
+### Files
+- `request_context.py`
+- `logging_utils.py`
+
+---
+
+## Structured Logging Standardization
+
+Implemented centralized JSON event schema generation.
+
+### Added
+- service tagging
+- environment tagging
+- severity classification
+- reusable event builders
+
+### Severity Rules
+- `info`
+- `warning`
+- `error`
+
+### Files
+- `logging_utils.py`
+
+---
+
+## Authentication Failure Telemetry
+
+Implemented structured authentication failure events.
+
+### Added Events
+- `auth.failure`
+
+### Logged Reasons
+- missing_authorization_token
+- invalid_token
+- token_expired
+- missing_subject_claim
+- missing_role_claim
+
+### Logged Metadata
+- request_id
+- actor
+- role
+- source_ip
+- failure reason
+
+### Files
+- `auth.py`
+- `logging_utils.py`
+
+---
+
+## Permission Denial Telemetry
+
+Implemented RBAC denial telemetry events.
+
+### Added Events
+- `permission.denied`
+
+### Logged Metadata
+- request_id
+- actor email
+- actor role
+- source IP
+- required permission
+- denial reason
+
+### Files
+- `auth.py`
+- `logging_utils.py`
+
+---
+
+## Exception Handling Improvements
+
+Implemented centralized structured exception capture.
+
+### Added
+- request failure lifecycle logging
+- structured stack trace logging
+- sanitized 500 responses
+- middleware exception persistence
+
+### Validation
+Confirmed:
+- middleware survives exceptions
+- request lifecycle logging persists during failures
+- traceback leakage prevented to clients
+
+### Files
+- `request_context.py`
+- `main.py`
+- `logging_utils.py`
+
+---
+
+# Troubleshooting Notes
+
+## Circular Import Crash
+
+### Issue
+Asset service failed to start after introducing request context logging.
+
+### Root Cause
+Circular import created between:
+- `request_context.py`
+- `logging_utils.py`
+
+### Resolution
+Removed `get_request_id()` dependency from `logging_utils.py`.
+
+Request IDs are now passed directly into log event builders instead of imported from middleware context.
+
+---
+
+## Duplicate Request Logging
+
+### Issue
+Duplicate request lifecycle logs appeared for every request.
+
+### Root Cause
+Old `@app.middleware("http")` request logger remained active after introducing `RequestIDMiddleware`.
+
+### Resolution
+Removed legacy request logging middleware from `main.py`.
+
+Centralized all request lifecycle telemetry into:
+- `RequestIDMiddleware`
+
+---
+
+## Auth Middleware Validation
+
+### Validated Behaviors
+
+#### Missing Token
+- returns `401`
+- emits `auth.failure`
+
+#### Invalid Permissions
+- returns `403`
+- emits `permission.denied`
+
+#### Unhandled Exception
+- returns sanitized `500`
+- emits `request.failed`
+
+#### Successful Requests
+- returns `200`
+- emits `request.completed`
+
+---
+
+# Architectural Improvements
+
+## Platform Maturity Gains
+
+This phase introduced:
+- centralized observability architecture
+- SIEM-ready JSON logging
+- request traceability
+- structured security telemetry
+- async-safe request context propagation
+- standardized event schemas
+- middleware-based request instrumentation
+
+---
+
+# Current Platform State
+
+## Security
+- RBAC enforcement
+- auth failure telemetry
+- permission denial telemetry
+- sanitized exception handling
+
+## Observability
+- structured JSON logs
+- request correlation IDs
+- lifecycle telemetry
+- severity classification
+- stack trace capture
+
+## Infrastructure
+- FastAPI microservices
+- PostgreSQL backend
+- Dockerized services
+- reverse proxy routing
+- Alembic migrations
+- centralized middleware architecture
+
+# Ops Platform Roadmap Updates — Phase 5.0 → 5.2
+
+---
+
+# Phase 5.0 — RBAC + Transaction Hardening
+
+## Completed
+- JWT authentication flow validated.
+- RBAC enforcement stabilized across protected endpoints.
+- Permission-scoped access control implemented.
+- CRUD authorization boundaries confirmed.
+- Structured exception handling added for:
+  - `IntegrityError`
+  - `SQLAlchemyError`
+- Database rollback protections implemented.
+- Global API exception handling framework established.
+- Standardized JSON error responses implemented.
+
+## Security Improvements
+- Least-privilege access model validated.
+- Unauthorized access behavior confirmed.
+- Forbidden action enforcement confirmed.
+- Safer transaction recovery handling implemented.
+
+## Stability Improvements
+- Improved transactional consistency.
+- Reduced risk of orphaned/partial DB writes.
+- Improved API response predictability.
+- Improved debugging and operational visibility.
+
+## Future Planning
+Planned follow-up areas:
+- Token expiration refinement
+- Refresh token workflow
+- API rate limiting
+- Enhanced RBAC granularity
+- MFA/OIDC integration groundwork
+- Service-to-service authentication model
+
+---
+
+# Phase 5.1 — Audit Logging + Query Optimization
+
+## Completed
+- Audit log pagination implemented.
+- Date range filtering added.
+- Sorting support added.
+- Query limit protections implemented.
+- Offset-based pagination added.
+- ISO timestamp validation implemented.
+- Structured validation error handling added.
+- Audit retrieval scalability significantly improved.
+
+## Observability Improvements
+- Better operational audit visibility.
+- More scalable log retrieval patterns.
+- Improved troubleshooting capabilities.
+- Cleaner event analysis workflow.
+
+## Stability Improvements
+- Reduced risk of excessive DB query loads.
+- Safer handling of malformed user input.
+- Improved API response consistency.
+- Better support for large enterprise datasets.
+
+## Future Planning
+Planned follow-up areas:
+- Centralized logging pipeline
+- SIEM integration readiness
+- Correlation ID support
+- Security event categorization
+- Structured JSON log formatting
+- Real-time audit event streaming
+- Alert/event forwarding architecture
+
+---
+
+# Phase 5.2 — Health Checks + Reliability Foundation
+
+## Completed
+- Duplicate `/db-health` endpoints removed.
+- DB health checks standardized using dependency injection.
+- Safer DB connectivity validation implemented.
+- Controlled DB failure responses implemented.
+- `/ready` readiness endpoint added.
+- Service health endpoint structure improved.
+- Consistent health response formatting established.
+
+## Reliability Improvements
+- Cleaner operational monitoring support.
+- Reduced endpoint duplication/maintenance risk.
+- Improved orchestration readiness.
+- Improved service health visibility.
+
+## Security Improvements
+- Removed raw exception leakage from health endpoints.
+- Reduced infrastructure exposure risk.
+- Safer production-facing diagnostics.
+
+## Future Planning
+Planned follow-up areas:
+- Kubernetes readiness/liveness integration
+- Prometheus metrics exposure
+- OpenTelemetry groundwork
+- Service latency metrics
+- Dependency health aggregation
+- Distributed tracing preparation
+- Automated health degradation detection
+
+---
+
+# Platform Direction Alignment (5.0 → 5.2)
+
+## Current Priorities Reinforced
+- Security-first architecture
+- Structural rigidity
+- Operational reliability
+- Logging/observability readiness
+- Enterprise scalability
+- Future integration preparedness
+
+## Integration Readiness Progress
+Foundation work now supports future integrations involving:
+- Observability platforms
+- SIEM tooling
+- ITSM/ticketing systems
+- Identity providers
+- Security telemetry platforms
+- Workflow/notification systems
+- Asset management integrations
+
+## Overall Platform Maturity Progress
+The platform has now transitioned from:
+- Basic functional prototype
+
+Toward:
+- Structured enterprise-ready operational foundation
+- Service reliability baseline
+- Security-aware architecture
+- Scalable observability groundwork
+- Integration-capable backend structure
+
 ## Phase 5 — Frontend Platform Interface
 
 Objectives:

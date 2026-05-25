@@ -1191,3 +1191,293 @@ Executed Alembic commands from:
 ```bash
 cd /app
 alembic -c app/alembic.ini
+
+# Phase 4.7 — RBAC & Permission Enforcement Hardening
+
+## Issue
+The platform required stronger RBAC enforcement validation and permission-aware authorization behavior before expanding observability and integration layers.
+
+### Symptoms
+
+- Viewer accounts could still access read endpoints successfully
+- Authorization testing initially targeted incorrect endpoints
+- Need for centralized permission validation structure
+- Permission failures were not yet generating structured telemetry
+- Auth flows lacked standardized error helper usage
+
+### Root Cause
+
+The platform initially focused on role validation but lacked:
+- permission-centric authorization flow
+- standardized forbidden/unauthorized error helpers
+- centralized permission telemetry
+- separation between authentication and authorization event handling
+
+Additional contributing issue:
+- testing initially used `GET /assets`
+- viewer role legitimately possessed `asset:read`
+- proper RBAC validation required `POST /assets`
+
+### Validation
+
+Confirmed:
+
+#### Viewer Token
+- `GET /assets` → `200`
+- `POST /assets` → `403`
+
+#### Admin Token
+- `POST /assets` → `200`
+
+#### Authorization Behavior
+- permission checks correctly enforced
+- role permissions mapped properly
+- standardized forbidden responses operational
+
+#### Middleware Stability
+- auth middleware integrated successfully with FastAPI dependency injection
+- bearer token extraction functioning correctly
+- token claim validation functioning correctly
+
+### Lessons Learned
+
+- Permission-based authorization scales better than strict role-only checks
+- `401` and `403` should remain operationally distinct
+- RBAC testing must target endpoints requiring elevated permissions
+- Standardized error utilities simplify future telemetry integration
+- Permission abstractions improve future integration readiness
+
+---
+
+# Phase 4.8 — Request Correlation & Exception Observability
+
+## Issue
+The platform lacked centralized request lifecycle observability, request correlation IDs, and structured exception telemetry.
+
+### Symptoms
+
+- No request correlation tracking
+- Request logs duplicated across middleware systems
+- Unhandled exceptions lacked centralized structured logging
+- Internal stack traces risked leaking during failures
+- Service startup failures occurred after observability integration changes
+- Localhost connectivity failures appeared after middleware updates
+
+### Root Cause
+
+The platform originally relied on decentralized route-level logging and lacked a dedicated middleware-driven observability layer.
+
+Additional contributing issues:
+- legacy request middleware remained active alongside new middleware
+- circular imports developed between:
+  - `request_context.py`
+  - `logging_utils.py`
+- request context utilities were imported directly into logging helpers
+- exception handling lacked centralized failure-event generation
+
+### Validation
+
+Confirmed successful operation of:
+
+#### Request Lifecycle Events
+- `request.started`
+- `request.completed`
+- `request.failed`
+
+#### Request Correlation
+- shared `request_id` persisted across request lifecycle
+- `x-request-id` response headers functioning correctly
+
+#### Exception Handling
+- sanitized `500` responses returned correctly
+- middleware survived unhandled exceptions
+- stack traces logged internally
+- traceback leakage prevented to clients
+
+#### Middleware Architecture
+- duplicate request logging removed successfully
+- centralized middleware architecture functioning correctly
+- request context propagation stable under failures
+
+#### Docker & Infrastructure Stability
+- containers recovered successfully after rebuilds
+- reverse proxy remained stable
+- PostgreSQL remained healthy across restart cycles
+- FastAPI startup sequence validated successfully
+
+### Lessons Learned
+
+- Middleware-driven observability is cleaner than route-level instrumentation
+- `ContextVar` provides reliable async-safe request context propagation
+- Circular imports become increasingly likely in observability-heavy architectures
+- Request correlation IDs are foundational for future distributed tracing
+- Structured lifecycle logging greatly improves debugging and operational visibility
+- Centralized exception telemetry significantly improves platform maintainability
+- Duplicate middleware chains create noisy and misleading telemetry
+
+---
+
+# Phase 4.9 — Security Telemetry & Observability Hardening
+
+## Issue
+Centralized observability, request correlation, and security telemetry were not yet standardized across the platform. Authentication failures, RBAC denials, and unhandled exceptions lacked structured SIEM-ready logging and request traceability.
+
+### Symptoms
+
+- No request correlation IDs
+- Duplicate request logging middleware
+- No structured auth failure telemetry
+- No structured RBAC denial telemetry
+- Unhandled exceptions lacked centralized structured failure events
+- Service startup failures caused by circular imports during middleware integration
+- Inconsistent request lifecycle logging behavior
+- Limited visibility into authorization failures and request origins
+
+### Root Cause
+
+The platform originally relied on decentralized request logging and lacked a dedicated middleware-driven observability architecture.
+
+Additional contributing issues:
+- request lifecycle logging existed both in middleware and `main.py`
+- logging utilities imported request context directly, creating circular dependencies
+- auth failures and RBAC denials returned HTTP errors without structured security telemetry
+- no standardized event schema existed for operational or security events
+
+### Validation
+
+Validated successful operation of:
+
+#### Request Lifecycle Logging
+- `request.started`
+- `request.completed`
+- `request.failed`
+
+#### Security Telemetry
+- `auth.failure`
+- `permission.denied`
+
+#### Request Correlation
+- shared `request_id` across all lifecycle and security events
+
+#### Structured Metadata
+Confirmed logging of:
+- request_id
+- actor email
+- actor role
+- source IP
+- HTTP method
+- request path
+- status code
+- severity
+- environment
+- service name
+- stack traces
+- denial reasons
+- missing permissions
+
+#### Auth & RBAC Behavior
+Confirmed:
+- Missing token → `401 auth.failure`
+- Invalid permission → `403 permission.denied`
+- Unhandled exception → `500 request.failed`
+- Successful requests → `200 request.completed`
+
+#### Middleware Stability
+Confirmed:
+- middleware survives exceptions
+- request context persists correctly
+- reverse proxy routing remains stable
+- structured logging survives rebuilds and failures
+
+### Lessons Learned
+
+- Middleware-based observability is significantly cleaner than route-level logging
+- `ContextVar` provides reliable async-safe request context propagation in FastAPI
+- Circular imports become increasingly common as observability layers mature
+- Security telemetry should be treated as first-class platform infrastructure
+- Structured JSON logging dramatically improves future SIEM and observability integration readiness
+- Separating `401` authentication failures from `403` authorization failures provides clearer operational visibility
+- Centralized logging schemas simplify future integrations with:
+  - Datadog
+  - Splunk
+  - OpenTelemetry
+  - Jaeger/Tempo
+  - SIEM tooling
+- Standardized severity tagging greatly improves future alerting and event classification
+
+# Phase 5.0 — RBAC + Transaction Hardening
+
+## Issue
+Unauthorized access handling and database transaction recovery behavior required stabilization across protected endpoints.
+
+### Symptoms
+- `401 Unauthorized` responses after logout or expired tokens.
+- `403 Forbidden` responses when viewer accounts attempted restricted operations.
+- `500 Internal Server Error` during asset creation/update operations.
+- Risk of unstable DB sessions after failed writes.
+
+### Root Cause
+- RBAC enforcement had not yet been fully validated across all permission scopes.
+- Database transactions lacked sufficient rollback handling.
+- SQLAlchemy exceptions were not consistently normalized into structured API responses.
+
+### Resolution
+- Validated JWT authorization flow through Swagger/OpenAPI authorization.
+- Confirmed permission enforcement for:
+  - `asset:create`
+  - `asset:update`
+  - `asset:delete`
+  - `asset:read`
+- Added exception handling for:
+  - `IntegrityError`
+  - `SQLAlchemyError`
+- Implemented transactional rollback protections:
+```python
+db.rollback()
+
+```md
+# Phase 5.1 — Audit Logging + Query Optimization
+
+## Issue
+Audit logging lacked enterprise-grade filtering, pagination, and query protections.
+
+### Symptoms
+- Large unfiltered audit responses.
+- No pagination support.
+- No date range filtering.
+- Invalid date formats caused server-side exceptions.
+- Potential for excessive database query loads.
+
+### Root Cause
+- Audit endpoint was originally implemented as a basic query without scalability considerations.
+- Missing validation around date parsing.
+- No query constraints or pagination safeguards existed.
+
+### Resolution
+Added:
+- Pagination:
+```python
+limit
+offset
+
+```md
+# Phase 5.2 — Health Checks + Reliability Foundation
+
+## Issue
+Health monitoring endpoints lacked consistency, readiness support, and secure failure handling.
+
+### Symptoms
+- Duplicate `/db-health` endpoints existed simultaneously.
+- Older DB health implementation exposed raw exception output.
+- No readiness endpoint existed for orchestration validation.
+- Mixed DB connection handling patterns across implementations.
+
+### Root Cause
+- Earlier temporary DB health implementation was not removed after newer dependency-injected version was added.
+- Exception responses exposed internal database details.
+- Readiness validation had not yet been implemented for orchestration support.
+
+### Resolution
+Removed legacy implementation:
+```python
+with engine.connect()
