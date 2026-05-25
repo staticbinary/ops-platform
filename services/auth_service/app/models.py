@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy import Column, Integer, String
 
 from .database import Base
@@ -19,3 +21,7 @@ class AuditLog(Base):
     user_email = Column(String, nullable=True)
     outcome = Column(String, nullable=False)
     detail = Column(String, nullable=True)
+    created_at = Column(
+    String,
+    default=lambda: datetime.utcnow().isoformat()
+)

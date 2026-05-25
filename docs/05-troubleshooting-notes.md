@@ -790,3 +790,166 @@ event type
 user email
 success/failure outcome
 event detail
+
+---
+
+## Phase 4.2 Auth Persistence & Audit Timestamp Troubleshooting
+
+### Issue: Docker command not found in WSL
+
+**Symptom**
+
+Running:
+
+```bash
+docker compose up -d --build
+
+returned:
+
+The command 'docker' could not be found in this WSL 2 distro.
+
+Cause
+
+Docker Desktop was not running, so the Docker CLI was unavailable inside WSL.
+
+Fix
+
+Started Docker Desktop. When Docker appeared stuck starting the engine, Docker-related processes were killed and Docker Desktop was restarted. After restart, Docker engine loaded normally and WSL access resumed.
+
+Issue: Docker Compose volume validation failed
+
+Symptom
+
+Running Docker Compose returned:
+
+validating docker-compose.yml:
+volumes.postgres-data Additional property auth-data is not allowed
+
+Cause
+
+The auth-data volume was accidentally nested under postgres-data instead of being defined as a separate top-level volume.
+
+Incorrect:
+
+volumes:
+  postgres-data:
+    auth-data:
+
+Correct:
+
+volumes:
+  postgres-data:
+  auth-data:
+
+Fix
+
+Corrected the bottom-level volumes: section so both Docker volumes are aligned at the same indentation level.
+
+Issue: Auth users disappeared after rebuilds
+
+Symptom
+
+Previously registered users were lost after rebuilding/recreating the auth service. New registrations restarted at:
+
+id = 1
+
+Cause
+
+The auth service originally stored SQLite data at:
+
+sqlite:///./auth.db
+
+inside the container filesystem. Container recreation wiped the local SQLite database.
+
+Fix
+
+Moved auth SQLite storage to a mounted Docker volume.
+
+Updated auth database path:
+
+DATABASE_URL = "sqlite:///./data/auth.db"
+
+Updated auth-service in docker-compose.yml:
+
+auth-service:
+  volumes:
+    - auth-data:/app/data
+
+Added top-level Docker volume:
+
+volumes:
+  postgres-data:
+  auth-data:
+
+Validation
+
+After rebuilding, attempting to register the same user returned:
+
+{
+  "detail": "Email already registered"
+}
+
+confirming auth persistence was working.
+
+Issue: Login returned 500 after adding audit timestamp column
+
+Symptom
+
+After adding created_at to the AuditLog model, login returned:
+
+500 Internal Server Error
+
+Cause
+
+The existing persistent SQLite database had already created the audit_logs table before the created_at column existed.
+
+Base.metadata.create_all() creates missing tables but does not modify existing table schemas.
+
+Fix
+
+Reset the development auth volume once so SQLite could recreate the table with the new column:
+
+docker compose down
+docker volume rm ops-platform_auth-data
+docker compose up -d --build
+
+Future Fix
+
+Use Alembic migrations for schema changes instead of resetting development volumes.
+
+Issue: Audit endpoint returned 403 after user promotion
+
+Symptom
+
+After promoting a user to admin, /audit still returned:
+
+{
+  "detail": "Insufficient permissions"
+}
+
+Cause
+
+The existing JWT was issued before the role change and still contained:
+
+{
+  "role": "viewer"
+}
+
+Fix
+
+Logged out of Swagger authorization and re-authenticated after promotion so the new JWT contained:
+
+{
+  "role": "admin"
+}
+Confirmed Working After Fixes
+
+The following were verified:
+
+Auth SQLite data persists across rebuilds
+Registered users survive container recreation
+Roles persist across rebuilds
+Audit logs persist across rebuilds
+Audit events include created_at timestamps
+Admin-only /audit endpoint works after re-authentication
+JWT role claims correctly reflect role state at token issuance time

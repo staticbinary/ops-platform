@@ -25,6 +25,7 @@ class AuditLogResponse(BaseModel):
     user_email: str | None
     outcome: str
     detail: str | None
+    created_at: str
 
     class Config:
         from_attributes = True

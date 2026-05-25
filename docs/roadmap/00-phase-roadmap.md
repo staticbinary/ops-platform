@@ -480,6 +480,70 @@ Future audit logging improvements:
 - Security alert generation
 - SIEM-style aggregation
 
+### Phase 4.2 — Persistent Authentication & Audit Infrastructure [Completed]
+
+#### Objectives
+- Persist auth service data across container rebuilds
+- Implement durable RBAC state storage
+- Add timestamped audit logging
+- Improve operational observability for authentication events
+- Validate admin-only authorization enforcement
+
+#### Completed Work
+- Added persistent Docker volume for auth service SQLite storage
+- Migrated auth database path to mounted Docker volume
+- Confirmed user persistence across rebuilds/restarts
+- Confirmed role persistence across rebuilds/restarts
+- Implemented timestamped audit events (`created_at`)
+- Added audit event tracking for:
+  - Standard login
+  - OAuth token login
+  - Role changes
+  - Admin promotion events
+- Confirmed JWT RBAC enforcement for admin-only endpoints
+- Validated role-aware authorization flow:
+  - viewer → forbidden
+  - admin → permitted
+- Validated JWT role claims refresh only after re-authentication
+- Confirmed newest-first audit log ordering
+- Improved Swagger OAuth2 testing workflow
+
+#### Architectural Milestones
+The authentication service transitioned from:
+- ephemeral container state
+- non-persistent SQLite storage
+- temporary RBAC assignments
+
+to:
+- persistent auth infrastructure
+- durable RBAC state
+- operational audit visibility
+- reproducible authorization testing
+
+#### Key Concepts Validated
+- JWT token lifecycle behavior
+- Role-based access control (RBAC)
+- Persistent Docker volume storage
+- Stateful vs stateless service boundaries
+- Audit trail generation
+- OAuth2 password flow behavior
+- Containerized auth persistence patterns
+
+#### Operational Lessons Learned
+- Existing JWTs do not inherit updated role assignments
+- Swagger OAuth2 authorization requires token refresh after role changes
+- `Base.metadata.create_all()` does not perform schema migrations
+- Persistent SQLite schemas require migration tooling for future updates
+- Docker Desktop / WSL integration failures can temporarily disable Docker CLI access inside WSL
+
+#### Future Improvements
+- Replace SQLite schema recreation workflow with Alembic migrations
+- Add token expiration/refresh handling
+- Add account lockout and failed login tracking
+- Add RBAC hierarchy expansion
+- Add centralized audit aggregation
+- Add admin audit filtering/search endpoints
+
 ---
 
 ## Phase 5 — Frontend Platform Interface
