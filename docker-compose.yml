@@ -15,22 +15,17 @@ services:
   asset_service:
     build:
       context: ./services/asset_service
-
     container_name: ops-asset-service
-
     ports:
       - "8001:8000"
-
     environment:
       SERVICE_NAME: ${ASSET_SERVICE_NAME}
       ENVIRONMENT: ${ASSET_SERVICE_ENVIRONMENT}
       SECRET_KEY: ${ASSET_SERVICE_SECRET_KEY}
       JWT_ALGORITHM: ${ASSET_SERVICE_JWT_ALGORITHM}
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-
     depends_on:
       - postgres
-
     networks:
       - ops-platform-network
 
@@ -59,6 +54,30 @@ services:
     networks:
       - ops-platform-network
 
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ops-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infrastructure/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - asset_service
+    networks:
+      - ops-platform-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ops-grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - ops-platform-network
+    volumes:
+      - grafana-data:/var/lib/grafana
+
 networks:
   ops-platform-network:
     driver: bridge
@@ -66,3 +85,4 @@ networks:
 volumes:
   postgres-data:
   auth-data:
+  grafana-data:

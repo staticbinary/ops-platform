@@ -2,22 +2,23 @@ from datetime import datetime
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
-from app.security_headers import SecurityHeadersMiddleware
-from app.rate_limit import RateLimitMiddleware
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.middleware.cors import CORSMiddleware
-from app.body_size_limit import BodySizeLimitMiddleware
 
+from app.body_size_limit import BodySizeLimitMiddleware
+from app.metrics import metrics_response
+from app.rate_limit import RateLimitMiddleware
 from app.request_context import RequestIDMiddleware, get_request_id
+from app.security_headers import SecurityHeadersMiddleware
 
 from . import auth
 from .database import get_db
 from .models import Asset, AuditLog
-from .schemas import AssetCreate, AssetUpdate, AssetResponse
+from .schemas import AssetCreate, AssetResponse, AssetUpdate
 
 
 app = FastAPI(
@@ -61,6 +62,7 @@ app.add_middleware(
     TrustedHostMiddleware,
     allowed_hosts=["*"],
 )
+
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
@@ -131,6 +133,11 @@ def health():
         "status": "ok",
         "service": "asset-service",
     }
+
+
+@app.get("/metrics", tags=["Metrics"])
+def metrics():
+    return metrics_response()
 
 
 @app.get("/db-health", tags=["Health"])
@@ -371,7 +378,6 @@ def get_audit_logs(
         query = query.order_by(AuditLog.timestamp.desc())
 
     total = query.count()
-
     logs = query.offset(offset).limit(limit).all()
 
     return {

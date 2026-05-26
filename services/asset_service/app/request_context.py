@@ -1,6 +1,7 @@
 import time
 import uuid
 from contextvars import ContextVar
+from app.metrics import record_request_metric
 
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -67,7 +68,16 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
 
         try:
             response = await call_next(request)
-            duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
+
+            duration_seconds = time.perf_counter() - start_time
+            duration_ms = round(duration_seconds * 1000, 2)
+
+            record_request_metric(
+                method=method,
+                path=path,
+                status_code=response.status_code,
+                duration_seconds=duration_seconds,
+            )
 
             log_event(
                 build_request_completed_log(
@@ -84,7 +94,15 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
             return response
 
         except Exception as exc:
-            duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
+            duration_seconds = time.perf_counter() - start_time
+            duration_ms = round(duration_seconds * 1000, 2)
+
+            record_request_metric(
+                method=method,
+                path=path,
+                status_code=500,
+                duration_seconds=duration_seconds,
+            )
 
             log_event(
                 build_request_failed_log(

@@ -6,3 +6,5 @@ passlib[bcrypt]
 bcrypt==4.0.1
 python-jose[cryptography]
 python-multipart
+prometheus-client
+prometheus-fastapi-instrumentator

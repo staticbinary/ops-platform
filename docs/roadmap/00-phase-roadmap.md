@@ -1318,43 +1318,155 @@ This gives the platform enterprise-style troubleshooting visibility before addit
 - advanced request filtering
 - centralized secret management
 
-# Phase 5.5 — Observability & Platform Telemetry Expansion
+# Phase 5.5+ Roadmap Update — Observability & Operational Telemetry
 
-## Objectives
-- expand operational visibility
-- prepare platform for centralized monitoring
-- improve service diagnostics and metrics collection
-- establish observability integration readiness
+## Completed
 
-## Planned
-- Prometheus metrics integration
-- request counters
-- latency histograms
-- service uptime metrics
-- error-rate tracking
-- response size telemetry
-- request sampling controls
-- OpenTelemetry groundwork
-- centralized logging compatibility
-- structured metrics export
+### Observability Foundation
+- Integrated Prometheus into the platform stack
+- Integrated Grafana into the platform stack
+- Established live metrics collection pipelines
+- Validated containerized observability architecture
+- Standardized Prometheus scraping across services
 
-## Key Concepts
-- observability engineering
-- metrics-driven operations
-- distributed tracing groundwork
-- telemetry pipelines
-- operational diagnostics
-- platform health visibility
-- performance instrumentation
+### Asset Service Telemetry
+- Added Prometheus instrumentation to asset_service
+- Exposed `/metrics` endpoint
+- Validated request telemetry collection
+- Validated latency histogram telemetry
+- Validated runtime/process metrics
 
-## Future Integration Readiness
-- Datadog
+### Auth Service Telemetry
+- Added Prometheus instrumentation to auth_service
+- Exposed `/metrics` endpoint
+- Added auth-service scrape target to Prometheus
+- Validated multi-service scraping
+- Standardized telemetry instrumentation between services
+
+### Grafana Dashboarding
+- Built custom operational dashboard foundation
+- Added Platform Request Rate panel
+- Added P95 Latency panel
+- Added Endpoint Traffic Distribution panel
+- Added Asset Service Status panel
+- Added Auth Service Status panel
+- Added CPU Usage panel
+- Added Memory Usage panel
+
+### Runtime Visibility
+- Added request throughput monitoring
+- Added latency percentile monitoring
+- Added endpoint traffic visibility
+- Added service availability monitoring
+- Added runtime CPU telemetry
+- Added runtime memory telemetry
+
+### Operational Maturity Improvements
+- Validated Prometheus target health monitoring
+- Validated multi-service operational telemetry
+- Improved endpoint traffic visibility by filtering internal scrape traffic
+- Established observability-first platform architecture direction
+
+---
+
+# Current Platform Capabilities
+
+## Metrics & Telemetry
+- Request telemetry
+- Histogram latency metrics
+- Runtime/process metrics
+- Multi-service scraping
+- Real-time metrics visualization
+- Service health monitoring
+
+## Observability Stack
 - Prometheus
 - Grafana
+- FastAPI instrumentation
+- Docker-based monitoring stack
+- Containerized telemetry pipelines
+
+## Operational Dashboards
+- Request throughput
+- P95 latency
+- Endpoint traffic distribution
+- Service uptime/availability
+- CPU utilization
+- Memory utilization
+
+---
+
+# Immediate Next Priorities
+
+## Observability Expansion
+- Add Prometheus alert rules
+- Add Grafana alerting
+- Add service-specific CPU/memory dashboards
+- Add latency heatmaps
+- Add dashboard variables/templating
+- Add scrape-health overview panels
+
+## Logging Expansion
+- Deploy Loki centralized logging
+- Integrate Grafana log exploration
+- Standardize structured logging schemas
+- Add correlation identifiers to logs
+
+## Security Telemetry
+- Add authentication failure metrics
+- Add RBAC denial telemetry
+- Add audit event metrics
+- Add token issuance metrics
+- Add security-focused Grafana dashboards
+
+## Database Monitoring
+- Add PostgreSQL exporter
+- Add database performance metrics
+- Add query timing telemetry
+- Add DB availability panels
+- Add connection pool monitoring
+
+## Infrastructure Monitoring
+- Add Docker/container metrics
+- Add reverse proxy/Nginx telemetry
+- Add container health dashboards
+- Add resource utilization dashboards
+
+## Distributed Tracing
+- Begin OpenTelemetry groundwork
+- Add trace propagation
+- Add correlation IDs
+- Add distributed request tracing
+- Add trace-aware logging
+
+---
+
+# Long-Term Architecture Direction
+
+## Platform Engineering Goals
+- Centralized observability layer
+- Standardized telemetry contracts
+- Integration-ready monitoring architecture
+- Environment-separated observability
+- Service instrumentation baselines
+- Security-first operational telemetry
+
+## Future Integrations
+- Loki
+- Alertmanager
 - OpenTelemetry
-- Jaeger / Grafana Tempo
+- Grafana Tempo
+- Datadog
 - Splunk
-- SIEM/SOC integration pipelines
+- Jaeger
+- Prometheus federation
+
+## Operational Objectives
+- Full-stack observability
+- Real-time operational awareness
+- Platform-wide telemetry standardization
+- Integration-ready monitoring foundation
+- Security-centric operational visibility
 
 
 

@@ -1,5 +1,6 @@
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
+from prometheus_fastapi_instrumentator import Instrumentator
 from sqlalchemy.orm import Session
 
 from . import auth, models, schemas
@@ -7,8 +8,9 @@ from .database import Base, engine, get_db
 
 app = FastAPI(title="Auth Service")
 
-Base.metadata.create_all(bind=engine)
+Instrumentator().instrument(app).expose(app)
 
+Base.metadata.create_all(bind=engine)
 
 @app.get("/health")
 def health():

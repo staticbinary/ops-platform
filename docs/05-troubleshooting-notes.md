@@ -1584,3 +1584,681 @@ Observed:
 
 ### Lessons Learned
 Structured request telemetry significantly improves validation and troubleshooting during security hardening implementation.
+
+# Phase 5.5+ Troubleshooting Notes
+
+## Issue
+Grafana dashboard panels initially returned no data.
+
+### Symptoms
+Grafana connected to Prometheus successfully, but the first custom request-rate query did not populate.
+
+### Root Cause
+The assumed metric name `http_requests_total` was not the metric exposed by the asset service.
+
+### Resolution
+Verified available metrics using Prometheus/Grafana queries and switched to the actual exported metric:
+
+```promql
+sum(rate(asset_service_http_request_duration_seconds_count[1m]))
+Validation
+
+The Platform Request Rate panel populated successfully.
+
+Lessons Learned
+
+Always confirm actual exported metric names before building dashboard panels.
+
+Issue
+
+Prometheus and Grafana connection needed validation.
+
+Symptoms
+
+Custom metric queries failed, making it unclear whether Grafana, Prometheus, or the application metrics were the problem.
+
+Root Cause
+
+The original issue was not the Prometheus/Grafana connection; it was an incorrect PromQL metric name.
+
+Resolution
+
+Ran the baseline query:
+
+up
+Validation
+
+Grafana returned up = 1 for asset-service.
+
+Lessons Learned
+
+Use up first to validate scrape connectivity before troubleshooting application-level metrics.
+
+Issue
+
+Raw asset-service metric query showed unexpected metric labels and bucket data.
+
+Symptoms
+
+Querying the asset-service metric directly returned many series and bucket-style data.
+
+Root Cause
+
+The metric was a histogram-backed request duration metric, not a simple request counter.
+
+Resolution
+
+Used the _count suffix for request-rate calculations:
+
+sum(rate(asset_service_http_request_duration_seconds_count[1m]))
+Validation
+
+Request rate displayed correctly.
+
+Lessons Learned
+
+Histogram metrics expose multiple series. Use _count for request count/rate and _bucket with histogram_quantile() for latency percentiles.
+
+Issue
+
+Swagger/OpenAPI failed behind reverse proxy.
+
+Symptoms
+
+Swagger UI displayed a failure loading the API definition and attempted to fetch:
+
+/openapi.json
+Root Cause
+
+FastAPI docs were being accessed through a reverse-proxy path, but OpenAPI was still being requested from the root path instead of the proxied service path.
+
+Resolution
+
+Used the direct asset service docs endpoint temporarily:
+
+http://localhost:8001/docs
+Validation
+
+Swagger loaded successfully through the direct service port.
+
+Lessons Learned
+
+FastAPI docs behind a reverse proxy may require root_path or adjusted Nginx path handling.
+
+Issue
+
+Latency panel initially risked using raw histogram buckets incorrectly.
+
+Symptoms
+
+Raw bucket metrics produced unsuitable graph behavior and inflated-looking values.
+
+Root Cause
+
+Histogram bucket metrics are cumulative and should not be graphed directly as normal latency values.
+
+Resolution
+
+Used histogram_quantile() for P95 latency:
+
+histogram_quantile(
+  0.95,
+  sum by (le) (
+    rate(asset_service_http_request_duration_seconds_bucket[5m])
+  )
+)
+Validation
+
+The P95 latency panel displayed meaningful latency values.
+
+Lessons Learned
+
+Use histogram buckets only with proper PromQL histogram functions.
+
+Issue
+
+Grafana unit option for latency was not obvious.
+
+Symptoms
+
+The Unit dropdown did not clearly show a seconds option.
+
+Root Cause
+
+Grafana groups and searches units by shorthand/category.
+
+Resolution
+
+Searched the Unit field for:
+
+s
+
+or:
+
+seconds
+
+and selected seconds.
+
+Validation
+
+Latency panel was configured with the appropriate unit.
+
+Lessons Learned
+
+Grafana unit settings may require searching by shorthand values.
+
+Issue
+
+5xx error-rate panel did not populate.
+
+Symptoms
+
+The 5xx error-rate query returned no data.
+
+Root Cause
+
+No matching 5xx series existed, and the initial assumed metric name did not exist.
+
+Resolution
+
+Attempted to use the confirmed request-duration count metric with status filtering.
+
+Validation
+
+The query still did not populate, which led to deeper inspection of available labels.
+
+Lessons Learned
+
+An empty error-rate panel can mean either no errors occurred or the required labels do not exist.
+
+Issue
+
+4xx/5xx error-rate filtering was not supported by current metrics.
+
+Symptoms
+
+Filtering by status or status_code did not produce useful results.
+
+Root Cause
+
+The asset service metric did not expose HTTP response status labels.
+
+Resolution
+
+Deferred true error-rate dashboards and replaced the panel with endpoint traffic distribution:
+
+sum by (path) (
+  rate(asset_service_http_request_duration_seconds_count[5m])
+)
+Validation
+
+Endpoint traffic distribution populated successfully.
+
+Lessons Learned
+
+True error-rate dashboards require status-code-aware metrics.
+
+Issue
+
+Endpoint traffic panel was dominated by Prometheus scrape noise.
+
+Symptoms
+
+/metrics appeared as the highest-traffic endpoint.
+
+Root Cause
+
+Prometheus scraping the /metrics endpoint generated frequent internal monitoring traffic.
+
+Resolution
+
+Excluded /metrics from the endpoint traffic query:
+
+sum by (path) (
+  rate(
+    asset_service_http_request_duration_seconds_count{
+      path!="/metrics"
+    }[5m]
+  )
+)
+Validation
+
+Real application endpoint traffic became easier to see.
+
+Lessons Learned
+
+Operational dashboards should often exclude internal scrape endpoints from application traffic panels.
+
+Issue
+
+Swagger/OpenAPI traffic added noise to endpoint traffic panels.
+
+Symptoms
+
+/docs and /openapi.json appeared in endpoint traffic visualizations.
+
+Root Cause
+
+Manual Swagger usage generated traffic that was useful for testing but noisy for operational dashboards.
+
+Resolution
+
+Recommended excluding docs/OpenAPI paths when needed:
+
+sum by (path) (
+  rate(
+    asset_service_http_request_duration_seconds_count{
+      path!="/metrics",
+      path!="/docs",
+      path!="/openapi.json"
+    }[5m]
+  )
+)
+Validation
+
+Dashboard became more focused on real API traffic.
+
+Lessons Learned
+
+Dashboard queries should distinguish user/API traffic from tooling traffic.
+
+Issue
+
+Asset service status card needed to be converted from graph to health indicator.
+
+Symptoms
+
+The up{job="asset-service"} query displayed as a time-series graph.
+
+Root Cause
+
+The visualization type was still set to Time series.
+
+Resolution
+
+Changed visualization type to Stat.
+
+Validation
+
+Panel displayed a clear 1 for healthy asset-service status.
+
+Lessons Learned
+
+Availability checks are easier to read as Stat panels than time-series charts.
+
+Issue
+
+Auth service status card showed asset-service data instead of auth-service data.
+
+Symptoms
+
+The Auth Service Status panel displayed only asset-service-related data.
+
+Root Cause
+
+Prometheus was only scraping asset-service at that time.
+
+Resolution
+
+Added an auth-service scrape job to Prometheus configuration.
+
+Validation
+
+Prometheus began attempting to scrape auth-service.
+
+Lessons Learned
+
+Every service must be explicitly added to Prometheus scrape configuration.
+
+Issue
+
+Prometheus restart appeared to hang after adding auth-service scraping.
+
+Symptoms
+
+Prometheus did not restart cleanly after editing prometheus.yml.
+
+Root Cause
+
+The Prometheus configuration contained a duplicate static_configs field.
+
+Resolution
+
+Corrected prometheus.yml to use separate scrape jobs:
+
+scrape_configs:
+  - job_name: "asset-service"
+    static_configs:
+      - targets: ["asset_service:8000"]
+
+  - job_name: "auth-service"
+    static_configs:
+      - targets: ["auth_service:8000"]
+Validation
+
+Prometheus logs showed:
+
+Server is ready to receive web requests.
+Lessons Learned
+
+Prometheus YAML is sensitive to structure and duplicate fields.
+
+Issue
+
+Auth-service target appeared in Prometheus but showed HTTP 404.
+
+Symptoms
+
+Prometheus targets page showed auth-service as down with a 404 on /metrics.
+
+Root Cause
+
+The auth service did not expose a /metrics endpoint yet.
+
+Resolution
+
+Added Prometheus FastAPI instrumentation to auth_service/main.py:
+
+from prometheus_fastapi_instrumentator import Instrumentator
+
+Instrumentator().instrument(app).expose(app)
+Validation
+
+The /metrics endpoint became available after rebuilding the service.
+
+Lessons Learned
+
+Adding a Prometheus scrape target is not enough; the application must expose a metrics endpoint.
+
+Issue
+
+Browser access to auth-service metrics on port 8000 hit the wrong service.
+
+Symptoms
+
+Opening:
+
+http://localhost:8000/metrics
+
+did not show auth-service metrics.
+
+Root Cause
+
+Port 8000 was mapped to the Nginx reverse proxy, not directly to auth_service.
+
+Resolution
+
+Used the direct auth-service host port:
+
+http://localhost:8002/metrics
+Validation
+
+Auth-service metrics loaded from port 8002.
+
+Lessons Learned
+
+Always distinguish reverse-proxy ports from direct service ports.
+
+Issue
+
+Auth-service direct port initially did not respond.
+
+Symptoms
+
+http://localhost:8002/metrics failed to load.
+
+Root Cause
+
+The auth_service container was not running.
+
+Resolution
+
+Checked container state:
+
+docker compose ps
+
+and restarted/rebuilt auth_service.
+
+Validation
+
+auth_service appeared in Docker Compose status after rebuild.
+
+Lessons Learned
+
+Before troubleshooting networking, verify the target container is running.
+
+Issue
+
+auth_service container was missing from docker compose ps.
+
+Symptoms
+
+docker compose ps listed asset_service, Grafana, Postgres, Prometheus, and reverse proxy, but not auth_service.
+
+Root Cause
+
+auth_service was crashing during startup.
+
+Resolution
+
+Checked logs:
+
+docker compose logs auth_service --tail=80
+Validation
+
+Logs revealed the exact Python import error.
+
+Lessons Learned
+
+A missing service in docker compose ps often means the container exited immediately after startup.
+
+Issue
+
+auth_service crashed after adding Prometheus instrumentation.
+
+Symptoms
+
+Logs showed:
+
+ModuleNotFoundError: No module named 'prometheus_fastapi_instrumentator'
+Root Cause
+
+The instrumentation package was imported in code but not installed in the auth service container.
+
+Resolution
+
+Added the dependency to services/auth_service/requirements.txt:
+
+prometheus-fastapi-instrumentator
+
+Then rebuilt:
+
+docker compose up -d --build auth_service
+Validation
+
+auth_service started successfully.
+
+Lessons Learned
+
+Any new Python import used inside a container must be added to that service’s requirements file.
+
+Issue
+
+Auth service metrics needed validation after dependency fix.
+
+Symptoms
+
+Needed to confirm whether /metrics was actually exposed after rebuild.
+
+Root Cause
+
+Instrumentation was newly added and required endpoint validation.
+
+Resolution
+
+Opened:
+
+http://localhost:8002/metrics
+Validation
+
+Metrics output appeared, including:
+
+python_gc_objects_collected_total
+process_cpu_seconds_total
+http_requests_total
+http_request_duration_seconds
+Lessons Learned
+
+Direct endpoint validation is the fastest way to confirm service instrumentation.
+
+Issue
+
+Prometheus auth-service target needed final validation.
+
+Symptoms
+
+After metrics were exposed, Prometheus still needed to re-scrape auth-service.
+
+Root Cause
+
+Prometheus target health updates only after scrape attempts.
+
+Resolution
+
+Refreshed:
+
+http://localhost:9090/targets
+Validation
+
+auth-service showed UP.
+
+Lessons Learned
+
+After fixing metrics endpoints, always validate in Prometheus targets before relying on Grafana panels.
+
+Issue
+
+Auth Service Status Grafana panel required the correct job label.
+
+Symptoms
+
+Auth-service status panel initially could not show data.
+
+Root Cause
+
+The correct Prometheus job label only existed after auth-service was added and successfully scraped.
+
+Resolution
+
+Used:
+
+up{job="auth-service"}
+Validation
+
+Grafana displayed auth-service as healthy.
+
+Lessons Learned
+
+Grafana service health cards depend on consistent Prometheus job naming.
+
+Issue
+
+Database health card did not have direct Postgres metrics available.
+
+Symptoms
+
+A direct query like:
+
+up{job="postgres"}
+
+was not available.
+
+Root Cause
+
+No PostgreSQL exporter had been added yet.
+
+Resolution
+
+Used application-level database health endpoint traffic as a temporary health signal.
+
+Validation
+
+Database health checks were visible through application metrics.
+
+Lessons Learned
+
+True database infrastructure metrics require a database exporter.
+
+Issue
+
+CPU usage panel needed a process-level metric.
+
+Symptoms
+
+Needed a dashboard panel for runtime CPU behavior.
+
+Root Cause
+
+CPU telemetry was available through Prometheus client process metrics.
+
+Resolution
+
+Used:
+
+rate(process_cpu_seconds_total[1m])
+Validation
+
+CPU usage panel populated.
+
+Lessons Learned
+
+Process-level metrics provide useful baseline runtime visibility before container-level exporters are added.
+
+Issue
+
+Memory usage panel needed a process-level metric.
+
+Symptoms
+
+Needed a dashboard panel for runtime memory behavior.
+
+Root Cause
+
+Memory telemetry was available through Prometheus client process metrics.
+
+Resolution
+
+Used:
+
+process_resident_memory_bytes
+Validation
+
+Memory usage panel populated.
+
+Lessons Learned
+
+Resident memory is a useful starting point for service memory dashboards.
+
+Issue
+
+Observability coverage was initially inconsistent across services.
+
+Symptoms
+
+asset_service exposed metrics, but auth_service did not.
+
+Root Cause
+
+Instrumentation had been implemented service-by-service rather than standardized across the platform.
+
+Resolution
+
+Added Prometheus instrumentation to auth_service and configured Prometheus to scrape both services.
+
+Validation
+
+Both asset-service and auth-service showed healthy in Prometheus and Grafana.
+
+Lessons Learned
+
+Observability should be treated as a platform-wide baseline requirement for every service.
