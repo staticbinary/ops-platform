@@ -2262,3 +2262,114 @@ Both asset-service and auth-service showed healthy in Prometheus and Grafana.
 Lessons Learned
 
 Observability should be treated as a platform-wide baseline requirement for every service.
+
+## Issue
+### Symptoms
+Grafana per-service CPU dashboard panels displayed no data despite cAdvisor running and Prometheus targets appearing healthy.
+
+### Root Cause
+The original PromQL queries depended on Docker Compose metadata labels (`container_label_com_docker_compose_service`) that were not exposed by the WSL2/Docker Desktop cAdvisor environment.
+
+### Resolution
+Validated cAdvisor metric exposure directly through:
+- http://localhost:8080/metrics
+- Prometheus query testing
+
+Replaced label-dependent PromQL queries with direct container ID matching:
+
+```promql
+rate(container_cpu_usage_seconds_total{
+  id=~"/docker/.*",
+  cpu="total"
+}[5m]) * 100
+
+## Issue
+### Symptoms
+Grafana memory telemetry panels initially failed to display meaningful infrastructure usage trends.
+
+### Root Cause
+Grafana auto-unit detection and initial query structure were not aligned with container telemetry formatting.
+
+### Resolution
+Created dedicated memory telemetry panels using:
+
+```promql
+container_memory_usage_bytes{
+  id=~"/docker/.*"
+}
+
+## Issue
+### Symptoms
+Promtail successfully started but Grafana Loki queries returned no container logs.
+
+### Root Cause
+WSL2/Docker Desktop did not expose Docker JSON log files under:
+`/var/lib/docker/containers/*/*.log`
+
+The mounted log directory inside the Promtail container was effectively empty.
+
+### Resolution
+Switched Promtail from filesystem log scraping to Docker service discovery using Docker socket integration.
+
+Updated Promtail configuration to use:
+
+```yaml
+docker_sd_configs:
+  - host: unix:///var/run/docker.sock
+
+## Issue
+### Symptoms
+Security dashboard panels for:
+- auth.failed
+- permission.denied
+- token.invalid
+- token.expired
+
+initially displayed no data.
+
+### Root Cause
+Authentication and authorization failures were only generating generic HTTP status code responses without explicit structured security telemetry events.
+
+### Resolution
+Implemented structured security event logging inside `auth.py` and `main.py`:
+- auth.failed
+- permission.denied
+- token.invalid
+- token.expired
+
+Added:
+- category
+- event
+- reason
+- client
+- path
+- method
+- outcome
+- user_email
+
+to structured JSON log payloads.
+
+### Validation
+Grafana Loki security telemetry panels successfully populated during failed authentication and authorization testing.
+
+### Lessons Learned
+Operational observability and security observability require intentional structured event design rather than reliance on generic HTTP response codes.
+
+## Issue
+### Symptoms
+Grafana SMTP test notifications failed authentication repeatedly.
+
+### Root Cause
+Several SMTP configuration mismatches existed:
+- Proton Mail free tier does not support SMTP app-password authentication
+- Grafana SMTP environment variables still referenced Proton SMTP host/user
+- Gmail app password initially included whitespace formatting
+
+### Resolution
+Migrated SMTP integration to Gmail app-password authentication.
+
+Updated:
+```yaml
+GF_SMTP_HOST: "smtp.gmail.com:587"
+GF_SMTP_USER: "staticbinaryops@gmail.com"
+GF_SMTP_FROM_ADDRESS: "staticbinaryops@gmail.com"

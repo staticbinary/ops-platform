@@ -1,4 +1,4 @@
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from prometheus_fastapi_instrumentator import Instrumentator
 from sqlalchemy.orm import Session
@@ -11,6 +11,7 @@ app = FastAPI(title="Auth Service")
 Instrumentator().instrument(app).expose(app)
 
 Base.metadata.create_all(bind=engine)
+
 
 @app.get("/health")
 def health():
@@ -51,6 +52,7 @@ def register_user(
 
 @app.post("/login")
 def login_user(
+    request: Request,
     user: schemas.UserLogin,
     db: Session = Depends(get_db)
 ):
@@ -69,6 +71,13 @@ def login_user(
             detail="User not found"
         )
 
+        auth.log_security_event(
+            event="auth.failed",
+            reason="user_not_found",
+            request=request,
+            user_email=user.email
+        )
+
         raise HTTPException(
             status_code=401,
             detail="Invalid email or password"
@@ -84,6 +93,13 @@ def login_user(
             outcome="failure",
             user_email=user.email,
             detail="Invalid password"
+        )
+
+        auth.log_security_event(
+            event="auth.failed",
+            reason="invalid_password",
+            request=request,
+            user_email=user.email
         )
 
         raise HTTPException(
@@ -115,6 +131,7 @@ def login_user(
 
 @app.post("/token")
 def token_login(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
@@ -133,6 +150,13 @@ def token_login(
             detail="User not found"
         )
 
+        auth.log_security_event(
+            event="auth.failed",
+            reason="user_not_found",
+            request=request,
+            user_email=form_data.username
+        )
+
         raise HTTPException(
             status_code=401,
             detail="Invalid email or password"
@@ -148,6 +172,13 @@ def token_login(
             outcome="failure",
             user_email=form_data.username,
             detail="Invalid password"
+        )
+
+        auth.log_security_event(
+            event="auth.failed",
+            reason="invalid_password",
+            request=request,
+            user_email=form_data.username
         )
 
         raise HTTPException(
@@ -192,6 +223,7 @@ def admin_only(
         "user": current_user
     }
 
+
 @app.get("/audit", response_model=list[schemas.AuditLogResponse])
 def read_audit_logs(
     current_user: dict = Depends(auth.require_role("admin")),
@@ -204,6 +236,7 @@ def read_audit_logs(
     )
 
     return logs
+
 
 @app.post("/dev/promote-admin/{email}", response_model=schemas.UserResponse)
 def promote_user_to_admin(

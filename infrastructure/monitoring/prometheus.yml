@@ -9,3 +9,7 @@ scrape_configs:
   - job_name: "auth-service"
     static_configs:
       - targets: ["auth_service:8000"]
+
+  - job_name: "cadvisor"
+    static_configs:
+      - targets: ["cadvisor:8080"]

@@ -1468,6 +1468,66 @@ This gives the platform enterprise-style troubleshooting visibility before addit
 - Integration-ready monitoring foundation
 - Security-centric operational visibility
 
+## Phase 5.6 — Observability, Security Telemetry, and Alerting
+
+### Completed
+- Integrated cAdvisor container telemetry
+- Added Prometheus infrastructure scraping
+- Built per-container CPU telemetry dashboards
+- Built per-container memory telemetry dashboards
+- Added Prometheus scrape health monitoring
+- Integrated Loki centralized logging
+- Integrated Promtail Docker log shipping
+- Enabled structured JSON log ingestion
+- Added operational log dashboard panels
+- Added security telemetry dashboard panels
+- Implemented structured auth/security event logging
+- Added:
+  - auth.failed
+  - permission.denied
+  - token.invalid
+  - token.expired
+- Built security event rate telemetry graphs
+- Built operational HTTP error rate graphs
+- Configured Grafana SMTP alert delivery
+- Implemented initial alerting pipeline
+- Created first production-style availability alert rule
+
+### Current Architecture State
+The Ops Platform now contains:
+- Metrics plane
+- Logging plane
+- Security telemetry plane
+- Infrastructure telemetry plane
+- Alerting pipeline
+
+### Immediate Next Priorities
+- Top failing endpoint analytics
+- Top auth abuse IP analytics
+- Alert tuning and notification policies
+- Request latency distribution analytics
+- Structured error categorization
+- Dashboard variable filtering
+- Service-level dashboard organization
+
+### Future Observability Expansion
+- OpenTelemetry instrumentation
+- Tempo distributed tracing
+- Correlation ID propagation across services
+- Security anomaly dashboards
+- Audit log correlation
+- Rate-limit telemetry
+- SIEM integration readiness
+- Slack/Discord/webhook alert routing
+- Long-term log retention strategy
+
+### Long-Term Platform Engineering Goals
+- Service isolation and graceful degradation
+- Fault-domain separation
+- Independent telemetry survivability
+- Recovery-oriented architecture
+- Security-first operational analytics
+- Full observability correlation across metrics, logs, traces, and security events
 
 
 
