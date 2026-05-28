@@ -2373,3 +2373,442 @@ Updated:
 GF_SMTP_HOST: "smtp.gmail.com:587"
 GF_SMTP_USER: "staticbinaryops@gmail.com"
 GF_SMTP_FROM_ADDRESS: "staticbinaryops@gmail.com"
+
+## Issue
+
+### Symptoms
+
+Grafana alert emails were not being delivered after SMTP configuration.
+
+### Root Cause
+
+Grafana SMTP configuration used Gmail SMTP settings initially, while the environment later transitioned toward Proton Mail SMTP configuration and required consistent container environment variables.
+
+### Resolution
+
+Updated Grafana SMTP environment variables in `docker-compose.yml`, validated SMTP configuration inside the running Grafana container, and rebuilt/restarted the Grafana service.
+
+### Validation
+
+* Verified SMTP variables inside the container with:
+
+  ```bash
+  docker compose exec grafana env | grep GF_SMTP
+  ```
+* Successfully generated and received Grafana alert test emails.
+
+### Lessons Learned
+
+* SMTP configuration should be externally validated from inside containers.
+* Alerting infrastructure should be validated early before larger observability expansion.
+* Consistent mail provider configuration avoids future operational confusion.
+
+---
+
+## Issue
+
+### Symptoms
+
+Grafana dashboard panels became empty when Prometheus or dependent telemetry services were unavailable.
+
+### Root Cause
+
+Grafana dashboards depended on Prometheus query availability for visualization rendering.
+
+### Resolution
+
+Reviewed service dependency behavior and intentionally shifted architecture philosophy toward graceful degradation instead of hard service coupling.
+
+### Validation
+
+* Verified Grafana remained operational even during Prometheus outages.
+* Confirmed only visualization data disappeared while the Grafana service itself remained healthy.
+
+### Lessons Learned
+
+* Observability services should fail independently whenever possible.
+* Service survivability is more important than maintaining every visualization during outages.
+* Graceful degradation is a critical platform engineering principle.
+
+---
+
+## Issue
+
+### Symptoms
+
+Docker service startup order occasionally caused dependent services to initialize before PostgreSQL or other infrastructure dependencies were healthy.
+
+### Root Cause
+
+Initial `depends_on` configuration only validated container startup order rather than service health readiness.
+
+### Resolution
+
+Added Docker health checks and upgraded `depends_on` to use:
+
+```yaml
+condition: service_healthy
+```
+
+### Validation
+
+* PostgreSQL health checks completed before dependent service startup.
+* `asset_service` and `auth_service` waited for healthy database initialization before starting.
+
+### Lessons Learned
+
+* Container startup does not equal application readiness.
+* Health-aware dependencies significantly improve orchestration reliability.
+* Proper startup sequencing improves operational resilience.
+
+---
+
+## Issue
+
+### Symptoms
+
+`asset_service` readiness endpoint failed after PostgreSQL outage simulation.
+
+### Root Cause
+
+Database retry logic did not correctly receive the SQLAlchemy session object required for rollback handling.
+
+### Resolution
+
+Updated:
+
+```python
+retry_database_operation(..., db=db)
+```
+
+within `/health/ready` readiness validation logic.
+
+### Validation
+
+* Successfully stopped PostgreSQL and validated:
+
+  ```json
+  {
+    "status": "not_ready"
+  }
+  ```
+* Successfully restarted PostgreSQL and validated automatic readiness recovery.
+
+### Lessons Learned
+
+* Resilience testing exposes hidden dependency assumptions.
+* Retry utilities should always support explicit rollback handling.
+* Readiness checks are critical for operational survivability.
+
+---
+
+## Issue
+
+### Symptoms
+
+`dependency.database.unavailable` messages appeared as plain text rather than structured JSON logs.
+
+### Root Cause
+
+Database dependency failure events were not routed through centralized structured logging utilities.
+
+### Resolution
+
+Created:
+
+```python
+build_dependency_health_log()
+```
+
+inside `logging_utils.py` and migrated dependency telemetry into structured JSON logging.
+
+### Validation
+
+* Dependency failures appeared in structured JSON format.
+* Loki correctly parsed dependency events.
+
+### Lessons Learned
+
+* Operational telemetry should always use centralized structured logging.
+* Plain text logs reduce searchability and observability value.
+* Infrastructure telemetry should follow the same schema as application telemetry.
+
+---
+
+## Issue
+
+### Symptoms
+
+Request correlation IDs were not consistently propagated across request lifecycle logs.
+
+### Root Cause
+
+Middleware request context management lacked centralized request ID handling and cleanup.
+
+### Resolution
+
+Implemented:
+
+* `RequestIDMiddleware`
+* request context variables
+* request lifecycle correlation
+* request cleanup/reset handling
+
+### Validation
+
+* Request IDs consistently appeared across:
+
+  * request.started
+  * request.completed
+  * dependency events
+  * auth events
+
+### Lessons Learned
+
+* Correlation IDs are foundational for operational debugging.
+* Middleware-level context management greatly improves observability consistency.
+* Cleanup/reset handling is important for long-running async services.
+
+---
+
+## Issue
+
+### Symptoms
+
+Tempo container continuously restarted after deployment.
+
+### Root Cause
+
+Tempo configuration schema used unsupported fields:
+
+```yaml
+compactor:
+ingester:
+compaction:
+```
+
+for the deployed Tempo image version.
+
+### Resolution
+
+Reduced Tempo configuration to a minimal supported schema using only:
+
+* server
+* distributor
+* storage
+
+### Validation
+
+* Tempo container started successfully.
+* OTLP receivers initialized correctly.
+
+### Lessons Learned
+
+* Grafana ecosystem components can have significant version-specific configuration differences.
+* Minimal working configurations are best for initial deployments.
+* Observability components should be validated incrementally.
+
+---
+
+## Issue
+
+### Symptoms
+
+OpenTelemetry traces were not visible in Grafana Tempo despite successful service instrumentation.
+
+### Root Cause
+
+Tempo OTLP receivers bound only to:
+
+```text
+127.0.0.1
+```
+
+inside the Tempo container, preventing Docker network access from other containers.
+
+### Resolution
+
+Updated Tempo OTLP receiver bindings to:
+
+```yaml
+endpoint: 0.0.0.0:4317
+endpoint: 0.0.0.0:4318
+```
+
+### Validation
+
+* Tempo OTLP receivers became reachable from other containers.
+* Traces successfully appeared inside Grafana Explore.
+
+### Lessons Learned
+
+* Container-local loopback interfaces are inaccessible across Docker networks.
+* Observability pipelines require explicit network exposure validation.
+* Receiver binding configuration is critical in distributed systems.
+
+---
+
+## Issue
+
+### Symptoms
+
+OpenTelemetry traces were not exporting successfully from `asset_service`.
+
+### Root Cause
+
+Incorrect OTLP gRPC endpoint formatting:
+
+```python
+endpoint="http://tempo:4317"
+```
+
+### Resolution
+
+Updated exporter configuration to:
+
+```python
+endpoint="tempo:4317"
+```
+
+and later validated HTTP OTLP exporter compatibility as well.
+
+### Validation
+
+* Trace export errors disappeared.
+* Tempo successfully ingested traces.
+
+### Lessons Learned
+
+* OTLP gRPC exporters require raw host:port formatting.
+* Exporter transport protocols must match receiver configuration.
+* Telemetry transport validation is critical during observability rollout.
+
+---
+
+## Issue
+
+### Symptoms
+
+Trace queries returned zero results despite successful Tempo deployment.
+
+### Root Cause
+
+Grafana Tempo query syntax used incorrect selector format.
+
+### Resolution
+
+Updated trace queries to:
+
+```text
+{resource.service.name="asset-service"}
+```
+
+### Validation
+
+* Traces successfully appeared in Grafana Explore.
+* Trace search functionality became operational.
+
+### Lessons Learned
+
+* Tempo queries use label selector syntax similar to Loki.
+* Trace ingestion and trace querying are separate validation steps.
+* Query syntax correctness is essential during observability validation.
+
+---
+
+## Issue
+
+### Symptoms
+
+Structured logs lacked trace correlation metadata.
+
+### Root Cause
+
+OpenTelemetry span context was not injected into centralized structured logging.
+
+### Resolution
+
+Added:
+
+* `get_trace_context()`
+* `trace_id`
+* `span_id`
+
+to base structured logging events.
+
+### Validation
+
+* Structured logs displayed trace correlation fields.
+* Loki logs matched Tempo traces successfully.
+
+### Lessons Learned
+
+* Logs and traces become exponentially more valuable when correlated.
+* Shared telemetry identifiers dramatically improve investigations.
+* Trace-aware logging is foundational for mature observability systems.
+
+---
+
+## Issue
+
+### Symptoms
+
+Multi-service tracing existed independently but lacked cross-service propagation.
+
+### Root Cause
+
+`asset_service` used local JWT validation rather than calling `auth_service` remotely.
+
+### Resolution
+
+Instrumented both services independently and added outbound Requests instrumentation to prepare for future distributed trace propagation.
+
+### Validation
+
+* `asset_service` traces operational.
+* `auth_service` traces operational.
+* Requests instrumentation active.
+
+### Lessons Learned
+
+* True distributed tracing requires actual inter-service communication.
+* Independent instrumentation is still valuable foundational work.
+* Trace propagation readiness should be built before architectural expansion.
+
+---
+
+## Issue
+
+### Symptoms
+
+Request metadata was not visible inside Tempo spans.
+
+### Root Cause
+
+OpenTelemetry spans were not enriched with request lifecycle metadata.
+
+### Resolution
+
+Added middleware-level trace enrichment:
+
+* request ID
+* HTTP method
+* request path
+* client IP
+
+using:
+
+```python
+current_span.set_attribute(...)
+```
+
+### Validation
+
+* Request attributes appeared inside Grafana Tempo spans.
+* Trace investigation visibility improved significantly.
+
+### Lessons Learned
+
+* Raw traces are far less useful without enrichment.
+* Middleware-level enrichment provides consistent telemetry coverage.
+* Request metadata dramatically improves operational investigations.

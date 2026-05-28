@@ -2,11 +2,14 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from prometheus_fastapi_instrumentator import Instrumentator
 from sqlalchemy.orm import Session
+from app.tracing import setup_tracing
 
 from . import auth, models, schemas
 from .database import Base, engine, get_db
 
 app = FastAPI(title="Auth Service")
+
+setup_tracing(app)
 
 Instrumentator().instrument(app).expose(app)
 

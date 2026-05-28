@@ -1529,6 +1529,434 @@ The Ops Platform now contains:
 - Security-first operational analytics
 - Full observability correlation across metrics, logs, traces, and security events
 
+# Phase 5.7 — Centralized Logging & Operational Telemetry
+
+## 5.7.1 — Loki Deployment
+
+### Completed
+
+* Deployed Grafana Loki container
+* Integrated Loki into observability network
+* Configured centralized log aggregation architecture
+* Established long-term structured logging pipeline
+* Added Loki datasource to Grafana
+
+### Outcomes
+
+* Centralized log storage operational
+* Grafana log exploration operational
+* Log retention foundation established
+* Structured observability stack expanded
+
+---
+
+## 5.7.2 — Promtail Log Shipping
+
+### Completed
+
+* Deployed Promtail container
+* Configured Docker container log ingestion
+* Added Docker socket integration
+* Configured container log scraping
+* Integrated Promtail with Loki backend
+
+### Outcomes
+
+* Automatic container log shipping operational
+* Centralized Docker log aggregation operational
+* Multi-service log ingestion operational
+* Log transport pipeline validated
+
+---
+
+## 5.7.3 — Structured JSON Logging
+
+### Completed
+
+* Implemented centralized logging utilities
+* Standardized structured JSON log schema
+* Added timestamp normalization
+* Added service/environment tagging
+* Added severity classification
+* Added event categorization
+* Added request lifecycle logging
+
+### Structured Log Fields
+
+* timestamp
+* service
+* environment
+* severity
+* category
+* event
+* request_id
+* method
+* path
+* status_code
+* duration_ms
+
+### Outcomes
+
+* Machine-readable logs operational
+* Searchable operational telemetry established
+* Consistent cross-service logging structure established
+* SIEM-ready logging foundation created
+
+---
+
+## 5.7.4 — Security & Authorization Telemetry
+
+### Completed
+
+* Added authentication success logging
+* Added authentication failure logging
+* Added permission denial logging
+* Added authorization telemetry
+* Added token validation telemetry
+* Added source IP logging
+* Added actor/role telemetry
+
+### Security Telemetry Events
+
+* `auth.success`
+* `auth.failure`
+* `permission.denied`
+
+### Outcomes
+
+* Security-focused telemetry operational
+* Authentication monitoring operational
+* Authorization failure tracking operational
+* Security investigation workflows improved
+
+---
+
+## 5.7.5 — Dependency Health Telemetry
+
+### Completed
+
+* Added dependency health event logging
+* Added database availability telemetry
+* Added dependency failure telemetry
+* Added dependency severity classification
+* Added infrastructure event categorization
+
+### Dependency Events
+
+* `dependency.database.available`
+* `dependency.database.unavailable`
+
+### Outcomes
+
+* Infrastructure telemetry operational
+* Dependency outage visibility operational
+* Readiness failure observability improved
+* Platform resilience visibility improved
+
+---
+
+## 5.7.6 — Request Correlation & Middleware Telemetry
+
+### Completed
+
+* Added request ID middleware
+* Added request correlation IDs
+* Added request lifecycle instrumentation
+* Added request timing telemetry
+* Added request failure telemetry
+* Added source IP extraction support
+* Added forwarded header support
+
+### Request Lifecycle Events
+
+* `request.started`
+* `request.completed`
+* `request.failed`
+
+### Outcomes
+
+* End-to-end request tracking operational
+* Cross-log request correlation operational
+* Operational debugging workflows improved
+* Incident investigation visibility improved
+
+---
+
+## 5.7.7 — Log Redaction & Operational Hardening
+
+### Completed
+
+* Added sensitive data redaction utilities
+* Added defensive logging controls
+* Added structured logging sanitization
+* Hardened operational telemetry handling
+* Reduced risk of sensitive data leakage
+
+### Outcomes
+
+* Safer operational logging architecture
+* Improved compliance posture
+* Reduced credential exposure risk
+* Production-oriented telemetry controls established
+
+---
+
+## 5.7.8 — Grafana Operational Logging Dashboards
+
+### Completed
+
+* Built Grafana Loki dashboards
+* Added log severity visualization panels
+* Added dependency outage panels
+* Added authentication failure panels
+* Added authorization telemetry panels
+* Added request telemetry panels
+* Added infrastructure visibility dashboards
+
+### Dashboard Categories
+
+* Application telemetry
+* Infrastructure telemetry
+* Authentication telemetry
+* Authorization telemetry
+* Dependency telemetry
+* Request lifecycle telemetry
+
+### Outcomes
+
+* Centralized operational visibility operational
+* Real-time log investigation workflows operational
+* Dashboard-driven troubleshooting operational
+* Platform observability maturity significantly improved
+
+---
+
+# Phase 5.7 Architectural Outcomes
+
+## Centralized Logging Stack
+
+* Loki → Log storage
+* Promtail → Log shipping
+* Grafana → Visualization & analysis
+
+## Logging Capabilities
+
+* Structured JSON logging
+* Request correlation
+* Security telemetry
+* Dependency telemetry
+* Severity classification
+* Event categorization
+* Operational dashboards
+* Cross-service log aggregation
+
+## Operational Improvements
+
+* Faster incident investigation
+* Improved outage visibility
+* Enhanced security telemetry
+* Better request traceability
+* Improved operational debugging
+* SIEM-oriented telemetry foundations
+
+# Phase 5.8 — Advanced Observability & Distributed Telemetry
+
+## 5.8.1 — OpenTelemetry Foundation
+
+### Completed
+
+* Added OpenTelemetry instrumentation framework to `asset_service`
+* Implemented FastAPI automatic trace instrumentation
+* Added OTLP exporter support
+* Added Tempo integration groundwork
+* Established trace generation pipeline
+* Validated instrumentation startup and service stability
+
+### Outcomes
+
+* Trace generation operational
+* Automatic request span creation enabled
+* Trace export architecture established
+* Observability stack expanded beyond metrics/logs
+
+---
+
+## 5.8.2 — Grafana Tempo Integration
+
+### Completed
+
+* Deployed Grafana Tempo container
+* Configured OTLP gRPC and HTTP receivers
+* Added Tempo datasource to Grafana
+* Integrated Tempo into observability network
+* Validated trace ingestion pipeline
+* Corrected OTLP receiver interface binding issues
+
+### Outcomes
+
+* Distributed trace storage operational
+* Tempo query/search functionality operational
+* Grafana trace visualization operational
+* Unified telemetry stack established
+
+### Observability Stack
+
+* Prometheus → Metrics
+* Loki → Logs
+* Tempo → Traces
+* Grafana → Unified Observability
+
+---
+
+## 5.8.3 — Trace ↔ Log Correlation
+
+### Completed
+
+* Added trace context extraction to structured logging
+* Injected `trace_id` into all structured log events
+* Injected `span_id` into all structured log events
+* Linked request lifecycle logs to Tempo traces
+* Linked dependency health events to request traces
+* Correlated operational telemetry across services
+
+### Outcomes
+
+* Trace-aware logging operational
+* Loki ↔ Tempo correlation operational
+* Cross-telemetry investigation workflow established
+* Request-level operational visibility significantly improved
+
+### Correlated Telemetry
+
+* Request lifecycle events
+* Dependency health events
+* Authentication events
+* Authorization failures
+* Validation events
+* Metrics collection paths
+
+---
+
+## 5.8.4 — Multi-Service Trace Instrumentation
+
+### Completed
+
+* Instrumented `auth_service` with OpenTelemetry
+* Added OTLP exporters to `auth_service`
+* Added Tempo trace export support
+* Added Requests instrumentation to `asset_service`
+* Validated independent service tracing
+* Established distributed tracing foundation
+
+### Outcomes
+
+* `asset_service` trace generation operational
+* `auth_service` trace generation operational
+* Service-level telemetry segmentation operational
+* Cross-service trace propagation foundation established
+
+### Current Architecture
+
+* Independent service tracing active
+* Shared Tempo backend operational
+* Distributed trace architecture prepared for future inter-service communication
+
+---
+
+## 5.8.5 — Trace Enrichment & Request Correlation
+
+### Completed
+
+* Added request context enrichment to spans
+* Added request metadata to traces
+* Added client IP enrichment to spans
+* Added endpoint path enrichment
+* Added request ID correlation
+* Added middleware-level span enrichment
+* Added request lifecycle telemetry correlation
+
+### Enriched Trace Attributes
+
+* `request.id`
+* `http.method`
+* `http.path`
+* `client.ip`
+
+### Outcomes
+
+* Full request correlation operational
+* Trace-aware incident investigation operational
+* Metrics ↔ Logs ↔ Traces correlation operational
+* Dependency event trace correlation operational
+* Operational observability maturity significantly increased
+
+---
+
+# Current Platform Observability Capabilities
+
+## Metrics
+
+* Prometheus metrics collection
+* Custom application metrics
+* Request latency metrics
+* Request throughput metrics
+* Dependency health metrics
+* Container telemetry via cAdvisor
+
+## Logs
+
+* Structured JSON logging
+* Severity classification
+* Category classification
+* Authentication telemetry
+* Authorization telemetry
+* Dependency telemetry
+* Request lifecycle telemetry
+* Trace-aware structured logging
+
+## Traces
+
+* Distributed request tracing
+* Tempo trace storage
+* FastAPI automatic instrumentation
+* Trace enrichment
+* Request correlation
+* Span context propagation foundation
+* Multi-service trace instrumentation
+
+---
+
+# Architectural Milestone Achieved
+
+The platform now supports enterprise-grade observability workflows including:
+
+* Metrics correlation
+* Log correlation
+* Trace correlation
+* Request lifecycle correlation
+* Dependency telemetry
+* Incident investigation workflows
+* Operational telemetry analysis
+* Distributed observability foundations
+* Security telemetry enrichment
+* SRE-oriented troubleshooting workflows
+
+---
+
+# Recommended Next Phase — 5.9 Incident Telemetry & Alert Correlation
+
+## Planned Objectives
+
+* Trace-aware alert workflows
+* High latency detection alerts
+* Dependency outage alerting
+* Authentication anomaly alerts
+* Rate-limit abuse detection
+* Service degradation alerts
+* Alert correlation dashboards
+* Incident response telemetry workflows
+* Trace-linked operational investigations
+* Service reliability alerting
 
 
 

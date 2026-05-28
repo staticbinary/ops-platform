@@ -1,9 +1,9 @@
 import time
 import uuid
 from contextvars import ContextVar
-from app.metrics import record_request_metric
 
 from fastapi import Request
+from opentelemetry import trace
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.logging_utils import (
@@ -12,6 +12,7 @@ from app.logging_utils import (
     build_request_started_log,
     log_event,
 )
+from app.metrics import record_request_metric
 
 
 request_id_context: ContextVar[str | None] = ContextVar(
@@ -45,15 +46,41 @@ def get_client_ip(request: Request) -> str | None:
     return request.client.host if request.client else None
 
 
+def enrich_current_span(
+    request_id: str,
+    method: str,
+    path: str,
+    client: str | None,
+):
+    current_span = trace.get_current_span()
+
+    if not current_span or not current_span.get_span_context().is_valid:
+        return
+
+    current_span.set_attribute("request.id", request_id)
+    current_span.set_attribute("http.method", method)
+    current_span.set_attribute("http.path", path)
+
+    if client:
+        current_span.set_attribute("client.ip", client)
+
+
 class RequestIDMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
-        request_id_context.set(request_id)
+        request_id_token = request_id_context.set(request_id)
 
         method = request.method
         path = request.url.path
         client = get_client_ip(request)
-        source_ip_context.set(client)
+        source_ip_token = source_ip_context.set(client)
+
+        enrich_current_span(
+            request_id=request_id,
+            method=method,
+            path=path,
+            client=client,
+        )
 
         start_time = time.perf_counter()
 
@@ -116,3 +143,7 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
             )
 
             raise
+
+        finally:
+            request_id_context.reset(request_id_token)
+            source_ip_context.reset(source_ip_token)

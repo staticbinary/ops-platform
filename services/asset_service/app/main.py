@@ -10,10 +10,13 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.body_size_limit import BodySizeLimitMiddleware
+from app.logging_utils import build_dependency_health_log, log_event
 from app.metrics import metrics_response
 from app.rate_limit import RateLimitMiddleware
 from app.request_context import RequestIDMiddleware, get_request_id
+from app.retry_utils import retry_database_operation
 from app.security_headers import SecurityHeadersMiddleware
+from app.tracing import setup_tracing
 
 from . import auth
 from .database import get_db
@@ -29,6 +32,8 @@ app = FastAPI(
     docs_url="/docs",
     openapi_url="/openapi.json",
 )
+
+setup_tracing(app)
 
 app.add_middleware(SecurityHeadersMiddleware)
 
@@ -135,10 +140,68 @@ def health():
     }
 
 
-@app.get("/metrics", tags=["Metrics"])
-def metrics():
-    return metrics_response()
+@app.get("/health/live", tags=["Health"])
+def health_live():
+    return {
+        "status": "alive",
+        "service": "asset-service",
+    }
 
+
+@app.get("/health/startup", tags=["Health"])
+def health_startup():
+    return {
+        "status": "started",
+        "service": "asset-service",
+    }
+
+@app.get("/health/ready", tags=["Health"])
+def health_ready(db: Session = Depends(get_db)):
+    try:
+        retry_database_operation(
+            lambda: db.execute(text("SELECT 1")),
+            db=db,
+        )
+
+        log_event(
+            build_dependency_health_log(
+                dependency="database",
+                status="available",
+                severity="info",
+            )
+        )
+
+        return {
+            "status": "ready",
+            "service": "asset-service",
+            "checks": {
+                "database": "ok",
+            },
+        }
+
+    except Exception as exc:
+        db.rollback()
+
+        log_event(
+            build_dependency_health_log(
+                dependency="database",
+                status="unavailable",
+                severity="critical",
+                error_type=type(exc).__name__,
+                error_message=str(exc),
+            )
+        )
+
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "not_ready",
+                "service": "asset-service",
+                "checks": {
+                    "database": "unavailable",
+                },
+            },
+        )
 
 @app.get("/db-health", tags=["Health"])
 def db_health(db: Session = Depends(get_db)):
@@ -163,9 +226,15 @@ def db_health(db: Session = Depends(get_db)):
 @app.get("/ready", tags=["Health"])
 def readiness_check():
     return {
-        "status": "ready",
+        "status": "deprecated",
+        "message": "Use /health/ready instead",
         "service": "asset-service",
     }
+
+
+@app.get("/metrics", tags=["Metrics"])
+def metrics():
+    return metrics_response()
 
 
 @app.post("/assets", response_model=AssetResponse, tags=["Assets"])
