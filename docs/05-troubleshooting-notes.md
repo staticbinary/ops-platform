@@ -2812,3 +2812,222 @@ current_span.set_attribute(...)
 * Raw traces are far less useful without enrichment.
 * Middleware-level enrichment provides consistent telemetry coverage.
 * Request metadata dramatically improves operational investigations.
+
+# Phase 5.9.1 Troubleshooting Notes
+
+## Issue
+### Symptoms
+
+- Docker commands unavailable after reboot
+- WSL reported Docker command missing
+- Docker Desktop integration failure reported
+
+### Root Cause
+
+- Docker Desktop WSL integration failed to reconnect after reboot
+
+### Resolution
+
+- Restarted Docker Desktop
+- Verified Ubuntu WSL integration
+- Restarted platform stack
+
+### Validation
+
+- Docker commands functional
+- Docker Compose services visible
+- Platform services accessible
+
+### Lessons Learned
+
+- Always verify Docker Desktop before opening project terminals after reboot
+- WSL integration failures can temporarily make Docker appear unavailable
+
+---
+
+## Issue
+### Symptoms
+
+- Asset Service Down alert remained Normal while service was offline
+- Prometheus target showed DOWN
+
+### Root Cause
+
+- Alert query logic conflicted with Grafana threshold evaluation
+
+### Resolution
+
+Replaced:
+
+```promql
+up{job="asset-service"} == 0
+```
+
+With:
+
+```promql
+up{job="asset-service"}
+```
+
+Threshold:
+
+```text
+IS BELOW 1
+```
+
+### Validation
+
+- Alert entered Pending
+- Alert entered Firing
+- Email notification received
+- Recovery notification received
+
+### Lessons Learned
+
+- Use native Prometheus metric values when possible
+- Avoid unnecessary Boolean conversions in alert expressions
+
+---
+
+## Issue
+### Symptoms
+
+- Prometheus Target Down alert repeatedly entered No Data state
+- Alert generated unnecessary notifications
+
+### Root Cause
+
+- Prometheus was not configured as a scrape target
+- Alert monitored a target that did not exist
+
+### Resolution
+
+- Paused Prometheus Target Down alert
+- Deferred until Prometheus self-monitoring is implemented
+
+### Validation
+
+- Alert noise eliminated
+- Remaining alerts continued functioning normally
+
+### Lessons Learned
+
+- Every alert should be actionable
+- No Data conditions require investigation before production use
+
+---
+
+## Issue
+### Symptoms
+
+- Asset Service telemetry missing from shared request metrics
+- Queries returned data for Auth Service only
+
+### Root Cause
+
+Asset Service used:
+
+```text
+asset_service_http_requests_total
+asset_service_http_request_duration_seconds
+```
+
+Auth Service used:
+
+```text
+http_requests_total
+http_request_duration_seconds
+```
+
+### Resolution
+
+- Standardized Asset Service metric naming
+- Added shared service labels
+
+### Validation
+
+Prometheus successfully returned:
+
+```promql
+http_requests_total{service="asset-service"}
+```
+
+### Lessons Learned
+
+- Shared telemetry standards simplify dashboards and alerting
+- Metric consistency should be enforced platform-wide
+
+---
+
+## Issue
+### Symptoms
+
+- Asset Service 5xx Error Alert returned No Data
+- Alert never entered Pending or Firing
+
+### Root Cause
+
+- No 5xx telemetry existed
+- Only 2xx status series were present
+
+### Resolution
+
+Implemented:
+
+```promql
+(
+  sum(
+    rate(
+      http_requests_total{
+        service="asset-service",
+        status="5xx"
+      }[5m]
+    )
+  )
+)
+or vector(0)
+```
+
+Added temporary endpoint to generate controlled HTTP 500 responses.
+
+### Validation
+
+- HTTP 500 generated successfully
+- Prometheus recorded status="5xx"
+- Alert entered Pending
+- Alert entered Firing
+- Email notification delivered
+
+### Lessons Learned
+
+- Application alerts require application failures for validation
+- Controlled testing endpoints are useful during alert validation
+- Use `or vector(0)` to eliminate No Data ambiguity
+
+---
+
+## Issue
+### Symptoms
+
+- Availability alerts only detected service outages
+- Application failures could occur without triggering alerts
+
+### Root Cause
+
+- Monitoring strategy initially focused on container availability
+
+### Resolution
+
+- Expanded monitoring to include application-level error telemetry
+- Implemented Asset Service 5xx Error Alert
+
+### Validation
+
+- Application-generated failures detected successfully
+- Alert pipeline validated without requiring service outage
+
+### Lessons Learned
+
+- Availability monitoring is necessary but insufficient
+- Error rate monitoring provides significantly more operational value
+- Future alert development should prioritize readiness, latency, and dependency health monitoring

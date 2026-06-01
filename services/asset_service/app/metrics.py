@@ -2,17 +2,33 @@ from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_
 from starlette.responses import Response
 
 
-REQUEST_COUNT = Counter(
-    "asset_service_http_requests_total",
-    "Total HTTP requests handled by asset service",
-    ["method", "path", "status_code"],
+HTTP_REQUESTS_TOTAL = Counter(
+    "http_requests_total",
+    "Total HTTP requests handled by the service",
+    ["service", "method", "handler", "status"],
 )
 
-REQUEST_LATENCY = Histogram(
-    "asset_service_http_request_duration_seconds",
+HTTP_REQUEST_DURATION_SECONDS = Histogram(
+    "http_request_duration_seconds",
     "HTTP request duration in seconds",
-    ["method", "path"],
+    ["service", "method", "handler"],
 )
+
+
+def normalize_status_code(status_code: int) -> str:
+    if 200 <= status_code < 300:
+        return "2xx"
+
+    if 300 <= status_code < 400:
+        return "3xx"
+
+    if 400 <= status_code < 500:
+        return "4xx"
+
+    if 500 <= status_code < 600:
+        return "5xx"
+
+    return "unknown"
 
 
 def record_request_metric(
@@ -21,15 +37,19 @@ def record_request_metric(
     status_code: int,
     duration_seconds: float,
 ):
-    REQUEST_COUNT.labels(
+    status = normalize_status_code(status_code)
+
+    HTTP_REQUESTS_TOTAL.labels(
+        service="asset-service",
         method=method,
-        path=path,
-        status_code=str(status_code),
+        handler=path,
+        status=status,
     ).inc()
 
-    REQUEST_LATENCY.labels(
+    HTTP_REQUEST_DURATION_SECONDS.labels(
+        service="asset-service",
         method=method,
-        path=path,
+        handler=path,
     ).observe(duration_seconds)
 
 

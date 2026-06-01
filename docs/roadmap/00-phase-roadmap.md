@@ -1958,6 +1958,189 @@ The platform now supports enterprise-grade observability workflows including:
 * Trace-linked operational investigations
 * Service reliability alerting
 
+# Phase 5.9.1 — Incident Telemetry & Operational Alerting
+
+## 5.9.1.1 Service Availability Alerting
+
+### Completed
+
+- Asset Service Down alert implemented and validated
+- Auth Service Down alert implemented and validated
+- cAdvisor Down alert implemented and validated
+
+### Validation Completed
+
+- Pending state transition verified
+- Firing state transition verified
+- Email notification delivery verified
+- Recovery notification delivery verified
+- Prometheus target detection verified
+- Grafana alert evaluation verified
+
+---
+
+## 5.9.1.2 Alert Pipeline Validation
+
+### Completed
+
+- Prometheus scrape target monitoring validated
+- Grafana alert engine validated
+- Notification routing validated
+- Email contact point validated
+- Alert lifecycle validation completed
+
+### Alert Lifecycle Validated
+
+```text
+Service Failure
+    ↓
+Prometheus Detection
+    ↓
+Grafana Evaluation
+    ↓
+Pending
+    ↓
+Firing
+    ↓
+Email Notification
+    ↓
+Service Recovery
+    ↓
+Recovery Notification
+```
+
+---
+
+## 5.9.1.3 HTTP Telemetry Standardization
+
+### Completed
+
+Asset Service metrics standardized to match Auth Service telemetry.
+
+### Previous Metrics
+
+```text
+asset_service_http_requests_total
+asset_service_http_request_duration_seconds
+```
+
+### New Metrics
+
+```text
+http_requests_total
+http_request_duration_seconds
+```
+
+### Benefits
+
+- Consistent platform telemetry
+- Simplified PromQL queries
+- Shared dashboard compatibility
+- Shared alert compatibility
+- Easier future service onboarding
+
+---
+
+## 5.9.1.4 Application Reliability Alerting
+
+### Completed
+
+Asset Service 5xx Error Alert implemented and validated.
+
+### Alert Query
+
+```promql
+(
+  sum(
+    rate(
+      http_requests_total{
+        service="asset-service",
+        status="5xx"
+      }[5m]
+    )
+  )
+)
+or vector(0)
+```
+
+### Validation
+
+- Controlled HTTP 500 responses generated
+- Prometheus ingested 5xx telemetry
+- Alert entered Pending state
+- Alert entered Firing state
+- Email notification delivered
+
+---
+
+## 5.9.1 Status
+
+### Completed
+
+- Asset Service Down
+- Auth Service Down
+- cAdvisor Down
+- Asset Service 5xx Errors
+- Unified HTTP telemetry
+
+### Paused
+
+- Prometheus Target Down
+
+Reason:
+
+```text
+Prometheus is not currently scraping itself.
+```
+
+Re-enable after Prometheus self-scrape configuration is implemented.
+
+---
+
+## 5.9.1 Remaining Work
+
+### Infrastructure
+
+- Loki Down Alert
+- Tempo Down Alert
+- Prometheus Self Monitoring Alert
+
+### Application Health
+
+- Readiness Failure Alert
+- Database Dependency Failure Alert
+
+### Performance
+
+- High Request Latency Alert
+
+---
+
+## Next Phase
+
+### Phase 5.9.2 — Operational Dashboards
+
+#### SRE Dashboard
+
+- Service health
+- Availability
+- Latency
+- Error rates
+- Dependency health
+
+#### Security Dashboard
+
+- Authentication failures
+- Permission denials
+- Request anomalies
+- Source IP telemetry
+
+#### Platform Dashboard
+
+- Metrics ingestion
+- Log ingestion
+- Trace volume
+- Observability platform health
 
 
 
