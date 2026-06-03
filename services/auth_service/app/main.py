@@ -1,24 +1,49 @@
+import time
+
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.security import OAuth2PasswordRequestForm
-from prometheus_fastapi_instrumentator import Instrumentator
 from sqlalchemy.orm import Session
+
+from app.metrics import metrics_response, record_request_metric
 from app.tracing import setup_tracing
 
 from . import auth, models, schemas
 from .database import Base, engine, get_db
 
+
 app = FastAPI(title="Auth Service")
 
 setup_tracing(app)
 
-Instrumentator().instrument(app).expose(app)
-
 Base.metadata.create_all(bind=engine)
+
+
+@app.middleware("http")
+async def metrics_middleware(request: Request, call_next):
+    start_time = time.perf_counter()
+
+    response = await call_next(request)
+
+    duration_seconds = time.perf_counter() - start_time
+
+    record_request_metric(
+        method=request.method,
+        path=request.url.path,
+        status_code=response.status_code,
+        duration_seconds=duration_seconds,
+    )
+
+    return response
 
 
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/metrics")
+def metrics():
+    return metrics_response()
 
 
 @app.post("/register", response_model=schemas.UserResponse)
