@@ -17,6 +17,41 @@ HTTP_REQUEST_DURATION_SECONDS = Histogram(
     ["service", "method", "handler"],
 )
 
+AUTH_LOGIN_SUCCESS_TOTAL = Counter(
+    "auth_login_success_total",
+    "Total successful authentication attempts",
+    ["service", "method"],
+)
+
+AUTH_LOGIN_FAILURE_TOTAL = Counter(
+    "auth_login_failure_total",
+    "Total failed authentication attempts",
+    ["service", "method", "reason"],
+)
+
+ROLE_CHANGE_TOTAL = Counter(
+    "role_change_total",
+    "Total role change events",
+    ["service", "outcome"],
+)
+
+INVALID_TOKEN_TOTAL = Counter(
+    "invalid_token_total",
+    "Total invalid JWT token events",
+    ["service", "reason"],
+)
+
+EXPIRED_TOKEN_TOTAL = Counter(
+    "expired_token_total",
+    "Total expired JWT token events",
+    ["service", "reason"],
+)
+
+PERMISSION_DENIED_TOTAL = Counter(
+    "permission_denied_total",
+    "Total permission denied events",
+    ["service", "reason", "required_role"],
+)
 
 def normalize_status_code(status_code: int) -> str:
     if 200 <= status_code < 300:
@@ -29,7 +64,6 @@ def normalize_status_code(status_code: int) -> str:
         return "5xx"
 
     return "unknown"
-
 
 def record_request_metric(
     method: str,
@@ -52,6 +86,48 @@ def record_request_metric(
         handler=path,
     ).observe(duration_seconds)
 
+
+def record_login_success(method: str):
+    AUTH_LOGIN_SUCCESS_TOTAL.labels(
+        service=SERVICE_NAME,
+        method=method,
+    ).inc()
+
+
+def record_login_failure(method: str, reason: str):
+    AUTH_LOGIN_FAILURE_TOTAL.labels(
+        service=SERVICE_NAME,
+        method=method,
+        reason=reason,
+    ).inc()
+
+
+def record_role_change(outcome: str):
+    ROLE_CHANGE_TOTAL.labels(
+        service=SERVICE_NAME,
+        outcome=outcome,
+    ).inc()
+
+def record_invalid_token(reason: str):
+    INVALID_TOKEN_TOTAL.labels(
+        service=SERVICE_NAME,
+        reason=reason,
+    ).inc()
+
+
+def record_expired_token(reason: str):
+    EXPIRED_TOKEN_TOTAL.labels(
+        service=SERVICE_NAME,
+        reason=reason,
+    ).inc()
+
+
+def record_permission_denied(reason: str, required_role: str):
+    PERMISSION_DENIED_TOTAL.labels(
+        service=SERVICE_NAME,
+        reason=reason,
+        required_role=required_role,
+    ).inc()
 
 def metrics_response():
     return Response(

@@ -4,7 +4,14 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
-from app.metrics import metrics_response, record_request_metric
+from app.metrics import (
+    metrics_response,
+    record_login_failure,
+    record_login_success,
+    record_request_metric,
+    record_role_change,
+)
+
 from app.tracing import setup_tracing
 
 from . import auth, models, schemas
@@ -106,6 +113,11 @@ def login_user(
             user_email=user.email
         )
 
+        record_login_failure(
+            method="json_login",
+            reason="user_not_found",
+        )
+
         raise HTTPException(
             status_code=401,
             detail="Invalid email or password"
@@ -130,6 +142,11 @@ def login_user(
             user_email=user.email
         )
 
+        record_login_failure(
+            method="json_login",
+            reason="invalid_password",
+        )
+
         raise HTTPException(
             status_code=401,
             detail="Invalid email or password"
@@ -149,6 +166,8 @@ def login_user(
         user_email=existing_user.email,
         detail="JWT issued"
     )
+
+    record_login_success(method="json_login")
 
     return {
         "access_token": access_token,
@@ -185,6 +204,11 @@ def token_login(
             user_email=form_data.username
         )
 
+        record_login_failure(
+            method="oauth2_token",
+            reason="user_not_found",
+        )
+
         raise HTTPException(
             status_code=401,
             detail="Invalid email or password"
@@ -209,6 +233,11 @@ def token_login(
             user_email=form_data.username
         )
 
+        record_login_failure(
+            method="oauth2_token",
+            reason="invalid_password",
+        )
+
         raise HTTPException(
             status_code=401,
             detail="Invalid email or password"
@@ -228,6 +257,8 @@ def token_login(
         user_email=existing_user.email,
         detail="OAuth2 token issued"
     )
+
+    record_login_success(method="oauth2_token")
 
     return {
         "access_token": access_token,
@@ -295,5 +326,7 @@ def promote_user_to_admin(
         user_email=user.email,
         detail="User promoted to admin via dev endpoint"
     )
+
+    record_role_change(outcome="success")
 
     return user

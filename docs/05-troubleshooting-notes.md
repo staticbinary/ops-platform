@@ -3031,3 +3031,787 @@ Added temporary endpoint to generate controlled HTTP 500 responses.
 - Availability monitoring is necessary but insufficient
 - Error rate monitoring provides significantly more operational value
 - Future alert development should prioritize readiness, latency, and dependency health monitoring
+
+# Phase 5.9.2 Troubleshooting Notes
+
+## Issue
+
+### Symptoms
+
+Request Volume by Service panel displayed:
+
+```text
+{service="asset-service"}
+{}
+```
+
+instead of showing both Asset Service and Auth Service separately.
+
+### Root Cause
+
+Auth Service metrics were being emitted without a `service` label, causing Prometheus to group the metrics into an unlabeled `{}` series.
+
+### Resolution
+
+Investigated Prometheus metrics and discovered Auth Service was exposing `http_requests_total` without the standardized service label.
+
+Created:
+
+```text
+services/auth_service/app/metrics.py
+```
+
+Added standardized metric definitions and custom metric recording logic.
+
+Added custom metrics middleware to Auth Service and exposed a dedicated:
+
+```text
+/metrics
+```
+
+endpoint.
+
+### Validation
+
+Prometheus query:
+
+```promql
+http_requests_total{job="auth-service"}
+```
+
+returned:
+
+```text
+service="auth-service"
+```
+
+Dashboard query:
+
+```promql
+sum by (service) (
+  rate(http_requests_total{service!=""}[5m])
+)
+```
+
+successfully displayed:
+
+```text
+asset-service
+auth-service
+```
+
+### Lessons Learned
+
+Dashboard validation can expose instrumentation inconsistencies that are not obvious during service development. Standardized metric labels are critical for multi-service observability.
+
+---
+
+## Issue
+
+### Symptoms
+
+Auth Service metrics appeared in Prometheus but did not follow the same labeling standards as Asset Service.
+
+### Root Cause
+
+Auth Service relied on automatic Prometheus instrumentation rather than the custom metrics framework used by Asset Service.
+
+### Resolution
+
+Removed automatic instrumentation and implemented a dedicated metrics module:
+
+```text
+services/auth_service/app/metrics.py
+```
+
+Added:
+
+* Request counter
+* Request duration histogram
+* Status code normalization
+* Metrics endpoint
+* Metrics middleware
+
+### Validation
+
+Both services now expose:
+
+```text
+http_requests_total
+http_request_duration_seconds
+```
+
+with identical label structures:
+
+```text
+service
+method
+handler
+status
+```
+
+### Lessons Learned
+
+Consistency between services is more important than convenience. Shared observability standards simplify dashboards, alerting, and future expansion.
+
+---
+
+## Issue
+
+### Symptoms
+
+Container CPU Usage dashboard panel displayed:
+
+```text
+No data
+```
+
+### Root Cause
+
+Grafana query expected cAdvisor metrics to contain:
+
+```text
+name=
+```
+
+or
+
+```text
+container=
+```
+
+labels.
+
+Current cAdvisor deployment exposed container metrics using only:
+
+```text
+id=
+```
+
+labels.
+
+### Resolution
+
+Inspected Prometheus metrics:
+
+```promql
+container_cpu_usage_seconds_total
+```
+
+Discovered Docker container identifiers were stored in the `id` label.
+
+Updated panel query:
+
+```promql
+sum by (id) (
+  rate(
+    container_cpu_usage_seconds_total{
+      id=~"/docker/.*"
+    }[5m]
+  )
+)
+```
+
+### Validation
+
+CPU utilization graphs populated successfully for all running containers.
+
+### Lessons Learned
+
+Do not assume label names in exported metrics. Always inspect raw Prometheus metrics before designing dashboard queries.
+
+---
+
+## Issue
+
+### Symptoms
+
+Container Memory Usage dashboard panel displayed:
+
+```text
+No data
+```
+
+### Root Cause
+
+Memory query relied on nonexistent container labels.
+
+cAdvisor exposed Docker metrics through:
+
+```text
+id=
+```
+
+rather than:
+
+```text
+container=
+```
+
+or
+
+```text
+name=
+```
+
+### Resolution
+
+Updated memory query:
+
+```promql
+sum by (id) (
+  container_memory_usage_bytes{
+    id=~"/docker/.*"
+  }
+)
+```
+
+### Validation
+
+Memory utilization panel successfully displayed active Docker containers and memory consumption.
+
+### Lessons Learned
+
+cAdvisor label structures can vary between versions and deployment methods. Validate actual metric labels before creating Grafana panels.
+
+---
+
+## Issue
+
+### Symptoms
+
+Container CPU and Memory panels displayed Docker container IDs rather than service names.
+
+### Root Cause
+
+cAdvisor exported metrics using Docker container identifiers:
+
+```text
+/docker/<container-id>
+```
+
+without human-readable container name labels.
+
+### Resolution
+
+Mapped Docker IDs to container names using:
+
+```bash
+docker ps --format "table {{.ID}}\t{{.Names}}"
+```
+
+Documented the relationship between IDs and container names for troubleshooting.
+
+Deferred friendly-name relabeling as a future enhancement.
+
+### Validation
+
+Container resource metrics became usable despite identifier formatting limitations.
+
+### Lessons Learned
+
+Functional observability takes priority over dashboard polish. Service-name relabeling can be implemented later without impacting operational visibility.
+
+---
+
+## Issue
+
+### Symptoms
+
+Dashboard development uncovered inconsistencies between service instrumentation implementations.
+
+### Root Cause
+
+Observability validation had not previously been performed using cross-service Grafana dashboards.
+
+### Resolution
+
+Built and validated the following dashboard panels:
+
+* Service Availability
+* Request Volume by Service
+* 5xx Error Rate by Service
+* 4xx Error Rate by Service
+* P95 Request Latency by Service
+* P95 Request Latency by Endpoint
+* Container CPU Usage
+* Container Memory Usage
+
+Exported dashboard JSON for version control.
+
+### Validation
+
+Dashboard successfully visualized:
+
+* Service health
+* Traffic volume
+* Error rates
+* Request latency
+* Container resource consumption
+
+### Lessons Learned
+
+Operational dashboards are not just visualization tools; they are validation tools that expose implementation gaps, telemetry inconsistencies, and monitoring blind spots.
+
+# Phase 5.9.3 — Troubleshooting Notes
+
+## Issue
+### Symptoms
+
+Security counters appeared in `/metrics` output but no metric values were displayed.
+
+Example:
+
+```text
+# HELP auth_login_success_total Total successful authentication attempts
+# TYPE auth_login_success_total counter
+```
+
+without corresponding metric data.
+
+### Root Cause
+
+Counters are only created after the first event is recorded.
+
+Metric definitions existed but no authentication events had occurred since deployment.
+
+### Resolution
+
+Generated test activity:
+
+```text
+Successful logins
+Failed logins
+Role changes
+```
+
+to initialize counters.
+
+### Validation
+
+Verified metric values appeared:
+
+```text
+auth_login_success_total{...} 1.0
+auth_login_failure_total{...} 2.0
+role_change_total{...} 1.0
+```
+
+### Lessons Learned
+
+Prometheus counters do not emit label values until an event increments the metric.
+
+---
+
+## Issue
+### Symptoms
+
+Permission denied metric remained at zero despite testing authorization workflows.
+
+### Root Cause
+
+Test account:
+
+```text
+viewer2@test.com
+```
+
+had previously been promoted to:
+
+```text
+admin
+```
+
+during earlier testing.
+
+The account no longer generated authorization failures.
+
+### Resolution
+
+Created a new viewer-only account:
+
+```text
+viewer3@test.com
+```
+
+and attempted access to:
+
+```text
+/admin
+```
+
+endpoint.
+
+### Validation
+
+Observed:
+
+```json
+{
+  "detail": "Insufficient permissions"
+}
+```
+
+Verified metric:
+
+```text
+permission_denied_total{reason="insufficient_role",required_role="admin",service="auth-service"} 1.0
+```
+
+### Lessons Learned
+
+Maintain dedicated test accounts for:
+
+```text
+viewer
+admin
+security testing
+```
+
+to prevent role drift from affecting validation.
+
+---
+
+## Issue
+### Symptoms
+
+Security Operations Dashboard showed:
+
+```text
+No Data
+```
+
+for Expired Token Events.
+
+### Root Cause
+
+No expired JWT tokens had been generated since deployment.
+
+Metric existed but had never been incremented.
+
+### Resolution
+
+Confirmed instrumentation was present in:
+
+```python
+verify_token()
+```
+
+and deferred validation until a future expired token test.
+
+### Validation
+
+Verified metric registration:
+
+```text
+expired_token_total
+```
+
+appeared in `/metrics`.
+
+### Lessons Learned
+
+"No Data" is not necessarily a dashboard failure.
+
+In security monitoring it often indicates:
+
+```text
+No observed security events
+```
+
+which is valid operational information.
+
+---
+
+## Issue
+### Symptoms
+
+Loki queries using:
+
+```logql
+{service="auth-service"}
+```
+
+returned no results.
+
+### Root Cause
+
+Promtail label values differed from application log values.
+
+Actual label:
+
+```text
+service=auth_service
+```
+
+Expected label:
+
+```text
+service=auth-service
+```
+
+### Resolution
+
+Inspected Loki labels and discovered:
+
+```text
+container=/ops-auth-service
+service=auth_service
+service_name=auth_service
+job=docker
+```
+
+Updated queries to use:
+
+```logql
+{container="/ops-auth-service"}
+```
+
+### Validation
+
+Successfully retrieved:
+
+```text
+auth.failed
+token.invalid
+permission.denied
+```
+
+events.
+
+### Lessons Learned
+
+Always inspect Loki labels before building dashboard queries.
+
+Do not assume label values match application service names.
+
+---
+
+## Issue
+### Symptoms
+
+Security Event Volume panel produced visualization errors.
+
+Example:
+
+```text
+Data is missing a string field
+```
+
+### Root Cause
+
+Incorrect LogQL filtering syntax was used.
+
+Initial queries contained malformed quote escaping and filter placement.
+
+### Resolution
+
+Updated query:
+
+```logql
+count_over_time(
+  {container="/ops-auth-service"}
+  |= "\"category\": \"security\""
+  [5m]
+)
+```
+
+### Validation
+
+Observed security-event spikes during testing activity.
+
+### Lessons Learned
+
+LogQL metric queries are more sensitive to filter placement and quote escaping than PromQL.
+
+Validate queries directly in Explore before dashboard creation.
+
+---
+
+## Issue
+### Symptoms
+
+Loki panel returned:
+
+```text
+parse error at line 1
+syntax error: unexpected IDENTIFIER
+```
+
+### Root Cause
+
+Prometheus and Loki query languages were accidentally mixed.
+
+Example:
+
+```text
+sum(invalid_token_total)
+{container="/ops-auth-service"} |= "token.invalid"
+```
+
+combined PromQL and LogQL syntax.
+
+### Resolution
+
+Separated dashboards into:
+
+```text
+Prometheus Metrics
+Loki Log Queries
+```
+
+Prometheus:
+
+```promql
+sum(invalid_token_total)
+```
+
+Loki:
+
+```logql
+{container="/ops-auth-service"} |= "token.invalid"
+```
+
+### Validation
+
+Both panels rendered correctly after separation.
+
+### Lessons Learned
+
+Prometheus metrics and Loki logs should be treated as separate data models even when displayed on the same dashboard.
+
+---
+
+## Issue
+### Symptoms
+
+Authentication Failure Rate panel appeared to display extremely small values.
+
+Example:
+
+```text
+0.003
+```
+
+instead of expected failure counts.
+
+### Root Cause
+
+Query used:
+
+```promql
+rate(auth_login_failure_total[5m])
+```
+
+which calculates:
+
+```text
+events per second
+```
+
+rather than total events.
+
+### Resolution
+
+Confirmed behavior was correct.
+
+Evaluated alternative query:
+
+```promql
+increase(auth_login_failure_total[5m])
+```
+
+for count-based visualization.
+
+### Validation
+
+Rate spikes matched generated authentication failures.
+
+### Lessons Learned
+
+Use:
+
+```promql
+rate()
+```
+
+for velocity and trend monitoring.
+
+Use:
+
+```promql
+increase()
+```
+
+for event count monitoring.
+
+Both provide useful but different operational perspectives.
+
+---
+
+## Issue
+### Symptoms
+
+Docker commands failed after system reboot and BSOD recovery.
+
+Examples:
+
+```text
+docker ps
+Failed to initialize: protocol not available
+```
+
+```text
+unable to get image
+failed to connect to docker API
+```
+
+### Root Cause
+
+Docker Desktop WSL integration became disabled following Docker Desktop restart.
+
+Ubuntu WSL instance no longer had access to Docker Desktop's shared socket.
+
+### Resolution
+
+Re-enabled:
+
+```text
+Docker Desktop
+→ Settings
+→ Resources
+→ WSL Integration
+→ Ubuntu
+```
+
+Restarted Docker Desktop.
+
+### Validation
+
+Verified:
+
+```bash
+docker ps
+```
+
+returned successfully.
+
+Verified:
+
+```bash
+docker compose up -d
+```
+
+started all platform services.
+
+### Lessons Learned
+
+Docker Desktop updates, crashes, and WSL restarts can silently disable WSL integration.
+
+When Docker suddenly loses access to:
+
+```text
+/var/run/docker.sock
+```
+
+check WSL Integration settings before troubleshooting containers.

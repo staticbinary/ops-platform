@@ -8,6 +8,12 @@ from jose import JWTError, jwt
 from jose.exceptions import ExpiredSignatureError
 from passlib.context import CryptContext
 
+from app.metrics import (
+    record_expired_token,
+    record_invalid_token,
+    record_permission_denied,
+)
+
 from . import models
 
 SECRET_KEY = "super-secret-dev-key"
@@ -104,6 +110,10 @@ def verify_token(token: str, request: Request = None):
             request=request
         )
 
+        record_expired_token(
+            reason="expired_token"
+        )
+
         raise HTTPException(
             status_code=401,
             detail="Token expired"
@@ -114,6 +124,10 @@ def verify_token(token: str, request: Request = None):
             event="token.invalid",
             reason="invalid_token",
             request=request
+        )
+
+        record_invalid_token(
+            reason="invalid_token"
         )
 
         raise HTTPException(
@@ -145,6 +159,11 @@ def require_role(required_role: str):
                 reason="insufficient_role",
                 request=request,
                 user_email=current_user.get("email")
+            )
+
+            record_permission_denied(
+                reason="insufficient_role",
+                required_role=required_role,
             )
 
             raise HTTPException(

@@ -2118,29 +2118,643 @@ Re-enable after Prometheus self-scrape configuration is implemented.
 
 ## Next Phase
 
-### Phase 5.9.2 — Operational Dashboards
+# Phase 5.9.2 Troubleshooting Notes
 
-#### SRE Dashboard
+## Issue
 
-- Service health
-- Availability
-- Latency
-- Error rates
-- Dependency health
+### Symptoms
 
-#### Security Dashboard
+Request Volume by Service panel displayed:
 
-- Authentication failures
-- Permission denials
-- Request anomalies
-- Source IP telemetry
+```text
+{service="asset-service"}
+{}
+```
 
-#### Platform Dashboard
+instead of showing both Asset Service and Auth Service separately.
 
-- Metrics ingestion
-- Log ingestion
-- Trace volume
-- Observability platform health
+### Root Cause
+
+Auth Service metrics were being emitted without a `service` label, causing Prometheus to group the metrics into an unlabeled `{}` series.
+
+### Resolution
+
+Investigated Prometheus metrics and discovered Auth Service was exposing `http_requests_total` without the standardized service label.
+
+Created:
+
+```text
+services/auth_service/app/metrics.py
+```
+
+Added standardized metric definitions and custom metric recording logic.
+
+Added custom metrics middleware to Auth Service and exposed a dedicated:
+
+```text
+/metrics
+```
+
+endpoint.
+
+### Validation
+
+Prometheus query:
+
+```promql
+http_requests_total{job="auth-service"}
+```
+
+returned:
+
+```text
+service="auth-service"
+```
+
+Dashboard query:
+
+```promql
+sum by (service) (
+  rate(http_requests_total{service!=""}[5m])
+)
+```
+
+successfully displayed:
+
+```text
+asset-service
+auth-service
+```
+
+### Lessons Learned
+
+Dashboard validation can expose instrumentation inconsistencies that are not obvious during service development. Standardized metric labels are critical for multi-service observability.
+
+---
+
+## Issue
+
+### Symptoms
+
+Auth Service metrics appeared in Prometheus but did not follow the same labeling standards as Asset Service.
+
+### Root Cause
+
+Auth Service relied on automatic Prometheus instrumentation rather than the custom metrics framework used by Asset Service.
+
+### Resolution
+
+Removed automatic instrumentation and implemented a dedicated metrics module:
+
+```text
+services/auth_service/app/metrics.py
+```
+
+Added:
+
+* Request counter
+* Request duration histogram
+* Status code normalization
+* Metrics endpoint
+* Metrics middleware
+
+### Validation
+
+Both services now expose:
+
+```text
+http_requests_total
+http_request_duration_seconds
+```
+
+with identical label structures:
+
+```text
+service
+method
+handler
+status
+```
+
+### Lessons Learned
+
+Consistency between services is more important than convenience. Shared observability standards simplify dashboards, alerting, and future expansion.
+
+---
+
+## Issue
+
+### Symptoms
+
+Container CPU Usage dashboard panel displayed:
+
+```text
+No data
+```
+
+### Root Cause
+
+Grafana query expected cAdvisor metrics to contain:
+
+```text
+name=
+```
+
+or
+
+```text
+container=
+```
+
+labels.
+
+Current cAdvisor deployment exposed container metrics using only:
+
+```text
+id=
+```
+
+labels.
+
+### Resolution
+
+Inspected Prometheus metrics:
+
+```promql
+container_cpu_usage_seconds_total
+```
+
+Discovered Docker container identifiers were stored in the `id` label.
+
+Updated panel query:
+
+```promql
+sum by (id) (
+  rate(
+    container_cpu_usage_seconds_total{
+      id=~"/docker/.*"
+    }[5m]
+  )
+)
+```
+
+### Validation
+
+CPU utilization graphs populated successfully for all running containers.
+
+### Lessons Learned
+
+Do not assume label names in exported metrics. Always inspect raw Prometheus metrics before designing dashboard queries.
+
+---
+
+## Issue
+
+### Symptoms
+
+Container Memory Usage dashboard panel displayed:
+
+```text
+No data
+```
+
+### Root Cause
+
+Memory query relied on nonexistent container labels.
+
+cAdvisor exposed Docker metrics through:
+
+```text
+id=
+```
+
+rather than:
+
+```text
+container=
+```
+
+or
+
+```text
+name=
+```
+
+### Resolution
+
+Updated memory query:
+
+```promql
+sum by (id) (
+  container_memory_usage_bytes{
+    id=~"/docker/.*"
+  }
+)
+```
+
+### Validation
+
+Memory utilization panel successfully displayed active Docker containers and memory consumption.
+
+### Lessons Learned
+
+cAdvisor label structures can vary between versions and deployment methods. Validate actual metric labels before creating Grafana panels.
+
+---
+
+## Issue
+
+### Symptoms
+
+Container CPU and Memory panels displayed Docker container IDs rather than service names.
+
+### Root Cause
+
+cAdvisor exported metrics using Docker container identifiers:
+
+```text
+/docker/<container-id>
+```
+
+without human-readable container name labels.
+
+### Resolution
+
+Mapped Docker IDs to container names using:
+
+```bash
+docker ps --format "table {{.ID}}\t{{.Names}}"
+```
+
+Documented the relationship between IDs and container names for troubleshooting.
+
+Deferred friendly-name relabeling as a future enhancement.
+
+### Validation
+
+Container resource metrics became usable despite identifier formatting limitations.
+
+### Lessons Learned
+
+Functional observability takes priority over dashboard polish. Service-name relabeling can be implemented later without impacting operational visibility.
+
+---
+
+## Issue
+
+### Symptoms
+
+Dashboard development uncovered inconsistencies between service instrumentation implementations.
+
+### Root Cause
+
+Observability validation had not previously been performed using cross-service Grafana dashboards.
+
+### Resolution
+
+Built and validated the following dashboard panels:
+
+* Service Availability
+* Request Volume by Service
+* 5xx Error Rate by Service
+* 4xx Error Rate by Service
+* P95 Request Latency by Service
+* P95 Request Latency by Endpoint
+* Container CPU Usage
+* Container Memory Usage
+
+Exported dashboard JSON for version control.
+
+### Validation
+
+Dashboard successfully visualized:
+
+* Service health
+* Traffic volume
+* Error rates
+* Request latency
+* Container resource consumption
+
+### Lessons Learned
+
+Operational dashboards are not just visualization tools; they are validation tools that expose implementation gaps, telemetry inconsistencies, and monitoring blind spots.
+
+# Phase 5.9.3 — Security Operations Dashboard
+
+## Status
+
+Completed
+
+## Objective
+
+Extend platform observability beyond SRE-focused monitoring by introducing dedicated security telemetry, authentication monitoring, authorization monitoring, JWT event tracking, and security-event analytics using Prometheus, Grafana, and Loki.
+
+---
+
+## Deliverables Completed
+
+### Auth Service Security Metrics
+
+Implemented dedicated security counters:
+
+```text
+auth_login_success_total
+auth_login_failure_total
+role_change_total
+invalid_token_total
+expired_token_total
+permission_denied_total
+```
+
+Added metric recording functions:
+
+```text
+record_login_success()
+record_login_failure()
+record_role_change()
+record_invalid_token()
+record_expired_token()
+record_permission_denied()
+```
+
+Integrated security metrics into:
+
+```text
+/login
+/token
+JWT validation
+RBAC authorization checks
+Admin role promotion workflows
+```
+
+---
+
+### Authentication Monitoring
+
+Added visibility into:
+
+```text
+Successful login activity
+Failed login activity
+Authentication failure reasons
+Authentication failure rate
+```
+
+Tracked failure reasons:
+
+```text
+user_not_found
+invalid_password
+```
+
+Validated Prometheus metric collection and Grafana visualization.
+
+---
+
+### Authorization Monitoring
+
+Added monitoring for:
+
+```text
+Permission denied events
+RBAC violations
+Insufficient role access attempts
+```
+
+Implemented:
+
+```text
+permission_denied_total
+```
+
+Integrated directly into:
+
+```text
+require_role()
+```
+
+security enforcement path.
+
+---
+
+### JWT Security Monitoring
+
+Added visibility into:
+
+```text
+Invalid JWT usage
+Expired JWT usage
+```
+
+Implemented:
+
+```text
+invalid_token_total
+expired_token_total
+```
+
+Integrated directly into:
+
+```text
+verify_token()
+```
+
+security validation path.
+
+---
+
+### Administrative Activity Monitoring
+
+Added visibility into:
+
+```text
+Role changes
+Privilege elevation events
+```
+
+Implemented:
+
+```text
+role_change_total
+```
+
+Integrated into:
+
+```text
+/dev/promote-admin/{email}
+```
+
+administrative workflow.
+
+---
+
+## Security Operations Dashboard
+
+Created:
+
+```text
+Security Operations Dashboard
+```
+
+Exported dashboard:
+
+```text
+infrastructure/grafana/dashboards/security-operations-dashboard.json
+```
+
+---
+
+### Security KPI Panels
+
+Implemented:
+
+```text
+Login Successes
+Login Failures
+Invalid Token Events
+Permission Denied Events
+Role Changes
+Expired Token Events
+```
+
+---
+
+### Security Trend Panels
+
+Implemented:
+
+```text
+Authentication Failure Rate
+Permission Denied Rate
+Security Event Volume
+```
+
+Monitoring sources:
+
+```text
+Prometheus
+Loki
+```
+
+---
+
+### Security Event Investigation Panels
+
+Implemented Loki-powered event views:
+
+```text
+Authentication Failure Events
+Invalid Token Events
+Permission Denied Events
+Security Event Stream
+```
+
+Using structured JSON log filtering.
+
+---
+
+## Loki Security Analytics
+
+Validated ingestion of structured security events:
+
+```text
+auth.failed
+token.invalid
+token.expired
+permission.denied
+```
+
+Confirmed log labels:
+
+```text
+container
+service
+service_name
+job
+stream
+```
+
+Implemented container-scoped filtering:
+
+```text
+container="/ops-auth-service"
+```
+
+---
+
+## Security Visibility Improvements
+
+Platform now supports monitoring of:
+
+```text
+Authentication abuse
+Authorization violations
+RBAC misuse
+Invalid token activity
+Expired token activity
+Privilege changes
+Security event volume
+Security event investigation
+```
+
+---
+
+## Observability Maturity Progression
+
+### Previous State
+
+```text
+Application Monitoring
+Infrastructure Monitoring
+SRE Monitoring
+```
+
+### New State
+
+```text
+Application Monitoring
+Infrastructure Monitoring
+SRE Monitoring
+Security Monitoring
+```
+
+---
+
+## Phase Outcome
+
+Phase 5.9.3 establishes the first SOC-style observability capability within Ops Platform by combining:
+
+```text
+Prometheus Metrics
+Grafana Dashboards
+Loki Security Logs
+Structured Security Events
+```
+
+into a dedicated Security Operations Dashboard capable of both trend analysis and event investigation.
+
+---
+
+## Next Phase
+
+### Phase 5.9.4 — Security Alerting & Detection
+
+Planned objectives:
+
+```text
+Authentication failure alerts
+Invalid token alerts
+Permission denied spike alerts
+Rate limit violation alerts
+Security event volume alerts
+Authentication outage detection
+```
+
+Goal:
+
+Move from passive security observability to active security detection and alerting.
+
+
 
 
 
