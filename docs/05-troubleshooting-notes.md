@@ -3815,3 +3815,264 @@ When Docker suddenly loses access to:
 ```
 
 check WSL Integration settings before troubleshooting containers.
+
+## Issue
+
+Security Metrics Not Appearing In Grafana
+
+### Symptoms
+
+```text
+auth_login_failure_total returned no data
+invalid_token_total returned no data
+permission_denied_total returned no data
+```
+
+### Root Cause
+
+Security metrics were implemented but had not yet been incremented by platform activity.
+
+Prometheus only exposed series after the counters were created and updated.
+
+### Resolution
+
+Generated validation security events:
+
+```text
+Failed Authentication Attempts
+Invalid JWT Requests
+Permission Denied Requests
+```
+
+Confirmed metrics became available through:
+
+```text
+http://localhost:8002/metrics
+```
+
+### Validation
+
+```text
+auth_login_failure_total visible
+invalid_token_total visible
+permission_denied_total visible
+```
+
+### Lessons Learned
+
+Prometheus counters may not appear until the metric has been incremented at least once.
+
+---
+
+## Issue
+
+Authentication Failure Detection Validation
+
+### Symptoms
+
+Need to validate authentication failure detection pipeline.
+
+### Root Cause
+
+Detection rule existed but required real event generation for testing.
+
+### Resolution
+
+Generated:
+
+```text
+15+ failed login attempts
+```
+
+Validated:
+
+```text
+auth_login_failure_total
+sum(increase(auth_login_failure_total[5m]))
+```
+
+### Validation
+
+```text
+Threshold exceeded
+Alert entered FIRING state
+Detection screenshot captured
+```
+
+### Lessons Learned
+
+Detection validation should always include real event generation and alert verification.
+
+---
+
+## Issue
+
+Invalid Token Detection Validation
+
+### Symptoms
+
+Need to validate invalid token monitoring and alerting.
+
+### Root Cause
+
+Alert rule required live security events.
+
+### Resolution
+
+Generated:
+
+```text
+15+ invalid JWT requests
+```
+
+Validated:
+
+```text
+invalid_token_total
+sum(increase(invalid_token_total[5m]))
+```
+
+### Validation
+
+```text
+Metric incremented
+Threshold exceeded
+Alert evaluated successfully
+```
+
+### Lessons Learned
+
+Security detections should be validated using repeatable event-generation procedures.
+
+---
+
+## Issue
+
+Loki Security Event Detection Query Validation
+
+### Symptoms
+
+Need to confirm Loki can identify security events.
+
+### Root Cause
+
+Log-based detection had not previously been validated.
+
+### Resolution
+
+Queried:
+
+```logql
+{container="/ops-auth-service"}
+|= "\"category\": \"security\""
+```
+
+Confirmed structured security events existed.
+
+### Validation
+
+Observed:
+
+```text
+auth.failed
+token.invalid
+permission.denied
+```
+
+events within Loki.
+
+### Lessons Learned
+
+Structured logging enables detection engineering without requiring additional application changes.
+
+---
+
+## Issue
+
+Security Event Volume Detection Validation
+
+### Symptoms
+
+Need to validate log-driven security alerting.
+
+### Root Cause
+
+Security event volume alert required threshold testing.
+
+### Resolution
+
+Generated:
+
+```text
+Authentication Failures
+Invalid Token Events
+```
+
+Executed:
+
+```logql
+sum(
+  count_over_time(
+    {container="/ops-auth-service"}
+    |= "\"category\": \"security\""
+    [5m]
+  )
+)
+```
+
+### Validation
+
+```text
+Security event count exceeded threshold
+Alert evaluation successful
+Detection graph captured
+```
+
+### Lessons Learned
+
+Loki-based detections provide complementary visibility beyond metric-based monitoring.
+
+---
+
+## Issue
+
+Token Abuse Detection Validation
+
+### Symptoms
+
+Need to validate token abuse monitoring.
+
+### Root Cause
+
+New Loki detection required event generation.
+
+### Resolution
+
+Generated:
+
+```text
+15+ invalid token requests
+```
+
+Executed:
+
+```logql
+sum(
+  count_over_time(
+    {container="/ops-auth-service"}
+    |= "token.invalid"
+    [5m]
+  )
+)
+```
+
+### Validation
+
+```text
+Threshold exceeded
+Detection logic validated
+```
+
+### Lessons Learned
+
+Specific event detections provide more actionable alerting than generic volume monitoring.

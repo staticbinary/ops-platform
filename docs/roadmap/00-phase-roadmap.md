@@ -2735,24 +2735,137 @@ into a dedicated Security Operations Dashboard capable of both trend analysis an
 
 ---
 
-## Next Phase
+# Phase 5.9.4 — Security Alerting & Detection
 
-### Phase 5.9.4 — Security Alerting & Detection
+## Status
 
-Planned objectives:
+Completed
+
+## Objectives Completed
+
+### Security Detection Engineering
+
+Implemented the platform's first active security detection capabilities using both Prometheus metrics and Loki log analytics.
+
+### Prometheus Security Detections
+
+Created and validated:
+
+* SECURITY - Authentication Failure Spike
+* SECURITY - Invalid Token Spike
+* SECURITY - Permission Denied Spike
+
+Detection methodology:
 
 ```text
-Authentication failure alerts
-Invalid token alerts
-Permission denied spike alerts
-Rate limit violation alerts
-Security event volume alerts
-Authentication outage detection
+Application Event
+→ Prometheus Metric
+→ Alert Rule
+→ Threshold Evaluation
+→ Notification
 ```
 
-Goal:
+### Loki Security Detections
 
-Move from passive security observability to active security detection and alerting.
+Created and validated:
+
+* SECURITY - Security Event Volume Spike
+* SECURITY - Token Abuse Detected
+* SECURITY - Permission Abuse Detected
+
+Detection methodology:
+
+```text
+Structured Security Log
+→ Promtail
+→ Loki
+→ LogQL Query
+→ Alert Rule
+→ Notification
+```
+
+### Security Detection Coverage
+
+Authentication Monitoring
+
+```text
+Authentication Failure Detection
+Invalid Token Detection
+Permission Denied Detection
+```
+
+Abuse Detection
+
+```text
+Token Abuse Detection
+Permission Abuse Detection
+Security Event Flood Detection
+```
+
+### Security Event Validation
+
+Validated:
+
+```text
+Authentication Failure Events
+Invalid Token Events
+Security Event Volume Events
+```
+
+Confirmed:
+
+```text
+Metrics Collection
+Log Collection
+Prometheus Queries
+LogQL Queries
+Alert Evaluation
+Alert Firing
+Notification Routing
+```
+
+### Security Operations Dashboard
+
+Expanded Security Operations monitoring with alert-driven detection capabilities.
+
+Platform now supports:
+
+```text
+Observe
+Detect
+Notify
+Investigate
+```
+
+## Platform Security Detection Inventory
+
+### Platform Operations Alerts
+
+```text
+Prometheus Target Down
+Asset Service Down
+Auth Service Down
+cAdvisor Down
+Asset Service 5xx Errors
+```
+
+### Security Operations Alerts
+
+```text
+Authentication Failure Spike
+Invalid Token Spike
+Permission Denied Spike
+Security Event Volume Spike
+Token Abuse Detected
+Permission Abuse Detected
+```
+
+## Outcome
+
+The Ops Platform now contains a foundational security monitoring and detection layer combining metrics, logs, alerting, and operational response workflows.
+
+This phase marks the transition from passive observability to active security detection.
+
 
 
 
