@@ -4076,3 +4076,276 @@ Detection logic validated
 ### Lessons Learned
 
 Specific event detections provide more actionable alerting than generic volume monitoring.
+
+# Phase 5.9.5 Troubleshooting Notes
+
+## Issue
+
+### Symptoms
+
+Auth service container failed to start after adding administrative monitoring telemetry.
+
+### Root Cause
+
+`main.py` imported new metric functions that did not yet exist in `metrics.py`.
+
+### Resolution
+
+Added:
+
+* `record_admin_endpoint_access()`
+* `record_privilege_escalation_attempt()`
+* `record_user_management_action()`
+
+to `services/auth_service/app/metrics.py`.
+
+### Validation
+
+```bash
+curl -s http://localhost:8002/metrics | grep -E \
+"admin_endpoint_access|privilege_escalation|user_management_action"
+```
+
+Metrics successfully exposed.
+
+### Lessons Learned
+
+When adding new telemetry, implement metric definitions before importing them into application code.
+
+---
+
+## Issue
+
+### Symptoms
+
+Auth service failed startup with:
+
+```text
+ImportError: cannot import name 'record_admin_endpoint_access'
+```
+
+### Root Cause
+
+Function existed in source file but was incorrectly indented, causing Python to treat it as nested within another function.
+
+### Resolution
+
+Corrected indentation so all metric helper functions existed at module scope.
+
+### Validation
+
+```bash
+python -m py_compile services/auth_service/app/metrics.py
+```
+
+Returned no errors.
+
+### Lessons Learned
+
+Module-level helper functions must align with other function definitions. Indentation errors can appear as import failures.
+
+---
+
+## Issue
+
+### Symptoms
+
+Auth service continued failing after source code corrections.
+
+### Root Cause
+
+Modified files had not been saved prior to Docker rebuild.
+
+### Resolution
+
+Saved all modified files and rebuilt container.
+
+### Validation
+
+```bash
+docker compose build --no-cache auth_service
+docker compose up -d auth_service
+```
+
+Container started successfully.
+
+### Lessons Learned
+
+Always save source files before rebuilding containers. Docker only copies saved filesystem contents into build context.
+
+---
+
+## Issue
+
+### Symptoms
+
+Asset service returned HTTP 500 responses during rate-limit validation.
+
+### Root Cause
+
+Rate-limit logging initially used an incorrect logging function signature.
+
+### Resolution
+
+Reworked rate-limit event generation using:
+
+```python
+event_data = base_log_event(...)
+event_data.update(...)
+log_event(event_data)
+```
+
+### Validation
+
+```bash
+for i in {1..120}; do
+  curl http://localhost:8001/health
+done
+```
+
+Produced:
+
+```text
+100 200
+20 429
+```
+
+### Lessons Learned
+
+Security logging should reuse established structured logging patterns to avoid runtime exceptions.
+
+---
+
+## Issue
+
+### Symptoms
+
+Asset service failed startup with:
+
+```text
+NameError: name 'cat' is not defined
+```
+
+### Root Cause
+
+Shell heredoc commands were accidentally pasted into Python source files.
+
+### Resolution
+
+Removed:
+
+```bash
+cat > filename <<'EOF'
+...
+EOF
+```
+
+from application source code.
+
+### Validation
+
+```bash
+python -m py_compile services/asset_service/app/*.py
+```
+
+Completed successfully.
+
+### Lessons Learned
+
+Distinguish between terminal commands and file contents when applying updates.
+
+---
+
+## Issue
+
+### Symptoms
+
+Rate-limit metric existed but appeared to have no values.
+
+### Root Cause
+
+Metric had been registered but no rate-limit events had occurred.
+
+### Resolution
+
+Generated test traffic exceeding middleware threshold.
+
+### Validation
+
+```bash
+curl -s http://localhost:8001/metrics | grep rate_limit_exceeded_total
+```
+
+Returned:
+
+```text
+rate_limit_exceeded_total{path="/health",service="asset-service"} 20
+```
+
+### Lessons Learned
+
+Prometheus counters often appear with only HELP/TYPE entries until events occur.
+
+---
+
+## Issue
+
+### Symptoms
+
+Grafana panels displayed "No Data".
+
+### Root Cause
+
+Associated security events had never occurred within the selected time window.
+
+### Resolution
+
+Generated authentication failures, invalid tokens, permission denials, and rate-limit events to populate metrics.
+
+### Validation
+
+Panels populated after test activity.
+
+### Lessons Learned
+
+"No Data" does not necessarily indicate dashboard misconfiguration; verify metric generation before troubleshooting queries.
+
+---
+
+## Issue
+
+### Symptoms
+
+Administrative telemetry required validation.
+
+### Root Cause
+
+New metrics had been added but not exercised.
+
+### Resolution
+
+Executed:
+
+* `/admin`
+* `/audit`
+* `/dev/promote-admin/{email}`
+
+with both admin and viewer accounts.
+
+### Validation
+
+Verified:
+
+```text
+admin_endpoint_access_total
+privilege_escalation_attempt_total
+user_management_action_total
+role_change_total
+permission_denied_total
+```
+
+incremented appropriately.
+
+### Lessons Learned
+
+Every new metric should have a documented validation procedure before phase completion.

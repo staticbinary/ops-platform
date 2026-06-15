@@ -14,6 +14,12 @@ HTTP_REQUEST_DURATION_SECONDS = Histogram(
     ["service", "method", "handler"],
 )
 
+RATE_LIMIT_EXCEEDED_TOTAL = Counter(
+    "rate_limit_exceeded_total",
+    "Total rate limit violations",
+    ["service", "path"],
+)
+
 
 def normalize_status_code(status_code: int) -> str:
     if 200 <= status_code < 300:
@@ -51,6 +57,13 @@ def record_request_metric(
         method=method,
         handler=path,
     ).observe(duration_seconds)
+
+
+def record_rate_limit_exceeded(path: str):
+    RATE_LIMIT_EXCEEDED_TOTAL.labels(
+        service="asset-service",
+        path=path,
+    ).inc()
 
 
 def metrics_response():

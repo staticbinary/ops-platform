@@ -53,6 +53,24 @@ PERMISSION_DENIED_TOTAL = Counter(
     ["service", "reason", "required_role"],
 )
 
+ADMIN_ENDPOINT_ACCESS_TOTAL = Counter(
+    "admin_endpoint_access_total",
+    "Total administrative endpoint access events",
+    ["service", "endpoint"],
+)
+
+PRIVILEGE_ESCALATION_ATTEMPT_TOTAL = Counter(
+    "privilege_escalation_attempt_total",
+    "Total privilege escalation attempt events",
+    ["service", "required_role"],
+)
+
+USER_MANAGEMENT_ACTION_TOTAL = Counter(
+    "user_management_action_total",
+    "Total user management action events",
+    ["service", "action", "outcome"],
+)
+
 def normalize_status_code(status_code: int) -> str:
     if 200 <= status_code < 300:
         return "2xx"
@@ -86,13 +104,11 @@ def record_request_metric(
         handler=path,
     ).observe(duration_seconds)
 
-
 def record_login_success(method: str):
     AUTH_LOGIN_SUCCESS_TOTAL.labels(
         service=SERVICE_NAME,
         method=method,
     ).inc()
-
 
 def record_login_failure(method: str, reason: str):
     AUTH_LOGIN_FAILURE_TOTAL.labels(
@@ -100,7 +116,6 @@ def record_login_failure(method: str, reason: str):
         method=method,
         reason=reason,
     ).inc()
-
 
 def record_role_change(outcome: str):
     ROLE_CHANGE_TOTAL.labels(
@@ -114,19 +129,36 @@ def record_invalid_token(reason: str):
         reason=reason,
     ).inc()
 
-
 def record_expired_token(reason: str):
     EXPIRED_TOKEN_TOTAL.labels(
         service=SERVICE_NAME,
         reason=reason,
     ).inc()
 
-
 def record_permission_denied(reason: str, required_role: str):
     PERMISSION_DENIED_TOTAL.labels(
         service=SERVICE_NAME,
         reason=reason,
         required_role=required_role,
+    ).inc()
+
+def record_admin_endpoint_access(endpoint: str):
+    ADMIN_ENDPOINT_ACCESS_TOTAL.labels(
+        service=SERVICE_NAME,
+        endpoint=endpoint,
+    ).inc()
+
+def record_privilege_escalation_attempt(required_role: str):
+    PRIVILEGE_ESCALATION_ATTEMPT_TOTAL.labels(
+        service=SERVICE_NAME,
+        required_role=required_role,
+    ).inc()
+
+def record_user_management_action(action: str, outcome: str):
+    USER_MANAGEMENT_ACTION_TOTAL.labels(
+        service=SERVICE_NAME,
+        action=action,
+        outcome=outcome,
     ).inc()
 
 def metrics_response():

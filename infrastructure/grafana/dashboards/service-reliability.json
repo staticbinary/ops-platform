@@ -5,18 +5,20 @@
     "name": "ad6h5wm",
     "namespace": "default",
     "uid": "98001b3b-2943-4261-8e06-90c6225934e6",
-    "resourceVersion": "1780523096600018",
-    "generation": 18,
+    "resourceVersion": "1781560001808983",
+    "generation": 20,
     "creationTimestamp": "2026-06-03T20:54:27Z",
     "labels": {
       "grafana.app/deprecatedInternalID": "4131722378371072"
     },
     "annotations": {
       "grafana.app/createdBy": "user:cfn6a07k67v9cd",
-      "grafana.app/folder": "",
+      "grafana.app/folder": "efp8y7l362mf4b",
       "grafana.app/saved-from-ui": "Grafana v13.0.1+security-01 (9bbe672d)",
       "grafana.app/updatedBy": "user:cfn6a07k67v9cd",
-      "grafana.app/updatedTimestamp": "2026-06-03T21:44:56Z"
+      "grafana.app/updatedTimestamp": "2026-06-15T21:46:41Z",
+      "grafana.app/folderTitle": "Ops Platform",
+      "grafana.app/folderUrl": "/dashboards/f/efp8y7l362mf4b/ops-platform"
     }
   },
   "spec": {
@@ -1122,7 +1124,7 @@
       "hideTimepicker": false,
       "fiscalYearStartMonth": 0
     },
-    "title": "Ops Platform - SRE Operations",
+    "title": "Service Reliability",
     "variables": [],
     "preferences": {
       "layout": {

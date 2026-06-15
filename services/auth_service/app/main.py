@@ -6,10 +6,12 @@ from sqlalchemy.orm import Session
 
 from app.metrics import (
     metrics_response,
+    record_admin_endpoint_access,
     record_login_failure,
     record_login_success,
     record_request_metric,
     record_role_change,
+    record_user_management_action,
 )
 
 from app.tracing import setup_tracing
@@ -277,6 +279,8 @@ def read_current_user(
 def admin_only(
     current_user: dict = Depends(auth.require_role("admin"))
 ):
+    record_admin_endpoint_access(endpoint="/admin")
+
     return {
         "message": "Admin access granted",
         "user": current_user
@@ -288,6 +292,8 @@ def read_audit_logs(
     current_user: dict = Depends(auth.require_role("admin")),
     db: Session = Depends(get_db)
 ):
+    record_admin_endpoint_access(endpoint="/audit")
+
     logs = (
         db.query(models.AuditLog)
         .order_by(models.AuditLog.id.desc())
@@ -309,10 +315,24 @@ def promote_user_to_admin(
     )
 
     if not user:
+        record_user_management_action(
+            action="promote_admin",
+            outcome="failure",
+        )
+
         raise HTTPException(
             status_code=404,
             detail="User not found"
         )
+
+    record_admin_endpoint_access(
+        endpoint="/dev/promote-admin/{email}"
+    )
+
+    record_user_management_action(
+        action="promote_admin",
+        outcome="attempt",
+    )
 
     user.role = "admin"
 
@@ -328,5 +348,10 @@ def promote_user_to_admin(
     )
 
     record_role_change(outcome="success")
+
+    record_user_management_action(
+        action="promote_admin",
+        outcome="success",
+    )
 
     return user

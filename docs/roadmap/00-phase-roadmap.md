@@ -2866,6 +2866,308 @@ The Ops Platform now contains a foundational security monitoring and detection l
 
 This phase marks the transition from passive observability to active security detection.
 
+# Phase 5.9.5 — Security Telemetry Expansion & Detection Operations
+
+## Status
+
+```text
+COMPLETED
+```
+
+---
+
+## Objectives
+
+Expand security observability beyond authentication monitoring into abuse detection, administrative activity monitoring, privilege escalation detection, and dedicated security detection workflows.
+
+---
+
+## Deliverables Completed
+
+### Rate Limit Telemetry
+
+Implemented:
+
+```text
+rate_limit_exceeded_total
+```
+
+Capabilities:
+
+```text
+Rate Limit Monitoring
+Abuse Detection
+Enumeration Detection
+Brute Force Visibility
+Security Telemetry Collection
+```
+
+Validation:
+
+```text
+429 responses generated successfully
+Metric exposure validated
+Grafana panels operational
+Alerting operational
+```
+
+---
+
+### Rate Limit Security Logging
+
+Implemented structured security events:
+
+```text
+rate_limit.exceeded
+```
+
+Event Classification:
+
+```text
+severity = warning
+category = security
+event = rate_limit.exceeded
+```
+
+Captured Context:
+
+```text
+Request ID
+Method
+Path
+Client IP
+Status Code
+Detection Reason
+```
+
+Validation completed.
+
+---
+
+### Administrative Activity Monitoring
+
+Implemented telemetry for:
+
+```text
+admin_endpoint_access_total
+user_management_action_total
+role_change_total
+```
+
+Administrative Coverage:
+
+```text
+Administrative Endpoint Access
+Role Promotion Events
+User Management Activity
+RBAC Changes
+Administrative Auditing
+```
+
+Validation completed.
+
+---
+
+### Privilege Escalation Detection
+
+Implemented:
+
+```text
+privilege_escalation_attempt_total
+```
+
+Generated when:
+
+```text
+Viewer attempts admin-only access
+Unauthorized administrative access occurs
+RBAC enforcement denies elevated privileges
+```
+
+Validation completed.
+
+---
+
+### Security Detection Alerting
+
+Created:
+
+```text
+SECURITY - Rate Limit Abuse Detected
+SECURITY - Privilege Escalation Activity
+```
+
+Detection Categories:
+
+```text
+Abuse Detection
+Privilege Escalation Detection
+Administrative Activity Monitoring
+Authentication Monitoring
+Authorization Monitoring
+```
+
+Validation completed.
+
+---
+
+### Security Detection Dashboard
+
+Created:
+
+```text
+Ops Platform - Security Detection
+```
+
+Dashboard Panels:
+
+```text
+Authentication Failures (5m)
+Invalid Tokens (5m)
+Permission Denied Events (5m)
+Rate Limit Violations (5m)
+Privilege Escalation Attempts (5m)
+Administrative Endpoint Access (1h)
+User Management Activity (1h)
+Role Changes (24h)
+```
+
+Purpose:
+
+```text
+SOC Monitoring
+Detection Engineering
+Alert Validation
+Threat Activity Visibility
+Abuse Monitoring
+```
+
+Dashboard exported and version controlled.
+
+---
+
+### Dashboard Organization
+
+Created Grafana folder:
+
+```text
+Ops Platform
+```
+
+Dashboard Inventory:
+
+```text
+Ops Platform - Platform Overview
+Ops Platform - Service Reliability
+Ops Platform - Security Operations
+Ops Platform - Security Detection
+```
+
+Result:
+
+```text
+Improved Dashboard Organization
+Improved Operational Navigation
+Improved Portfolio Presentation
+```
+
+---
+
+## Security Operations Maturity Improvements
+
+Added:
+
+```text
+Administrative Monitoring
+Privilege Escalation Monitoring
+Rate Limit Abuse Detection
+Security Detection Dashboard
+Detection-Centric Alerting
+```
+
+Platform maturity advanced from:
+
+```text
+Security Monitoring
+```
+
+to:
+
+```text
+Security Monitoring + Security Detection
+```
+
+---
+
+## Current Observability Stack
+
+```text
+Prometheus
+Grafana
+Loki
+Promtail
+Tempo
+cAdvisor
+```
+
+Capabilities:
+
+```text
+Metrics
+Logs
+Tracing
+Alerting
+Security Monitoring
+Security Detection
+Operational Monitoring
+SRE Monitoring
+Administrative Auditing
+```
+
+---
+
+## Phase Completion Criteria
+
+```text
+Rate Limit Telemetry Implemented
+Administrative Monitoring Implemented
+Privilege Escalation Detection Implemented
+Security Detection Dashboard Implemented
+Security Alerts Implemented
+Telemetry Validated
+Dashboards Exported
+Documentation Updated
+```
+
+Status:
+
+```text
+COMPLETE
+```
+
+---
+
+## Next Phase
+
+### Phase 5.10 — Security Investigation & Correlation
+
+Planned Objectives:
+
+```text
+Cross-Service Security Correlation
+Tempo Trace Correlation
+Security Investigation Workflows
+Detection Runbooks
+Alert Enrichment
+Security Event Correlation
+Threat Investigation Dashboards
+```
+
+Goal:
+
+```text
+Move from detection visibility into investigation workflows and correlation capabilities.
+```
 
 
 

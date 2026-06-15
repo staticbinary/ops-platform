@@ -12,6 +12,7 @@ from app.metrics import (
     record_expired_token,
     record_invalid_token,
     record_permission_denied,
+    record_privilege_escalation_attempt,
 )
 
 from . import models
@@ -163,6 +164,10 @@ def require_role(required_role: str):
 
             record_permission_denied(
                 reason="insufficient_role",
+                required_role=required_role,
+            )
+
+            record_privilege_escalation_attempt(
                 required_role=required_role,
             )
 
