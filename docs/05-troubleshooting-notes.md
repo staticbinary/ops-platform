@@ -4349,3 +4349,443 @@ incremented appropriately.
 ### Lessons Learned
 
 Every new metric should have a documented validation procedure before phase completion.
+
+# Phase 5.10 Troubleshooting Notes
+
+## Issue
+
+### Tempo TraceQL Search Returned 400 Bad Request
+
+### Symptoms
+
+* Grafana Explore successfully connected to Tempo.
+* Tempo datasource loaded.
+* Query execution returned:
+
+```text
+failed to execute search query
+status: 400 Bad Request
+```
+
+* Searching with:
+
+```text
+asset-service
+```
+
+failed.
+
+### Root Cause
+
+Tempo TraceQL requires valid TraceQL syntax.
+
+A service name by itself is not a valid TraceQL expression.
+
+### Resolution
+
+Switched from TraceQL testing to Tempo Search mode.
+
+Validated traces using:
+
+```text
+Service Name:
+asset-service
+
+Service Name:
+auth-service
+```
+
+Confirmed Grafana successfully retrieved traces.
+
+### Validation
+
+Verified:
+
+```text
+Asset Service traces visible
+Auth Service traces visible
+Trace IDs visible
+Span IDs visible
+Tempo search operational
+```
+
+### Lessons Learned
+
+Tempo connectivity can be healthy while TraceQL syntax is invalid.
+
+Always validate datasource connectivity using Search mode before troubleshooting TraceQL expressions.
+
+---
+
+## Issue
+
+### Loki Trace Correlation Query Returned No Results
+
+### Symptoms
+
+Queries returned:
+
+```text
+No logs found
+```
+
+Examples:
+
+```logql
+{container_name=~".+"}
+```
+
+```logql
+{container_name=~".*asset.*|.*auth.*"} |= "trace_id"
+```
+
+### Root Cause
+
+Promtail labels did not include:
+
+```text
+container_name
+```
+
+Available labels were:
+
+```text
+container
+job
+service
+service_name
+stream
+```
+
+Query assumptions did not match actual Loki labels.
+
+### Resolution
+
+Used Grafana Label Browser to inspect available labels.
+
+Updated investigation queries to use:
+
+```logql
+{service=~".*asset.*|.*auth.*"} |= "trace_id"
+```
+
+and
+
+```logql
+{service_name=~".*asset.*|.*auth.*"} |= "trace_id"
+```
+
+### Validation
+
+Successfully retrieved:
+
+```text
+trace_id
+span_id
+request.started
+dependency.database.available
+request.completed
+```
+
+events.
+
+### Lessons Learned
+
+Never assume Loki labels.
+
+Always validate labels using Label Browser before building dashboards and investigation workflows.
+
+---
+
+## Issue
+
+### Security Investigation Dashboard Displayed No Data
+
+### Symptoms
+
+All investigation dashboard panels displayed:
+
+```text
+No data
+```
+
+including:
+
+```text
+Authentication Failures
+Invalid Tokens
+Permission Denied Events
+Privilege Escalation Attempts
+```
+
+### Root Cause
+
+Metrics existed and were registered in Prometheus, but no metric samples had been generated.
+
+Prometheus exposed:
+
+```text
+# HELP
+# TYPE
+```
+
+definitions only.
+
+No counters had been incremented since container startup.
+
+### Resolution
+
+Generated test security events:
+
+```text
+Authentication failures
+Invalid token attempts
+Permission denied events
+Privilege escalation attempts
+```
+
+using manual API testing.
+
+### Validation
+
+Confirmed metric samples existed:
+
+```text
+auth_login_failure_total
+invalid_token_total
+permission_denied_total
+privilege_escalation_attempt_total
+```
+
+Grafana panels populated successfully.
+
+### Lessons Learned
+
+Prometheus counters do not emit labeled time series until the first increment occurs.
+
+Dashboard validation requires event generation, not merely metric registration.
+
+---
+
+## Issue
+
+### Authentication Failure Metrics Not Incrementing
+
+### Symptoms
+
+Failed login testing produced:
+
+```text
+422 Unprocessable Entity
+```
+
+Metrics remained unchanged.
+
+### Root Cause
+
+Test payload used:
+
+```json
+{
+  "username": "...",
+  "password": "..."
+}
+```
+
+while the endpoint expected:
+
+```json
+{
+  "email": "...",
+  "password": "..."
+}
+```
+
+Validation failed before authentication logic executed.
+
+### Resolution
+
+Retested using:
+
+```json
+{
+  "email": "bad-user@test.com",
+  "password": "wrong-password"
+}
+```
+
+### Validation
+
+Confirmed:
+
+```text
+auth_login_failure_total{method="json_login",reason="user_not_found"} 5
+```
+
+### Lessons Learned
+
+API validation failures do not execute business logic.
+
+Always verify request schemas before testing observability metrics.
+
+---
+
+## Issue
+
+### Invalid Token Dashboard Panel Returned No Data
+
+### Symptoms
+
+Invalid token panel displayed:
+
+```text
+No data
+```
+
+despite invalid token testing.
+
+### Root Cause
+
+Metric had not yet been generated.
+
+Dashboard validation occurred before invalid token events were produced.
+
+### Resolution
+
+Generated invalid token events using:
+
+```bash
+for i in {1..5}; do
+  curl -s http://localhost:8002/me \
+    -H "Authorization: Bearer invalid.token.value"
+done
+```
+
+### Validation
+
+Confirmed:
+
+```text
+invalid_token_total{reason="invalid_token",service="auth-service"} 5
+```
+
+### Lessons Learned
+
+Investigation dashboards require representative event generation before validation.
+
+---
+
+## Issue
+
+### Permission Denied And Privilege Escalation Panels Required Validation
+
+### Symptoms
+
+Dashboard panels showed:
+
+```text
+No data
+```
+
+for:
+
+```text
+Permission Denied Events
+Privilege Escalation Attempts
+```
+
+### Root Cause
+
+No unauthorized access attempts had occurred since service startup.
+
+### Resolution
+
+Authenticated using viewer account:
+
+```text
+viewertest@test.com
+```
+
+Attempted access to:
+
+```text
+/admin
+```
+
+with viewer role.
+
+### Validation
+
+Confirmed:
+
+```text
+permission_denied_total{reason="insufficient_role"} 1
+```
+
+and
+
+```text
+privilege_escalation_attempt_total{required_role="admin"} 1
+```
+
+### Lessons Learned
+
+RBAC investigation telemetry should be validated using real authorization failures rather than synthetic metric injection.
+
+---
+
+## Issue
+
+### Rate Limit Metrics Appeared Missing
+
+### Symptoms
+
+Query:
+
+```bash
+curl -s http://localhost:8001/metrics | grep rate_limit_exceeded_total
+```
+
+returned no output.
+
+### Root Cause
+
+Initial validation occurred before inspecting the full metric output.
+
+Metric existed but required context-aware inspection.
+
+### Resolution
+
+Generated rate limit violations:
+
+```bash
+for i in {1..120}; do
+  curl http://localhost:8001/health
+done
+```
+
+Inspected metrics using:
+
+```bash
+curl -s http://localhost:8001/metrics | grep -A 5 -B 2 rate_limit
+```
+
+### Validation
+
+Confirmed:
+
+```text
+rate_limit_exceeded_total{path="/health",service="asset-service"} 140
+```
+
+and
+
+```text
+rate_limit_exceeded_total{path="/metrics",service="asset-service"} 2
+```
+
+### Lessons Learned
+
+Metric validation should inspect full metric context rather than relying solely on simple grep output.
+
+Rate limiting telemetry and logging are functioning correctly.

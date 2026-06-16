@@ -3168,6 +3168,382 @@ Goal:
 ```text
 Move from detection visibility into investigation workflows and correlation capabilities.
 ```
+# Phase 5.10 Roadmap Update
+
+## Phase 5.10 — Security Investigation & Correlation
+
+### Status
+
+```text
+COMPLETE
+```
+
+---
+
+## Objectives
+
+Expand platform capabilities from:
+
+```text
+Observability
+→ Detection
+```
+
+to:
+
+```text
+Observability
+→ Detection
+→ Investigation
+```
+
+using:
+
+```text
+Grafana
+Prometheus
+Loki
+Tempo
+OpenTelemetry
+```
+
+---
+
+## 5.10.1 Tempo Validation
+
+### Completed
+
+Validated end-to-end distributed tracing.
+
+Confirmed:
+
+```text
+Tempo operational
+OTLP ingestion operational
+Trace storage operational
+Trace search operational
+```
+
+Validated services:
+
+```text
+asset-service
+auth-service
+```
+
+Confirmed:
+
+```text
+trace_id generation
+span_id generation
+trace retrieval
+Grafana Tempo integration
+```
+
+### Deliverables
+
+```text
+Tempo trace validation
+Trace search validation
+Service discovery validation
+Grafana Tempo integration validation
+```
+
+---
+
+## 5.10.2 Investigation Workflows
+
+### Completed
+
+Created:
+
+```text
+docs/security-investigation-workflows.md
+```
+
+Implemented investigation procedures for:
+
+```text
+Authentication Failures
+Permission Abuse
+Invalid Token Activity
+Rate Limit Abuse
+Privilege Escalation Activity
+```
+
+Standardized workflow:
+
+```text
+Detection
+↓
+Investigation
+↓
+Trace Analysis
+↓
+Log Correlation
+↓
+Root Cause Identification
+↓
+Response
+↓
+Recovery
+```
+
+### Deliverables
+
+```text
+Security investigation procedures
+Analyst workflow documentation
+Trace investigation methodology
+Root cause analysis process
+```
+
+---
+
+## 5.10.3 Security Investigation Dashboard
+
+### Completed
+
+Created dashboard:
+
+```text
+Ops Platform - Security Investigation
+```
+
+Exported dashboard:
+
+```text
+infrastructure/grafana/dashboards/security-investigation-dashboard.json
+```
+
+### Implemented Panels
+
+```text
+Security Event Volume (5m)
+
+Authentication Failures (5m)
+
+Invalid / Expired Tokens (5m)
+
+Permission Denied Events (5m)
+
+Privilege Escalation Attempts (5m)
+
+Administrative Endpoint Access (1h)
+
+User Management Actions (1h)
+
+Role Changes (24h)
+```
+
+### Validation
+
+Validated telemetry generation for:
+
+```text
+auth_login_failure_total
+
+invalid_token_total
+
+permission_denied_total
+
+privilege_escalation_attempt_total
+
+rate_limit_exceeded_total
+```
+
+Generated live events and confirmed dashboard population.
+
+### Deliverables
+
+```text
+Security investigation dashboard
+Investigation telemetry validation
+Security event visualization
+Analyst workflow integration
+```
+
+---
+
+## 5.10.4 Advanced Correlation & Trace Navigation
+
+### Completed
+
+Created:
+
+```text
+docs/loki-investigation-queries.md
+
+docs/tempo-investigation-queries.md
+```
+
+Expanded:
+
+```text
+docs/security-investigation-workflows.md
+```
+
+with trace-centric investigation procedures.
+
+### Loki Correlation Queries
+
+Validated:
+
+```logql
+{service=~".*asset.*|.*auth.*"} |= "trace_id"
+
+{service="auth-service"} |= "auth.failed"
+
+{service="auth-service"} |= "token.invalid"
+
+{service="auth-service"} |= "permission.denied"
+
+{service="asset-service"} |= "rate_limit.exceeded"
+```
+
+### Tempo Investigation Queries
+
+Validated:
+
+```text
+Service Search
+
+asset-service
+auth-service
+
+Trace Lookup
+
+trace_id
+```
+
+### Deliverables
+
+```text
+Trace-to-log correlation process
+Loki investigation playbook
+Tempo investigation playbook
+Cross-service investigation workflow
+```
+
+---
+
+## Phase Outcome
+
+The platform now supports:
+
+```text
+Application Metrics
+↓
+Alerting
+↓
+Detection
+↓
+Tracing
+↓
+Log Correlation
+↓
+Investigation
+↓
+Root Cause Analysis
+```
+
+### Investigation Workflow
+
+```text
+Security Alert
+↓
+Detection Dashboard
+↓
+Trace Identification
+↓
+Tempo Trace Analysis
+↓
+Loki Log Correlation
+↓
+Root Cause Determination
+↓
+Response Validation
+```
+
+### Operational Maturity Improvement
+
+Before Phase 5.10:
+
+```text
+Observe
+Detect
+```
+
+After Phase 5.10:
+
+```text
+Observe
+Detect
+Investigate
+Respond
+```
+
+---
+
+## Dashboard Inventory
+
+```text
+Ops Platform - Platform Overview
+
+Ops Platform - Service Reliability
+
+Ops Platform - Security Operations
+
+Ops Platform - Security Detection
+
+Ops Platform - Security Investigation
+```
+
+---
+
+## Documentation Inventory
+
+```text
+docs/security-investigation-workflows.md
+
+docs/loki-investigation-queries.md
+
+docs/tempo-investigation-queries.md
+```
+
+---
+
+## Next Phase Candidate (5.11)
+
+### Security Operations Automation
+
+Potential objectives:
+
+```text
+Alert Routing
+
+Incident Management
+
+Response Automation
+
+Investigation Shortcuts
+
+Security Case Tracking
+
+Security Reporting
+
+Detection Tuning
+
+Alert Noise Reduction
+```
+
+Focus:
+
+```text
+Investigation
+→ Response
+→ Automation
+```
 
 
 
