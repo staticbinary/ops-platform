@@ -5408,3 +5408,23 @@ Security telemetry populated panels.
 ### Lessons Learned
 
 Effective incident response requires dedicated operational visibility separate from detection and investigation workflows.
+
+## Issue
+### Symptoms
+No standardized format existed for documenting investigations, incidents, or post-incident reviews.
+
+### Root Cause
+Operational processes matured through alerting, investigation, and response phases without a formal documentation framework.
+
+### Resolution
+Created reusable incident management templates covering:
+
+- Security Incident Reports
+- Investigation Summaries
+- Post-Incident Reviews
+
+### Validation
+Verified all templates include required operational sections and support metrics, logs, traces, timelines, evidence collection, remediation tracking, and lessons learned.
+
+### Lessons Learned
+Operational maturity requires standardized documentation in addition to observability and response tooling.
