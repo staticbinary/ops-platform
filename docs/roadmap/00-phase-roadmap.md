@@ -3645,3 +3645,224 @@ Metrics
 → Response
 
 The platform now includes operational incident response procedures covering both Security Operations and Platform Reliability scenarios.
+
+## Phase 5.11 — Security Operations Automation
+
+### 5.11.1 Alert Routing Review
+
+**Status:** Complete
+
+#### Objectives
+
+* Inventory existing Prometheus alert rules
+* Validate alert categories and severity assignments
+* Review alert routing paths
+* Establish alert governance foundation
+
+#### Deliverables
+
+* Alert inventory documentation
+* Alert routing review
+* Alert classification review
+* Alert severity standardization
+
+#### Outcomes
+
+* Validated platform alert coverage
+* Validated security alert coverage
+* Reduced overlapping alert conditions
+* Improved alert signal quality
+
+---
+
+### 5.11.2 Incident Response Runbooks
+
+**Status:** Complete
+
+#### Objectives
+
+Create operational runbooks for common platform and security incidents.
+
+#### Deliverables
+
+* Authentication Failure Spike Runbook
+* Invalid Token Spike Runbook
+* Permission Abuse Runbook
+* Rate Limit Abuse Runbook
+* Privilege Escalation Activity Runbook
+* Service Outage Runbook
+* Prometheus Target Down Runbook
+
+#### Outcomes
+
+Standardized procedures for:
+
+* Detection
+* Investigation
+* Validation
+* Response
+* Recovery
+* Post-Incident Review
+
+---
+
+### 5.11.3 Alert Tuning & Signal Quality
+
+**Status:** Complete
+
+#### Objectives
+
+Improve operational signal quality and reduce alert fatigue.
+
+#### Deliverables
+
+* Alert threshold review
+* Severity classification review
+* Alert duration tuning
+* Duplicate alert reduction
+
+#### Outcomes
+
+* Reduced alert noise
+* Improved severity alignment
+* Reduced false positives
+* Improved operational relevance
+
+#### Key Improvements
+
+* Removed duplicate availability alert conditions
+* Increased outage alert evaluation windows
+* Reclassified InvalidTokenSpike from High to Medium severity
+* Standardized alert categories and ownership
+
+---
+
+### 5.11.4 Security Response Dashboard
+
+**Status:** Complete
+
+#### Objectives
+
+Create a dedicated response-oriented operational dashboard.
+
+#### Deliverables
+
+Dashboard:
+
+* Ops Platform - Security Response
+
+Panels:
+
+* Active Security Alerts
+* Active Platform Alerts
+* Alert State By Severity
+* Security Event Volume
+* Authentication Failures
+* Invalid Tokens
+* Permission Denials
+* Privilege Escalation Attempts
+* Rate Limit Violations
+* Service Target Health
+
+#### Outcomes
+
+Validated end-to-end workflow:
+
+Event
+↓
+Metric
+↓
+Alert
+↓
+Dashboard
+
+#### Validation
+
+Successfully validated:
+
+* Invalid token activity
+* Rate limit abuse activity
+* Alert firing visibility
+* ALERTS metric integration
+* Dashboard population
+* Security response visibility
+
+---
+
+### 5.11.5 Incident Management Templates
+
+**Status:** Planned
+
+#### Objectives
+
+Establish standardized incident documentation.
+
+#### Planned Deliverables
+
+* Security Incident Report Template
+* Investigation Summary Template
+* Post-Incident Review Template
+
+#### Expected Outcomes
+
+Standardized:
+
+* Incident documentation
+* Investigation reporting
+* Lessons learned capture
+* Operational knowledge retention
+
+---
+
+### Phase 5.11 Summary
+
+The platform now supports a complete operational security lifecycle:
+
+Metrics
+↓
+Alerting
+↓
+Detection
+↓
+Investigation
+↓
+Response
+↓
+Documentation
+
+#### Platform Maturity Achieved
+
+Security Telemetry
+✓
+
+Alerting
+✓
+
+Detection Engineering
+✓
+
+Investigation Workflows
+✓
+
+Response Operations
+✓
+
+Operational Runbooks
+✓
+
+Response Dashboards
+✓
+
+Incident Documentation Framework
+(In Progress)
+
+#### Readiness For Phase 6
+
+The platform is now positioned to begin Production Engineering initiatives including:
+
+* Secrets Management
+* Backup & Recovery
+* Configuration Management
+* CI/CD Foundations
+* SLOs / SLIs
+* Production Readiness Reviews

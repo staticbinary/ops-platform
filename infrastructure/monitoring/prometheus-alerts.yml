@@ -1,51 +1,40 @@
 groups:
   - name: ops-platform-availability
     rules:
-      - alert: PrometheusTargetDown
-        expr: up == 0
-        for: 1m
-        labels:
-          severity: critical
-          category: platform
-        annotations:
-          summary: "Prometheus target is down"
-          description: "Target {{ $labels.job }} on instance {{ $labels.instance }} is not responding."
-          runbook: "docs/runbooks/prometheus-target-down.md"
-
       - alert: AssetServiceDown
         expr: up{job="asset-service"} == 0
-        for: 1m
+        for: 2m
         labels:
           severity: critical
           category: platform
           service: asset-service
         annotations:
           summary: "Asset Service is down"
-          description: "The asset-service Prometheus target is unavailable."
+          description: "The asset-service Prometheus target has been unavailable for at least 2 minutes."
           runbook: "docs/runbooks/service-outage.md"
 
       - alert: AuthServiceDown
         expr: up{job="auth-service"} == 0
-        for: 1m
+        for: 2m
         labels:
           severity: critical
           category: platform
           service: auth-service
         annotations:
           summary: "Auth Service is down"
-          description: "The auth-service Prometheus target is unavailable."
+          description: "The auth-service Prometheus target has been unavailable for at least 2 minutes."
           runbook: "docs/runbooks/service-outage.md"
 
       - alert: cAdvisorDown
         expr: up{job="cadvisor"} == 0
-        for: 1m
+        for: 3m
         labels:
           severity: high
           category: platform
           service: cadvisor
         annotations:
           summary: "cAdvisor is down"
-          description: "Container metrics are unavailable because cAdvisor is not responding."
+          description: "Container metrics have been unavailable for at least 3 minutes because cAdvisor is not responding."
           runbook: "docs/runbooks/service-outage.md"
 
   - name: ops-platform-security
@@ -65,7 +54,7 @@ groups:
         expr: sum(increase(invalid_token_total[5m])) >= 5
         for: 1m
         labels:
-          severity: high
+          severity: medium
           category: security
         annotations:
           summary: "Invalid token spike detected"
@@ -107,12 +96,12 @@ groups:
 
       - alert: AssetService5xxErrors
         expr: sum(increase(http_requests_total{service="asset-service",status="5xx"}[5m])) >= 3
-        for: 1m
+        for: 2m
         labels:
           severity: high
           category: platform
           service: asset-service
         annotations:
           summary: "Asset Service 5xx errors detected"
-          description: "Three or more 5xx responses occurred in asset-service within five minutes."
+          description: "Three or more 5xx responses occurred in asset-service within five minutes and persisted for at least 2 minutes."
           runbook: "docs/runbooks/service-outage.md"

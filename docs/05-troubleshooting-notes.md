@@ -5021,3 +5021,390 @@ Metrics
 → Response
 
 Alert generation without response procedures creates operational gaps.
+
+## Issue
+
+Prometheus Alert Rules Generated Duplicate Availability Alerts
+
+### Symptoms
+
+A generic target availability alert existed alongside service-specific availability alerts.
+
+Potential duplicate alerts could occur when a monitored service became unavailable.
+
+Examples:
+
+- PrometheusTargetDown
+- AssetServiceDown
+- AuthServiceDown
+- cAdvisorDown
+
+A single outage condition could trigger multiple alerts for the same event.
+
+### Root Cause
+
+The generic alert:
+
+promql
+up == 0
+
+overlapped with service-specific target alerts.
+
+This reduced signal quality and increased alert noise.
+
+### Resolution
+
+Removed:
+
+PrometheusTargetDown
+
+Retained service-specific alerts:
+
+- AssetServiceDown
+- AuthServiceDown
+- cAdvisorDown
+
+Adjusted alert durations to reduce transient alert generation.
+
+### Validation
+
+Validated:
+
+bash
+docker compose exec prometheus promtool check config /etc/prometheus/prometheus.yml
+
+Confirmed:
+
+SUCCESS: 9 rules found
+
+Alert inventory reduced from 10 rules to 9 rules.
+
+### Lessons Learned
+
+Alerting should be specific and actionable.
+
+Overlapping alerts increase operational noise and contribute to alert fatigue.
+
+## Issue
+
+Availability Alerts Generated Excessive Noise During Short Restarts
+
+### Symptoms
+
+Short service restarts could trigger outage alerts.
+
+Container recreation or Docker Compose operations could potentially produce unnecessary incidents.
+
+### Root Cause
+
+Availability alerts used short evaluation windows:
+
+1 minute
+
+which increased sensitivity to temporary interruptions.
+
+### Resolution
+
+Adjusted alert durations:
+
+AssetServiceDown:
+1m → 2m
+
+AuthServiceDown:
+1m → 2m
+
+cAdvisorDown:
+1m → 3m
+
+AssetService5xxErrors:
+1m → 2m
+
+### Validation
+
+Prometheus loaded updated rules successfully.
+
+Alert durations reflected updated values.
+
+### Lessons Learned
+
+Operational alerts should tolerate short service interruptions while still detecting meaningful outages.
+
+## Issue
+
+Security Alert Severity Did Not Match Operational Risk
+
+### Symptoms
+
+Invalid token activity generated the same alert severity as more serious security conditions.
+
+Examples:
+
+- InvalidTokenSpike
+- PermissionDeniedSpike
+
+Both were classified as high severity.
+
+### Root Cause
+
+Initial severity assignments focused on implementation rather than operational impact.
+
+Invalid token events may occur because of:
+
+- Expired sessions
+- Stale tokens
+- Client-side errors
+- Misconfigured integrations
+
+### Resolution
+
+Adjusted:
+
+InvalidTokenSpike
+
+High
+↓
+Medium
+
+Retained:
+
+AuthenticationFailureSpike = High
+
+PermissionDeniedSpike = High
+
+PrivilegeEscalationActivity = Critical
+
+### Validation
+
+Prometheus successfully loaded updated alert definitions.
+
+Dashboard severity grouping reflected updated classifications.
+
+### Lessons Learned
+
+Alert severity should reflect operational risk rather than event existence.
+
+## Issue
+
+Security Response Dashboard Displayed No Data For Valid Metrics
+
+### Symptoms
+
+Security Response dashboard panels displayed:
+
+No data
+
+despite valid metrics existing in Prometheus.
+
+Examples:
+
+- Security Event Volume
+- Authentication Failures
+- Permission Denials
+- Privilege Escalation Attempts
+- Rate Limit Violations
+
+### Root Cause
+
+Queries used:
+
+promql
+sum(increase(metric_name[time]))
+
+When a metric contained no series during the selected time range, Grafana returned no data instead of zero.
+
+### Resolution
+
+Updated dashboard queries to use:
+
+promql
+sum(increase(metric_name[time])) or vector(0)
+
+Examples:
+
+promql
+sum(increase(auth_login_failure_total[1h])) or vector(0)
+
+sum(increase(permission_denied_total[1h])) or vector(0)
+
+sum(increase(rate_limit_exceeded_total[1h])) or vector(0)
+
+### Validation
+
+Dashboard panels displayed:
+
+0
+
+instead of:
+
+No data
+
+when no events existed.
+
+### Lessons Learned
+
+Operational dashboards should display zero activity explicitly rather than showing no data whenever possible.
+
+## Issue
+
+Security Event Volume Panel Failed To Render Combined Security Activity
+
+### Symptoms
+
+The Security Event Volume panel displayed:
+
+No data
+
+even when security telemetry existed.
+
+Observed metrics included:
+
+- invalid_token_total
+- rate_limit_exceeded_total
+
+### Root Cause
+
+The query combined multiple metrics.
+
+If one metric returned no series, the aggregate expression could return no data.
+
+### Resolution
+
+Updated the query to provide default values:
+
+promql
+(sum(increase(auth_login_failure_total[5m])) or vector(0))
++
+(sum(increase(invalid_token_total[5m])) or vector(0))
++
+(sum(increase(permission_denied_total[5m])) or vector(0))
++
+(sum(increase(privilege_escalation_attempt_total[5m])) or vector(0))
++
+(sum(increase(rate_limit_exceeded_total[5m])) or vector(0))
+
+### Validation
+
+Generated:
+
+- Invalid token events
+- Rate limit events
+
+Confirmed Security Event Volume populated correctly.
+
+### Lessons Learned
+
+Aggregate dashboard queries should gracefully handle missing metric series.
+
+## Issue
+
+Security Response Dashboard Required End-To-End Validation
+
+### Symptoms
+
+Dashboard imported successfully but initial validation only confirmed panel rendering.
+
+Alert-to-dashboard visibility had not yet been verified.
+
+### Root Cause
+
+The full operational workflow had not yet been exercised.
+
+Components requiring validation:
+
+- Metrics
+- Alert rules
+- Alert firing state
+- ALERTS metric
+- Dashboard visibility
+
+### Resolution
+
+Generated security events:
+
+- Invalid token activity
+- Rate limit violations
+- Authentication failures
+- Permission-denied activity
+
+Validated dashboard response.
+
+### Validation
+
+Confirmed:
+
+Active Security Alerts
+
+Alert State By Severity
+
+Security Event Volume
+
+Invalid Tokens
+
+Rate Limit Violations
+
+Service Target Health
+
+populated successfully.
+
+Validated complete workflow:
+
+Event
+↓
+Metric
+↓
+Alert
+↓
+Dashboard
+
+### Lessons Learned
+
+Dashboard validation should include full operational workflow testing rather than UI verification alone.
+
+## Issue
+
+Security Response Dashboard Added To Operations Dashboard Portfolio
+
+### Symptoms
+
+The platform supported:
+
+- Operations monitoring
+- Detection
+- Investigation
+
+but lacked a dedicated response-oriented dashboard.
+
+### Root Cause
+
+Security telemetry and alerting capabilities matured faster than response visualization.
+
+### Resolution
+
+Created:
+
+Ops Platform - Security Response
+
+Implemented panels for:
+
+- Active Security Alerts
+- Active Platform Alerts
+- Alert State By Severity
+- Security Event Volume
+- Authentication Failures
+- Invalid Tokens
+- Permission Denials
+- Privilege Escalation Attempts
+- Rate Limit Violations
+- Service Target Health
+
+### Validation
+
+Dashboard imported successfully.
+
+Prometheus queries executed successfully.
+
+Security telemetry populated panels.
+
+### Lessons Learned
+
+Effective incident response requires dedicated operational visibility separate from detection and investigation workflows.
