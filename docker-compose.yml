@@ -82,6 +82,7 @@ services:
       - "9090:9090"
     volumes:
       - ./infrastructure/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infrastructure/monitoring/prometheus-alerts.yml:/etc/prometheus/prometheus-alerts.yml:ro
     depends_on:
       asset_service:
         condition: service_healthy

@@ -8,41 +8,33 @@
 
 Asset service failed during startup with:
 
-```text
 ModuleNotFoundError: No module named 'app.database'
-```
 
 ### Root Cause
 
 `database.py` was accidentally created inside:
 
-```text
 services/asset_service/services/asset_service/app/
-```
 
 instead of:
 
-```text
 services/asset_service/app/
-```
 
 ### Resolution
 
 Moved `database.py` into the correct application package:
 
-```text
 services/asset_service/app/
-```
 
 Removed the accidental nested `services` directory and rebuilt containers:
 
-```bash
+bash
 docker compose up -d --build
-```
 
 ### Validation
 
 Confirmed:
+
 - asset-service container started successfully
 - imports resolved correctly
 - FastAPI initialized normally
@@ -63,29 +55,25 @@ Validate ORM-generated PostgreSQL table creation.
 
 Entered the PostgreSQL container:
 
-```bash
+bash
 docker exec -it ops-postgres sh
-```
 
 Connected using:
 
-```bash
+bash
 psql -U postgres
-```
 
 Verified generated tables:
 
-```sql
+sql
 \dt
-```
 
 ### Result
 
 Confirmed SQLAlchemy successfully generated the `assets` table using:
 
-```python
+python
 Base.metadata.create_all(bind=engine)
-```
 
 ### Lessons Learned
 
@@ -99,9 +87,7 @@ Direct infrastructure validation is important during backend development to veri
 
 CRUD implementation caused:
 
-```text
 502 Bad Gateway
-```
 
 through nginx.
 
@@ -113,19 +99,18 @@ Malformed indentation inside the `get_db()` dependency function prevented FastAP
 
 Reviewed logs:
 
-```bash
+bash
 docker compose logs asset-service
-```
 
 Corrected dependency indentation and rebuilt containers:
 
-```bash
+bash
 docker compose up -d --build
-```
 
 ### Validation
 
 Confirmed:
+
 - FastAPI started successfully
 - CRUD endpoints became reachable
 - PostgreSQL persistence functioned correctly
@@ -142,15 +127,14 @@ Container log inspection is critical for diagnosing backend runtime failures.
 
 Updating assets returned:
 
-```text
 405 Method Not Allowed
-```
 
 ### Root Cause
 
 `PUT /assets/{asset_id}` had not actually been implemented in `main.py`.
 
 Missing components included:
+
 - `AssetUpdate` schema import
 - update route registration
 - SQLAlchemy update logic
@@ -159,11 +143,11 @@ Missing components included:
 
 Added:
 
-```python
+python
 @app.put("/assets/{asset_id}", response_model=AssetResponse)
-```
 
 Implemented:
+
 - database lookup logic
 - SQLAlchemy update handling
 - commit/refresh logic
@@ -171,13 +155,13 @@ Implemented:
 
 Rebuilt containers:
 
-```bash
+bash
 docker compose up -d --build
-```
 
 ### Validation
 
 Confirmed:
+
 - successful asset updates
 - request parsing
 - database persistence
@@ -186,6 +170,7 @@ Confirmed:
 ### Lessons Learned
 
 A 405 response commonly indicates:
+
 - route path exists
 - HTTP method is not registered
 
@@ -197,9 +182,7 @@ A 405 response commonly indicates:
 
 Deleting assets returned:
 
-```text
 405 Method Not Allowed
-```
 
 ### Root Cause
 
@@ -208,6 +191,7 @@ The DELETE route was not properly registered in the running FastAPI application.
 ### Resolution
 
 Replaced the full `main.py` file with a verified application version containing:
+
 - GET routes
 - POST route
 - PUT route
@@ -215,11 +199,11 @@ Replaced the full `main.py` file with a verified application version containing:
 
 Implemented:
 
-```python
+python
 @app.delete("/assets/{asset_id}")
-```
 
 Added:
+
 - database lookup logic
 - delete handling
 - commit operations
@@ -227,14 +211,14 @@ Added:
 
 Performed a full rebuild:
 
-```bash
+bash
 docker compose down
 docker compose up -d --build
-```
 
 ### Validation
 
 Confirmed:
+
 - asset deletion succeeded
 - deleted assets returned 404 on retrieval
 - nonexistent assets returned proper 404 responses
@@ -251,18 +235,14 @@ Full-file replacement can eliminate hidden decorator or indentation issues durin
 
 Swagger UI loaded partially through nginx but failed with:
 
-```text
 Failed to load API definition
 /openapi.json not found
-```
 
 ### Root Cause
 
 FastAPI generated OpenAPI paths relative to `/` while the service operated behind:
 
-```text
 /api/assets
-```
 
 through the reverse proxy.
 
@@ -270,14 +250,13 @@ through the reverse proxy.
 
 Updated FastAPI initialization:
 
-```python
+python
 app = FastAPI(
     title="Asset Service",
     description="Operations platform asset management service",
     version="1.0.0",
     root_path="/api/assets"
 )
-```
 
 Also organized Swagger sections using route tags.
 
@@ -285,9 +264,7 @@ Also organized Swagger sections using route tags.
 
 Confirmed Swagger loads correctly at:
 
-```text
-http://localhost:8080/api/assets/docs
-```
+<http://localhost:8080/api/assets/docs>
 
 ### Lessons Learned
 
@@ -305,12 +282,12 @@ Add operational visibility for incoming requests and responses.
 
 Added FastAPI middleware:
 
-```python
+python
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-```
 
 Middleware logs:
+
 - incoming requests
 - completed responses
 - HTTP status codes
@@ -326,6 +303,7 @@ Removed the misplaced line and kept the proper initialization after app creation
 ### Validation
 
 Confirmed:
+
 - middleware registration
 - request interception
 - response interception
@@ -335,6 +313,7 @@ Confirmed:
 ### Lessons Learned
 
 Middleware provides the foundation for:
+
 - operational telemetry
 - structured logging
 - observability pipelines
@@ -351,11 +330,11 @@ Improve operational tracing using unique request identifiers.
 
 Added:
 
-```python
+python
 import uuid
-```
 
 Middleware now:
+
 - generates unique request IDs
 - logs request IDs
 - adds `X-Request-ID` response headers
@@ -364,29 +343,26 @@ Middleware now:
 
 Initial requests returned:
 
-```text
 500 Internal Server Error
-```
 
 ### Root Cause
 
 Container rebuild had not yet included:
 
-```python
+python
 import uuid
-```
 
 ### Resolution
 
 Confirmed imports and rebuilt containers:
 
-```bash
+bash
 docker compose up -d --build
-```
 
 ### Validation
 
 Confirmed:
+
 - request IDs appear in logs
 - request IDs appear in HTTP headers
 - request correlation functions correctly
@@ -394,6 +370,7 @@ Confirmed:
 ### Lessons Learned
 
 Correlation IDs significantly improve debugging across:
+
 - logs
 - reverse proxies
 - future multi-service communication
@@ -406,17 +383,13 @@ Correlation IDs significantly improve debugging across:
 
 Submitting login requests through Swagger returned:
 
-```text
 502 Bad Gateway
-```
 
 ### Root Cause
 
 `OAuth2PasswordRequestForm` requires:
 
-```text
 python-multipart
-```
 
 which was missing from `requirements.txt`.
 
@@ -424,20 +397,18 @@ which was missing from `requirements.txt`.
 
 Updated dependencies:
 
-```text
 python-jose[cryptography]
 python-multipart
-```
 
 Rebuilt containers:
 
-```bash
+bash
 docker compose up -d --build
-```
 
 ### Validation
 
 Confirmed:
+
 - JWT token issuance
 - bearer token responses
 - protected route authentication
@@ -455,15 +426,12 @@ Dependency failures inside FastAPI containers frequently surface as reverse prox
 
 Attempting to run:
 
-```bash
+bash
 services/asset_service/requirements.txt
-```
 
 returned:
 
-```text
 Permission denied
-```
 
 ### Root Cause
 
@@ -483,9 +451,7 @@ Python dependencies are installed during Docker image build execution, not by di
 
 ### Symptoms
 
-```text
 localhost:8001/docs
-```
 
 refused connections after rebuild.
 
@@ -497,15 +463,11 @@ refused connections after rebuild.
 
 Added:
 
-```text
 python-multipart
-```
 
 to:
 
-```text
 services/auth_service/requirements.txt
-```
 
 Rebuilt services successfully.
 
@@ -517,11 +479,10 @@ Rebuilt services successfully.
 
 Authenticated users received:
 
-```json
+json
 {
   "detail": "Not authenticated"
 }
-```
 
 ### Root Cause
 
@@ -543,35 +504,30 @@ Swagger authorization state does not persist reliably across rebuilds and servic
 
 Viewer users attempting to access admin endpoints received:
 
-```json
+json
 {
   "detail": "Insufficient permissions"
 }
-```
 
 ### Root Cause
 
 JWT tokens contained:
 
-```json
+json
 {
   "role": "viewer"
 }
-```
 
 while endpoints required:
 
-```python
+python
 auth.require_role("admin")
-```
 
 ### Resolution
 
 Added temporary admin promotion endpoint:
 
-```text
 POST /dev/promote-admin/{email}
-```
 
 Re-authenticated after promotion to generate a new JWT containing updated role claims.
 
@@ -595,21 +551,20 @@ Auth service initially stored SQLite data inside the container filesystem withou
 
 Added persistent Docker volume:
 
-```yaml
+yaml
 auth-service:
   volumes:
     - auth-data:/app/data
-```
 
 Updated SQLite path:
 
-```python
+python
 DATABASE_URL = "sqlite:///./data/auth.db"
-```
 
 ### Validation
 
 Confirmed:
+
 - users persist across rebuilds
 - roles persist across rebuilds
 - audit logs persist across rebuilds
@@ -622,9 +577,7 @@ Confirmed:
 
 Running Docker commands inside WSL returned:
 
-```text
 docker: command not found
-```
 
 ### Root Cause
 
@@ -642,9 +595,7 @@ Restarted Docker Desktop and confirmed WSL integration resumed normally.
 
 Docker Compose returned:
 
-```text
 Additional property auth-data is not allowed
-```
 
 ### Root Cause
 
@@ -654,11 +605,10 @@ Additional property auth-data is not allowed
 
 Corrected top-level volume alignment:
 
-```yaml
+yaml
 volumes:
   postgres-data:
   auth-data:
-```
 
 ---
 
@@ -668,9 +618,7 @@ volumes:
 
 Adding `created_at` to the audit model caused login requests to return:
 
-```text
 500 Internal Server Error
-```
 
 ### Root Cause
 
@@ -682,11 +630,10 @@ Persistent SQLite tables already existed without the new column.
 
 Reset development volume:
 
-```bash
+bash
 docker compose down
 docker volume rm ops-platform_auth-data
 docker compose up -d --build
-```
 
 ### Future Improvement
 
@@ -699,6 +646,7 @@ Use Alembic migrations for schema evolution.
 ### Root Cause
 
 Multiple contributing issues:
+
 - incorrect Docker Compose `expose` usage
 - conflicting host ports
 - startup crashes from import failures
@@ -707,18 +655,16 @@ Multiple contributing issues:
 
 Updated Docker Compose to use explicit host port mappings:
 
-```yaml
+yaml
 asset-service:
   ports:
     - "8000:8000"
-```
 
 Validated using:
 
-```bash
+bash
 docker compose ps
 docker compose config
-```
 
 ---
 
@@ -728,9 +674,7 @@ docker compose config
 
 Asset service failed with:
 
-```text
 ImportError: cannot import name 'auth' from 'app'
-```
 
 ### Root Cause
 
@@ -740,15 +684,11 @@ ImportError: cannot import name 'auth' from 'app'
 
 Moved:
 
-```text
 services/asset_service/auth.py
-```
 
 into:
 
-```text
 services/asset_service/app/auth.py
-```
 
 ---
 
@@ -758,13 +698,12 @@ services/asset_service/app/auth.py
 
 Swagger authorization failed with:
 
-```text
 TypeError: Failed to fetch
-```
 
 ### Root Cause
 
 Cross-origin OAuth requests between:
+
 - asset-service Swagger
 - auth-service token endpoint
 
@@ -774,14 +713,14 @@ caused browser/CORS failures.
 
 Switched asset-service authentication from OAuth2 password flow to direct Bearer token validation using:
 
-```python
+python
 HTTPBearer
 HTTPAuthorizationCredentials
-```
 
 ### Result
 
 Users now:
+
 - authenticate through auth-service
 - copy JWT tokens
 - authorize asset-service Swagger manually
@@ -794,9 +733,8 @@ Users now:
 
 Legacy references to:
 
-```python
+python
 oauth2_scheme
-```
 
 remained after switching to `HTTPBearer`.
 
@@ -812,19 +750,16 @@ Replaced the auth module with a clean bearer-token validation implementation.
 
 Admin POST requests returned:
 
-```text
 500 Internal Server Error
-```
 
 ### Root Cause
 
 Swagger default payload reused duplicate unique hostname values:
 
-```json
+json
 {
   "hostname": "string"
 }
-```
 
 ### Resolution
 
@@ -845,6 +780,7 @@ Replace raw database failures with clean operational responses.
 ### Implementation
 
 Added:
+
 - `409 Conflict` handling
 - graceful SQLAlchemy exception handling
 - rollback protection
@@ -853,6 +789,7 @@ Added:
 ### Validation
 
 Confirmed:
+
 - duplicate hostname conflicts return clean 409 responses
 - missing assets return 404 responses
 - rollback protection functions correctly
@@ -868,6 +805,7 @@ DBeaver connected successfully but tables were not visible.
 ### Root Causes
 
 Two separate issues:
+
 1. Connected to default `postgres` database instead of the application database
 2. PostgreSQL container port was not externally exposed
 
@@ -875,16 +813,17 @@ Two separate issues:
 
 Added Docker port mapping:
 
-```yaml
+yaml
 ports:
-  - "5432:5432"
-```
+
+- "5432:5432"
 
 Updated DBeaver connection to use the application database instead of the default PostgreSQL database.
 
 ### Validation
 
 Confirmed visibility of:
+
 - assets
 - audit_logs
 
@@ -901,6 +840,7 @@ Implement persistent operational audit logging.
 ### Implementation
 
 Added:
+
 - `AuditLog` SQLAlchemy model
 - CRUD audit event generation
 - timestamped audit records
@@ -908,6 +848,7 @@ Added:
 - PostgreSQL-backed telemetry storage
 
 Tracked events:
+
 - asset.create
 - asset.update
 - asset.delete
@@ -915,6 +856,7 @@ Tracked events:
 ### Validation
 
 Confirmed:
+
 - audit entries persist in PostgreSQL
 - audit events accessible through Swagger
 - timestamps populate correctly
@@ -924,11 +866,10 @@ Confirmed:
 
 Audit actor currently resolves as:
 
-```text
 unknown
-```
 
 because JWT payloads do not yet contain:
+
 - `username`
 - `sub`
 
@@ -937,6 +878,7 @@ claims in the expected format.
 ### Planned Improvements
 
 Future hardening work:
+
 - JWT expiration support
 - identity-aware JWT claims
 - actor attribution improvements
@@ -948,22 +890,27 @@ Future hardening work:
 ---
 
 ## Issue
+
 Logging Middleware Import / Initialization Problems
 
 ### Symptoms
+
 - FastAPI application startup failures
 - middleware registration errors
 - import-related exceptions during container startup
 
 ### Root Cause
+
 Logging utilities and request logging logic were originally embedded directly inside `main.py`, causing organizational complexity and dependency issues as the application expanded.
 
 ### Resolution
+
 Created centralized logging utility module:
 
 `app/logging_utils.py`
 
 Separated:
+
 - JSON formatting
 - timestamp generation
 - helper functions
@@ -972,28 +919,35 @@ Separated:
 Reduced logging complexity inside `main.py`.
 
 ### Validation
+
 - FastAPI application started successfully
 - middleware loaded correctly
 - request logging executed consistently across endpoints
 
 ### Lessons Learned
+
 Separating platform utilities early prevents architectural sprawl and significantly improves maintainability as backend services grow.
 
 ---
 
 ## Issue
+
 JSON Serialization Failures in Structured Logging
 
 ### Symptoms
+
 - internal server errors during request logging
 - serialization exceptions in container logs
 - failed logging events during API requests
 
 ### Root Cause
+
 Certain request/response objects and datetime values were not automatically JSON serializable.
 
 ### Resolution
+
 Implemented:
+
 - explicit timestamp formatting
 - controlled dictionary construction
 - JSON-safe serialization handling
@@ -1001,78 +955,97 @@ Implemented:
 Ensured only serializable values are written into structured logs.
 
 ### Validation
+
 - structured logs generated successfully
 - no additional serialization exceptions observed
 - logs displayed correctly in Docker container output
 
 ### Lessons Learned
+
 Structured logging requires careful control of serialized object types, especially when working with request lifecycle objects and datetime handling.
 
 ---
 
 ## Issue
+
 Duplicate Log Entries
 
 ### Symptoms
+
 - repeated request log entries
 - duplicate middleware logging output
 - cluttered container logs
 
 ### Root Cause
+
 Multiple logger handlers were being attached during application startup or reload cycles.
 
 ### Resolution
+
 Added safeguards to prevent duplicate handler registration before logger initialization.
 
 ### Validation
+
 - duplicate log entries stopped
 - request telemetry normalized
 - logging output became consistent
 
 ### Lessons Learned
+
 Python logging handlers can unintentionally stack during development reloads if initialization safeguards are not implemented.
 
 ---
 
 ## Issue
+
 Inconsistent Request Timing Metrics
 
 ### Symptoms
+
 - inaccurate request duration values
 - inconsistent middleware timing calculations
 
 ### Root Cause
+
 Timing calculations were not consistently initialized before request execution.
 
 ### Resolution
+
 Moved request timing initialization to the start of middleware execution and standardized duration calculations.
 
 ### Validation
+
 - request duration values became consistent
 - middleware timing metrics aligned with expected API behavior
 
 ### Lessons Learned
+
 Middleware timing instrumentation must initialize before any request processing occurs to ensure reliable telemetry.
 
 ---
 
 ## Issue
+
 Docker Cache / Rebuild Inconsistencies
 
 ### Symptoms
+
 - updated logging code not appearing
 - stale middleware behavior after code changes
 - old log formats persisting
 
 ### Root Cause
+
 Docker containers were still using cached image layers or mounted application state.
 
 ### Resolution
+
 Performed container rebuilds using:
 
 `docker compose up -d --build`
 
 In some cases:
+
 - full teardown
 - container recreation
 - volume reset
@@ -1080,28 +1053,35 @@ In some cases:
 were required.
 
 ### Validation
+
 - updated logging behavior appeared correctly
 - middleware changes reflected immediately
 - latest code executed successfully
 
 ### Lessons Learned
+
 Docker layer caching can preserve outdated application behavior if containers are not rebuilt properly after backend architecture changes.
 
 ---
 
 ## Issue
+
 Audit Log Date Filtering Inconsistencies
 
 ### Symptoms
+
 - incomplete date filtering behavior
 - unexpected audit log query results
 - inconsistent search output
 
 ### Root Cause
+
 Date parsing and filtering logic lacked consistent validation handling during initial implementation.
 
 ### Resolution
+
 Improved:
+
 - datetime parsing logic
 - query parameter validation
 - filtering conditions
@@ -1109,39 +1089,48 @@ Improved:
 Validated filtering behavior using multiple date range test cases.
 
 ### Validation
+
 - date range filtering worked correctly
 - audit queries returned expected results
 - filtering logic behaved consistently across tests
 
 ### Lessons Learned
+
 Date handling introduces subtle edge cases that require strict validation and consistent formatting standards.
 
 ---
 
 ## Issue
+
 Main.py Becoming Monolithic
 
 ### Symptoms
+
 - increasing difficulty navigating `main.py`
 - mixed concerns across logging and API logic
 - reduced maintainability
 
 ### Root Cause
+
 Application responsibilities accumulated inside a single file as features expanded.
 
 ### Resolution
+
 Began modularization process by extracting:
+
 - logging utilities
 - middleware helper logic
 
 into reusable application modules.
 
 ### Validation
+
 - `main.py` became cleaner and easier to navigate
 - logging logic became reusable
 - backend structure improved significantly
 
 ### Lessons Learned
+
 Modularization should begin early in backend projects to avoid technical debt and reduce future refactoring complexity.
 
 ---
@@ -1151,50 +1140,61 @@ Modularization should begin early in backend projects to avoid technical debt an
 ---
 
 ## Issue
+
 Alembic Files Created Only Inside Container
 
 ### Symptoms
+
 - `alembic.ini` not visible locally
 - Alembic directories missing from VS Code
 - `find . -name "alembic.ini"` returned no results on host
 
 ### Root Cause
+
 Alembic was initialized inside a non-bind-mounted container filesystem path instead of the project-mounted application directory.
 
 ### Resolution
+
 - Identified actual runtime working directory
 - Reinitialized Alembic inside `/app/app`
 - Copied Alembic files from container to host repository using `docker cp`
 
 ### Validation
+
 - `alembic.ini` appeared locally
 - Alembic directories became visible in VS Code
 - migration files persisted correctly after container restarts
 
 ### Lessons Learned
+
 Docker bind mount boundaries directly impact filesystem persistence. Runtime-generated files must exist inside mounted directories to persist locally.
 
 ---
 
 ## Issue
+
 Alembic Could Not Locate Configuration File
 
 ### Symptoms
+
 - `FAILED: No config file 'alembic.ini' found`
 
 ### Root Cause
+
 Alembic commands were executed from incorrect working directories inside the container.
 
 ### Resolution
+
 Executed Alembic commands from:
 
-```bash
+bash
 cd /app
 alembic -c app/alembic.ini
 
 # Phase 4.7 — RBAC & Permission Enforcement Hardening
 
 ## Issue
+
 The platform required stronger RBAC enforcement validation and permission-aware authorization behavior before expanding observability and integration layers.
 
 ### Symptoms
@@ -1208,12 +1208,14 @@ The platform required stronger RBAC enforcement validation and permission-aware 
 ### Root Cause
 
 The platform initially focused on role validation but lacked:
+
 - permission-centric authorization flow
 - standardized forbidden/unauthorized error helpers
 - centralized permission telemetry
 - separation between authentication and authorization event handling
 
 Additional contributing issue:
+
 - testing initially used `GET /assets`
 - viewer role legitimately possessed `asset:read`
 - proper RBAC validation required `POST /assets`
@@ -1223,18 +1225,22 @@ Additional contributing issue:
 Confirmed:
 
 #### Viewer Token
+
 - `GET /assets` → `200`
 - `POST /assets` → `403`
 
 #### Admin Token
+
 - `POST /assets` → `200`
 
 #### Authorization Behavior
+
 - permission checks correctly enforced
 - role permissions mapped properly
 - standardized forbidden responses operational
 
 #### Middleware Stability
+
 - auth middleware integrated successfully with FastAPI dependency injection
 - bearer token extraction functioning correctly
 - token claim validation functioning correctly
@@ -1252,6 +1258,7 @@ Confirmed:
 # Phase 4.8 — Request Correlation & Exception Observability
 
 ## Issue
+
 The platform lacked centralized request lifecycle observability, request correlation IDs, and structured exception telemetry.
 
 ### Symptoms
@@ -1268,11 +1275,12 @@ The platform lacked centralized request lifecycle observability, request correla
 The platform originally relied on decentralized route-level logging and lacked a dedicated middleware-driven observability layer.
 
 Additional contributing issues:
+
 - legacy request middleware remained active alongside new middleware
 - circular imports developed between:
-  - `request_context.py`
+  - `request_con.py`
   - `logging_utils.py`
-- request context utilities were imported directly into logging helpers
+- request con utilities were imported directly into logging helpers
 - exception handling lacked centralized failure-event generation
 
 ### Validation
@@ -1280,26 +1288,31 @@ Additional contributing issues:
 Confirmed successful operation of:
 
 #### Request Lifecycle Events
+
 - `request.started`
 - `request.completed`
 - `request.failed`
 
 #### Request Correlation
+
 - shared `request_id` persisted across request lifecycle
 - `x-request-id` response headers functioning correctly
 
 #### Exception Handling
+
 - sanitized `500` responses returned correctly
 - middleware survived unhandled exceptions
 - stack traces logged internally
 - traceback leakage prevented to clients
 
 #### Middleware Architecture
+
 - duplicate request logging removed successfully
 - centralized middleware architecture functioning correctly
-- request context propagation stable under failures
+- request con propagation stable under failures
 
 #### Docker & Infrastructure Stability
+
 - containers recovered successfully after rebuilds
 - reverse proxy remained stable
 - PostgreSQL remained healthy across restart cycles
@@ -1308,7 +1321,7 @@ Confirmed successful operation of:
 ### Lessons Learned
 
 - Middleware-driven observability is cleaner than route-level instrumentation
-- `ContextVar` provides reliable async-safe request context propagation
+- `ConVar` provides reliable async-safe request con propagation
 - Circular imports become increasingly likely in observability-heavy architectures
 - Request correlation IDs are foundational for future distributed tracing
 - Structured lifecycle logging greatly improves debugging and operational visibility
@@ -1320,6 +1333,7 @@ Confirmed successful operation of:
 # Phase 4.9 — Security Telemetry & Observability Hardening
 
 ## Issue
+
 Centralized observability, request correlation, and security telemetry were not yet standardized across the platform. Authentication failures, RBAC denials, and unhandled exceptions lacked structured SIEM-ready logging and request traceability.
 
 ### Symptoms
@@ -1338,8 +1352,9 @@ Centralized observability, request correlation, and security telemetry were not 
 The platform originally relied on decentralized request logging and lacked a dedicated middleware-driven observability architecture.
 
 Additional contributing issues:
+
 - request lifecycle logging existed both in middleware and `main.py`
-- logging utilities imported request context directly, creating circular dependencies
+- logging utilities imported request con directly, creating circular dependencies
 - auth failures and RBAC denials returned HTTP errors without structured security telemetry
 - no standardized event schema existed for operational or security events
 
@@ -1348,19 +1363,24 @@ Additional contributing issues:
 Validated successful operation of:
 
 #### Request Lifecycle Logging
+
 - `request.started`
 - `request.completed`
 - `request.failed`
 
 #### Security Telemetry
+
 - `auth.failure`
 - `permission.denied`
 
 #### Request Correlation
+
 - shared `request_id` across all lifecycle and security events
 
 #### Structured Metadata
+
 Confirmed logging of:
+
 - request_id
 - actor email
 - actor role
@@ -1376,23 +1396,27 @@ Confirmed logging of:
 - missing permissions
 
 #### Auth & RBAC Behavior
+
 Confirmed:
+
 - Missing token → `401 auth.failure`
 - Invalid permission → `403 permission.denied`
 - Unhandled exception → `500 request.failed`
 - Successful requests → `200 request.completed`
 
 #### Middleware Stability
+
 Confirmed:
+
 - middleware survives exceptions
-- request context persists correctly
+- request con persists correctly
 - reverse proxy routing remains stable
 - structured logging survives rebuilds and failures
 
 ### Lessons Learned
 
 - Middleware-based observability is significantly cleaner than route-level logging
-- `ContextVar` provides reliable async-safe request context propagation in FastAPI
+- `ConVar` provides reliable async-safe request con propagation in FastAPI
 - Circular imports become increasingly common as observability layers mature
 - Security telemetry should be treated as first-class platform infrastructure
 - Structured JSON logging dramatically improves future SIEM and observability integration readiness
@@ -1408,20 +1432,24 @@ Confirmed:
 # Phase 5.0 — RBAC + Transaction Hardening
 
 ## Issue
+
 Unauthorized access handling and database transaction recovery behavior required stabilization across protected endpoints.
 
 ### Symptoms
+
 - `401 Unauthorized` responses after logout or expired tokens.
 - `403 Forbidden` responses when viewer accounts attempted restricted operations.
 - `500 Internal Server Error` during asset creation/update operations.
 - Risk of unstable DB sessions after failed writes.
 
 ### Root Cause
+
 - RBAC enforcement had not yet been fully validated across all permission scopes.
 - Database transactions lacked sufficient rollback handling.
 - SQLAlchemy exceptions were not consistently normalized into structured API responses.
 
 ### Resolution
+
 - Validated JWT authorization flow through Swagger/OpenAPI authorization.
 - Confirmed permission enforcement for:
   - `asset:create`
@@ -1432,16 +1460,19 @@ Unauthorized access handling and database transaction recovery behavior required
   - `IntegrityError`
   - `SQLAlchemyError`
 - Implemented transactional rollback protections:
-```python
+python
 db.rollback()
 
-```md
+md
+
 # Phase 5.1 — Audit Logging + Query Optimization
 
 ## Issue
+
 Audit logging lacked enterprise-grade filtering, pagination, and query protections.
 
 ### Symptoms
+
 - Large unfiltered audit responses.
 - No pagination support.
 - No date range filtering.
@@ -1449,157 +1480,192 @@ Audit logging lacked enterprise-grade filtering, pagination, and query protectio
 - Potential for excessive database query loads.
 
 ### Root Cause
+
 - Audit endpoint was originally implemented as a basic query without scalability considerations.
 - Missing validation around date parsing.
 - No query constraints or pagination safeguards existed.
 
 ### Resolution
+
 Added:
+
 - Pagination:
-```python
+python
 limit
 offset
 
-```md
+md
+
 # Phase 5.2 — Health Checks + Reliability Foundation
 
 ## Issue
+
 Health monitoring endpoints lacked consistency, readiness support, and secure failure handling.
 
 ### Symptoms
+
 - Duplicate `/db-health` endpoints existed simultaneously.
 - Older DB health implementation exposed raw exception output.
 - No readiness endpoint existed for orchestration validation.
 - Mixed DB connection handling patterns across implementations.
 
 ### Root Cause
+
 - Earlier temporary DB health implementation was not removed after newer dependency-injected version was added.
 - Exception responses exposed internal database details.
 - Readiness validation had not yet been implemented for orchestration support.
 
 ### Resolution
+
 Removed legacy implementation:
-```python
+python
 with engine.connect()
 
 ## Issue
+
 ### Symptoms
+
 Swagger UI failed to load correctly behind the nginx reverse proxy. `/docs` attempted to retrieve `/openapi.json` from an invalid location, causing broken API documentation rendering.
 
 ### Root Cause
+
 FastAPI `root_path` and `openapi_url` settings conflicted with nginx reverse proxy path handling.
 
 ### Resolution
+
 Updated FastAPI configuration to properly support reverse proxy routing:
 
-```python
+python
 root_path="/api/assets"
 docs_url="/docs"
 openapi_url="/openapi.json"
-```
 
 Validated nginx routing and rebuilt reverse proxy containers.
 
 ### Validation
+
 Verified:
+
 - `/api/assets/docs`
 - `/api/assets/openapi.json`
 
 Swagger UI loaded successfully behind nginx.
 
 ### Lessons Learned
+
 FastAPI `root_path` already prepends proxied paths internally. `openapi_url` should remain local to the application rather than including the proxy prefix itself.
 
 ## Issue
+
 ### Symptoms
+
 nginx returned `502 Bad Gateway` after TrustedHostMiddleware configuration changes.
 
 ### Root Cause
+
 Malformed Python syntax inside the `TrustedHostMiddleware` configuration block prevented the asset service container from starting.
 
 ### Resolution
+
 Removed leftover host entries and simplified the configuration to:
 
-```python
+python
 allowed_hosts=["*"]
-```
 
 Rebuilt the asset service container.
 
 ### Validation
+
 Verified:
+
 - asset service container healthy
 - reverse proxy routing restored
 - `/api/assets/health` returned expected responses
 
 ### Lessons Learned
+
 Successful Docker rebuilds do not guarantee successful application startup. Container logs should always be inspected after middleware or syntax modifications.
 
 ## Issue
+
 ### Symptoms
+
 TrustedHostMiddleware rejected valid localhost requests with:
 
-```text
 400 Invalid host header
-```
 
 ### Root Cause
+
 nginx forwarded host headers differently than initially expected, causing TrustedHostMiddleware validation mismatches.
 
 ### Resolution
+
 Temporarily relaxed trusted host enforcement using:
 
-```python
+python
 allowed_hosts=["*"]
-```
 
 Added nginx debug headers for future host validation troubleshooting.
 
 ### Validation
+
 Validated successful requests through:
+
 - localhost browser access
 - curl testing
 - nginx reverse proxy routing
 - direct container access
 
 ### Lessons Learned
+
 Reverse proxy host forwarding behavior must be fully understood before strict host validation rules are enforced.
 
 ## Issue
+
 ### Symptoms
+
 Rate limiting behavior initially appeared inconsistent during rapid request testing.
 
 ### Root Cause
+
 Request bursts exceeded configured thresholds very quickly, producing expected 429 responses without immediately obvious confirmation.
 
 ### Resolution
+
 Performed controlled request flood testing using repeated curl loops and validated middleware enforcement behavior through structured logs.
 
 ### Validation
+
 Observed:
+
 - `429 Too Many Requests`
 - structured warning logs
 - request correlation IDs
 - consistent middleware enforcement
 
 ### Lessons Learned
+
 Structured request telemetry significantly improves validation and troubleshooting during security hardening implementation.
 
 # Phase 5.5+ Troubleshooting Notes
 
 ## Issue
+
 Grafana dashboard panels initially returned no data.
 
 ### Symptoms
+
 Grafana connected to Prometheus successfully, but the first custom request-rate query did not populate.
 
 ### Root Cause
+
 The assumed metric name `http_requests_total` was not the metric exposed by the asset service.
 
 ### Resolution
+
 Verified available metrics using Prometheus/Grafana queries and switched to the actual exported metric:
 
-```promql
+promql
 sum(rate(asset_service_http_request_duration_seconds_count[1m]))
 Validation
 
@@ -1657,7 +1723,7 @@ Request rate displayed correctly.
 
 Lessons Learned
 
-Histogram metrics expose multiple series. Use _count for request count/rate and _bucket with histogram_quantile() for latency percentiles.
+Histogram metrics expose multiple series. Use _count for request count/rate and_bucket with histogram_quantile() for latency percentiles.
 
 Issue
 
@@ -1676,7 +1742,7 @@ Resolution
 
 Used the direct asset service docs endpoint temporarily:
 
-http://localhost:8001/docs
+<http://localhost:8001/docs>
 Validation
 
 Swagger loaded successfully through the direct service port.
@@ -1927,13 +1993,14 @@ Resolution
 Corrected prometheus.yml to use separate scrape jobs:
 
 scrape_configs:
-  - job_name: "asset-service"
-    static_configs:
-      - targets: ["asset_service:8000"]
 
-  - job_name: "auth-service"
+- job_name: "asset-service"
     static_configs:
-      - targets: ["auth_service:8000"]
+  - targets: ["asset_service:8000"]
+
+- job_name: "auth-service"
+    static_configs:
+  - targets: ["auth_service:8000"]
 Validation
 
 Prometheus logs showed:
@@ -1978,7 +2045,7 @@ Symptoms
 
 Opening:
 
-http://localhost:8000/metrics
+<http://localhost:8000/metrics>
 
 did not show auth-service metrics.
 
@@ -1990,7 +2057,7 @@ Resolution
 
 Used the direct auth-service host port:
 
-http://localhost:8002/metrics
+<http://localhost:8002/metrics>
 Validation
 
 Auth-service metrics loaded from port 8002.
@@ -2005,7 +2072,7 @@ Auth-service direct port initially did not respond.
 
 Symptoms
 
-http://localhost:8002/metrics failed to load.
+<http://localhost:8002/metrics> failed to load.
 
 Root Cause
 
@@ -2098,7 +2165,7 @@ Resolution
 
 Opened:
 
-http://localhost:8002/metrics
+<http://localhost:8002/metrics>
 Validation
 
 Metrics output appeared, including:
@@ -2127,7 +2194,7 @@ Resolution
 
 Refreshed:
 
-http://localhost:9090/targets
+<http://localhost:9090/targets>
 Validation
 
 auth-service showed UP.
@@ -2264,62 +2331,79 @@ Lessons Learned
 Observability should be treated as a platform-wide baseline requirement for every service.
 
 ## Issue
+
 ### Symptoms
+
 Grafana per-service CPU dashboard panels displayed no data despite cAdvisor running and Prometheus targets appearing healthy.
 
 ### Root Cause
+
 The original PromQL queries depended on Docker Compose metadata labels (`container_label_com_docker_compose_service`) that were not exposed by the WSL2/Docker Desktop cAdvisor environment.
 
 ### Resolution
+
 Validated cAdvisor metric exposure directly through:
-- http://localhost:8080/metrics
+
+- <http://localhost:8080/metrics>
 - Prometheus query testing
 
 Replaced label-dependent PromQL queries with direct container ID matching:
 
-```promql
+promql
 rate(container_cpu_usage_seconds_total{
   id=~"/docker/.*",
   cpu="total"
-}[5m]) * 100
+}[5m])* 100
 
 ## Issue
+
 ### Symptoms
+
 Grafana memory telemetry panels initially failed to display meaningful infrastructure usage trends.
 
 ### Root Cause
+
 Grafana auto-unit detection and initial query structure were not aligned with container telemetry formatting.
 
 ### Resolution
+
 Created dedicated memory telemetry panels using:
 
-```promql
+promql
 container_memory_usage_bytes{
   id=~"/docker/.*"
 }
 
 ## Issue
+
 ### Symptoms
+
 Promtail successfully started but Grafana Loki queries returned no container logs.
 
 ### Root Cause
+
 WSL2/Docker Desktop did not expose Docker JSON log files under:
 `/var/lib/docker/containers/*/*.log`
 
 The mounted log directory inside the Promtail container was effectively empty.
 
 ### Resolution
+
 Switched Promtail from filesystem log scraping to Docker service discovery using Docker socket integration.
 
 Updated Promtail configuration to use:
 
-```yaml
+yaml
 docker_sd_configs:
-  - host: unix:///var/run/docker.sock
+
+- host: unix:///var/run/docker.sock
 
 ## Issue
+
 ### Symptoms
+
 Security dashboard panels for:
+
 - auth.failed
 - permission.denied
 - token.invalid
@@ -2328,16 +2412,20 @@ Security dashboard panels for:
 initially displayed no data.
 
 ### Root Cause
+
 Authentication and authorization failures were only generating generic HTTP status code responses without explicit structured security telemetry events.
 
 ### Resolution
+
 Implemented structured security event logging inside `auth.py` and `main.py`:
+
 - auth.failed
 - permission.denied
 - token.invalid
 - token.expired
 
 Added:
+
 - category
 - event
 - reason
@@ -2350,29 +2438,36 @@ Added:
 to structured JSON log payloads.
 
 ### Validation
+
 Grafana Loki security telemetry panels successfully populated during failed authentication and authorization testing.
 
 ### Lessons Learned
+
 Operational observability and security observability require intentional structured event design rather than reliance on generic HTTP response codes.
 
 ## Issue
+
 ### Symptoms
+
 Grafana SMTP test notifications failed authentication repeatedly.
 
 ### Root Cause
+
 Several SMTP configuration mismatches existed:
+
 - Proton Mail free tier does not support SMTP app-password authentication
 - Grafana SMTP environment variables still referenced Proton SMTP host/user
 - Gmail app password initially included whitespace formatting
 
 ### Resolution
+
 Migrated SMTP integration to Gmail app-password authentication.
 
 Updated:
-```yaml
+yaml
 GF_SMTP_HOST: "smtp.gmail.com:587"
-GF_SMTP_USER: "staticbinaryops@gmail.com"
-GF_SMTP_FROM_ADDRESS: "staticbinaryops@gmail.com"
+GF_SMTP_USER: "<staticbinaryops@gmail.com>"
+GF_SMTP_FROM_ADDRESS: "<staticbinaryops@gmail.com>"
 
 ## Issue
 
@@ -2390,18 +2485,18 @@ Updated Grafana SMTP environment variables in `docker-compose.yml`, validated SM
 
 ### Validation
 
-* Verified SMTP variables inside the container with:
+- Verified SMTP variables inside the container with:
 
-  ```bash
+  bash
   docker compose exec grafana env | grep GF_SMTP
-  ```
-* Successfully generated and received Grafana alert test emails.
+  
+- Successfully generated and received Grafana alert test emails.
 
 ### Lessons Learned
 
-* SMTP configuration should be externally validated from inside containers.
-* Alerting infrastructure should be validated early before larger observability expansion.
-* Consistent mail provider configuration avoids future operational confusion.
+- SMTP configuration should be externally validated from inside containers.
+- Alerting infrastructure should be validated early before larger observability expansion.
+- Consistent mail provider configuration avoids future operational confusion.
 
 ---
 
@@ -2421,14 +2516,14 @@ Reviewed service dependency behavior and intentionally shifted architecture phil
 
 ### Validation
 
-* Verified Grafana remained operational even during Prometheus outages.
-* Confirmed only visualization data disappeared while the Grafana service itself remained healthy.
+- Verified Grafana remained operational even during Prometheus outages.
+- Confirmed only visualization data disappeared while the Grafana service itself remained healthy.
 
 ### Lessons Learned
 
-* Observability services should fail independently whenever possible.
-* Service survivability is more important than maintaining every visualization during outages.
-* Graceful degradation is a critical platform engineering principle.
+- Observability services should fail independently whenever possible.
+- Service survivability is more important than maintaining every visualization during outages.
+- Graceful degradation is a critical platform engineering principle.
 
 ---
 
@@ -2446,20 +2541,19 @@ Initial `depends_on` configuration only validated container startup order rather
 
 Added Docker health checks and upgraded `depends_on` to use:
 
-```yaml
+yaml
 condition: service_healthy
-```
 
 ### Validation
 
-* PostgreSQL health checks completed before dependent service startup.
-* `asset_service` and `auth_service` waited for healthy database initialization before starting.
+- PostgreSQL health checks completed before dependent service startup.
+- `asset_service` and `auth_service` waited for healthy database initialization before starting.
 
 ### Lessons Learned
 
-* Container startup does not equal application readiness.
-* Health-aware dependencies significantly improve orchestration reliability.
-* Proper startup sequencing improves operational resilience.
+- Container startup does not equal application readiness.
+- Health-aware dependencies significantly improve orchestration reliability.
+- Proper startup sequencing improves operational resilience.
 
 ---
 
@@ -2477,28 +2571,27 @@ Database retry logic did not correctly receive the SQLAlchemy session object req
 
 Updated:
 
-```python
+python
 retry_database_operation(..., db=db)
-```
 
 within `/health/ready` readiness validation logic.
 
 ### Validation
 
-* Successfully stopped PostgreSQL and validated:
+- Successfully stopped PostgreSQL and validated:
 
-  ```json
+  json
   {
     "status": "not_ready"
   }
-  ```
-* Successfully restarted PostgreSQL and validated automatic readiness recovery.
+  
+- Successfully restarted PostgreSQL and validated automatic readiness recovery.
 
 ### Lessons Learned
 
-* Resilience testing exposes hidden dependency assumptions.
-* Retry utilities should always support explicit rollback handling.
-* Readiness checks are critical for operational survivability.
+- Resilience testing exposes hidden dependency assumptions.
+- Retry utilities should always support explicit rollback handling.
+- Readiness checks are critical for operational survivability.
 
 ---
 
@@ -2506,7 +2599,7 @@ within `/health/ready` readiness validation logic.
 
 ### Symptoms
 
-`dependency.database.unavailable` messages appeared as plain text rather than structured JSON logs.
+`dependency.database.unavailable` messages appeared as plain  rather than structured JSON logs.
 
 ### Root Cause
 
@@ -2516,22 +2609,21 @@ Database dependency failure events were not routed through centralized structure
 
 Created:
 
-```python
+python
 build_dependency_health_log()
-```
 
 inside `logging_utils.py` and migrated dependency telemetry into structured JSON logging.
 
 ### Validation
 
-* Dependency failures appeared in structured JSON format.
-* Loki correctly parsed dependency events.
+- Dependency failures appeared in structured JSON format.
+- Loki correctly parsed dependency events.
 
 ### Lessons Learned
 
-* Operational telemetry should always use centralized structured logging.
-* Plain text logs reduce searchability and observability value.
-* Infrastructure telemetry should follow the same schema as application telemetry.
+- Operational telemetry should always use centralized structured logging.
+- Plain  logs reduce searchability and observability value.
+- Infrastructure telemetry should follow the same schema as application telemetry.
 
 ---
 
@@ -2543,31 +2635,31 @@ Request correlation IDs were not consistently propagated across request lifecycl
 
 ### Root Cause
 
-Middleware request context management lacked centralized request ID handling and cleanup.
+Middleware request con management lacked centralized request ID handling and cleanup.
 
 ### Resolution
 
 Implemented:
 
-* `RequestIDMiddleware`
-* request context variables
-* request lifecycle correlation
-* request cleanup/reset handling
+- `RequestIDMiddleware`
+- request con variables
+- request lifecycle correlation
+- request cleanup/reset handling
 
 ### Validation
 
-* Request IDs consistently appeared across:
+- Request IDs consistently appeared across:
 
-  * request.started
-  * request.completed
-  * dependency events
-  * auth events
+  - request.started
+  - request.completed
+  - dependency events
+  - auth events
 
 ### Lessons Learned
 
-* Correlation IDs are foundational for operational debugging.
-* Middleware-level context management greatly improves observability consistency.
-* Cleanup/reset handling is important for long-running async services.
+- Correlation IDs are foundational for operational debugging.
+- Middleware-level con management greatly improves observability consistency.
+- Cleanup/reset handling is important for long-running async services.
 
 ---
 
@@ -2581,11 +2673,10 @@ Tempo container continuously restarted after deployment.
 
 Tempo configuration schema used unsupported fields:
 
-```yaml
+yaml
 compactor:
 ingester:
 compaction:
-```
 
 for the deployed Tempo image version.
 
@@ -2593,20 +2684,20 @@ for the deployed Tempo image version.
 
 Reduced Tempo configuration to a minimal supported schema using only:
 
-* server
-* distributor
-* storage
+- server
+- distributor
+- storage
 
 ### Validation
 
-* Tempo container started successfully.
-* OTLP receivers initialized correctly.
+- Tempo container started successfully.
+- OTLP receivers initialized correctly.
 
 ### Lessons Learned
 
-* Grafana ecosystem components can have significant version-specific configuration differences.
-* Minimal working configurations are best for initial deployments.
-* Observability components should be validated incrementally.
+- Grafana ecosystem components can have significant version-specific configuration differences.
+- Minimal working configurations are best for initial deployments.
+- Observability components should be validated incrementally.
 
 ---
 
@@ -2620,9 +2711,7 @@ OpenTelemetry traces were not visible in Grafana Tempo despite successful servic
 
 Tempo OTLP receivers bound only to:
 
-```text
 127.0.0.1
-```
 
 inside the Tempo container, preventing Docker network access from other containers.
 
@@ -2630,21 +2719,20 @@ inside the Tempo container, preventing Docker network access from other containe
 
 Updated Tempo OTLP receiver bindings to:
 
-```yaml
+yaml
 endpoint: 0.0.0.0:4317
 endpoint: 0.0.0.0:4318
-```
 
 ### Validation
 
-* Tempo OTLP receivers became reachable from other containers.
-* Traces successfully appeared inside Grafana Explore.
+- Tempo OTLP receivers became reachable from other containers.
+- Traces successfully appeared inside Grafana Explore.
 
 ### Lessons Learned
 
-* Container-local loopback interfaces are inaccessible across Docker networks.
-* Observability pipelines require explicit network exposure validation.
-* Receiver binding configuration is critical in distributed systems.
+- Container-local loopback interfaces are inaccessible across Docker networks.
+- Observability pipelines require explicit network exposure validation.
+- Receiver binding configuration is critical in distributed systems.
 
 ---
 
@@ -2658,30 +2746,28 @@ OpenTelemetry traces were not exporting successfully from `asset_service`.
 
 Incorrect OTLP gRPC endpoint formatting:
 
-```python
-endpoint="http://tempo:4317"
-```
+python
+endpoint="<http://tempo:4317>"
 
 ### Resolution
 
 Updated exporter configuration to:
 
-```python
+python
 endpoint="tempo:4317"
-```
 
 and later validated HTTP OTLP exporter compatibility as well.
 
 ### Validation
 
-* Trace export errors disappeared.
-* Tempo successfully ingested traces.
+- Trace export errors disappeared.
+- Tempo successfully ingested traces.
 
 ### Lessons Learned
 
-* OTLP gRPC exporters require raw host:port formatting.
-* Exporter transport protocols must match receiver configuration.
-* Telemetry transport validation is critical during observability rollout.
+- OTLP gRPC exporters require raw host:port formatting.
+- Exporter transport protocols must match receiver configuration.
+- Telemetry transport validation is critical during observability rollout.
 
 ---
 
@@ -2699,20 +2785,18 @@ Grafana Tempo query syntax used incorrect selector format.
 
 Updated trace queries to:
 
-```text
 {resource.service.name="asset-service"}
-```
 
 ### Validation
 
-* Traces successfully appeared in Grafana Explore.
-* Trace search functionality became operational.
+- Traces successfully appeared in Grafana Explore.
+- Trace search functionality became operational.
 
 ### Lessons Learned
 
-* Tempo queries use label selector syntax similar to Loki.
-* Trace ingestion and trace querying are separate validation steps.
-* Query syntax correctness is essential during observability validation.
+- Tempo queries use label selector syntax similar to Loki.
+- Trace ingestion and trace querying are separate validation steps.
+- Query syntax correctness is essential during observability validation.
 
 ---
 
@@ -2724,28 +2808,28 @@ Structured logs lacked trace correlation metadata.
 
 ### Root Cause
 
-OpenTelemetry span context was not injected into centralized structured logging.
+OpenTelemetry span con was not injected into centralized structured logging.
 
 ### Resolution
 
 Added:
 
-* `get_trace_context()`
-* `trace_id`
-* `span_id`
+- `get_trace_con()`
+- `trace_id`
+- `span_id`
 
 to base structured logging events.
 
 ### Validation
 
-* Structured logs displayed trace correlation fields.
-* Loki logs matched Tempo traces successfully.
+- Structured logs displayed trace correlation fields.
+- Loki logs matched Tempo traces successfully.
 
 ### Lessons Learned
 
-* Logs and traces become exponentially more valuable when correlated.
-* Shared telemetry identifiers dramatically improve investigations.
-* Trace-aware logging is foundational for mature observability systems.
+- Logs and traces become exponentially more valuable when correlated.
+- Shared telemetry identifiers dramatically improve investigations.
+- Trace-aware logging is foundational for mature observability systems.
 
 ---
 
@@ -2765,15 +2849,15 @@ Instrumented both services independently and added outbound Requests instrumenta
 
 ### Validation
 
-* `asset_service` traces operational.
-* `auth_service` traces operational.
-* Requests instrumentation active.
+- `asset_service` traces operational.
+- `auth_service` traces operational.
+- Requests instrumentation active.
 
 ### Lessons Learned
 
-* True distributed tracing requires actual inter-service communication.
-* Independent instrumentation is still valuable foundational work.
-* Trace propagation readiness should be built before architectural expansion.
+- True distributed tracing requires actual inter-service communication.
+- Independent instrumentation is still valuable foundational work.
+- Trace propagation readiness should be built before architectural expansion.
 
 ---
 
@@ -2791,31 +2875,31 @@ OpenTelemetry spans were not enriched with request lifecycle metadata.
 
 Added middleware-level trace enrichment:
 
-* request ID
-* HTTP method
-* request path
-* client IP
+- request ID
+- HTTP method
+- request path
+- client IP
 
 using:
 
-```python
+python
 current_span.set_attribute(...)
-```
 
 ### Validation
 
-* Request attributes appeared inside Grafana Tempo spans.
-* Trace investigation visibility improved significantly.
+- Request attributes appeared inside Grafana Tempo spans.
+- Trace investigation visibility improved significantly.
 
 ### Lessons Learned
 
-* Raw traces are far less useful without enrichment.
-* Middleware-level enrichment provides consistent telemetry coverage.
-* Request metadata dramatically improves operational investigations.
+- Raw traces are far less useful without enrichment.
+- Middleware-level enrichment provides consistent telemetry coverage.
+- Request metadata dramatically improves operational investigations.
 
 # Phase 5.9.1 Troubleshooting Notes
 
 ## Issue
+
 ### Symptoms
 
 - Docker commands unavailable after reboot
@@ -2846,6 +2930,7 @@ current_span.set_attribute(...)
 ---
 
 ## Issue
+
 ### Symptoms
 
 - Asset Service Down alert remained Normal while service was offline
@@ -2859,21 +2944,17 @@ current_span.set_attribute(...)
 
 Replaced:
 
-```promql
+promql
 up{job="asset-service"} == 0
-```
 
 With:
 
-```promql
+promql
 up{job="asset-service"}
-```
 
 Threshold:
 
-```text
 IS BELOW 1
-```
 
 ### Validation
 
@@ -2890,6 +2971,7 @@ IS BELOW 1
 ---
 
 ## Issue
+
 ### Symptoms
 
 - Prometheus Target Down alert repeatedly entered No Data state
@@ -2918,6 +3000,7 @@ IS BELOW 1
 ---
 
 ## Issue
+
 ### Symptoms
 
 - Asset Service telemetry missing from shared request metrics
@@ -2927,17 +3010,13 @@ IS BELOW 1
 
 Asset Service used:
 
-```text
 asset_service_http_requests_total
 asset_service_http_request_duration_seconds
-```
 
 Auth Service used:
 
-```text
 http_requests_total
 http_request_duration_seconds
-```
 
 ### Resolution
 
@@ -2948,9 +3027,8 @@ http_request_duration_seconds
 
 Prometheus successfully returned:
 
-```promql
+promql
 http_requests_total{service="asset-service"}
-```
 
 ### Lessons Learned
 
@@ -2960,6 +3038,7 @@ http_requests_total{service="asset-service"}
 ---
 
 ## Issue
+
 ### Symptoms
 
 - Asset Service 5xx Error Alert returned No Data
@@ -2974,7 +3053,7 @@ http_requests_total{service="asset-service"}
 
 Implemented:
 
-```promql
+promql
 (
   sum(
     rate(
@@ -2986,7 +3065,6 @@ Implemented:
   )
 )
 or vector(0)
-```
 
 Added temporary endpoint to generate controlled HTTP 500 responses.
 
@@ -3007,6 +3085,7 @@ Added temporary endpoint to generate controlled HTTP 500 responses.
 ---
 
 ## Issue
+
 ### Symptoms
 
 - Availability alerts only detected service outages
@@ -3040,10 +3119,8 @@ Added temporary endpoint to generate controlled HTTP 500 responses.
 
 Request Volume by Service panel displayed:
 
-```text
 {service="asset-service"}
 {}
-```
 
 instead of showing both Asset Service and Auth Service separately.
 
@@ -3057,17 +3134,13 @@ Investigated Prometheus metrics and discovered Auth Service was exposing `http_r
 
 Created:
 
-```text
 services/auth_service/app/metrics.py
-```
 
 Added standardized metric definitions and custom metric recording logic.
 
 Added custom metrics middleware to Auth Service and exposed a dedicated:
 
-```text
 /metrics
-```
 
 endpoint.
 
@@ -3075,30 +3148,24 @@ endpoint.
 
 Prometheus query:
 
-```promql
+promql
 http_requests_total{job="auth-service"}
-```
 
 returned:
 
-```text
 service="auth-service"
-```
 
 Dashboard query:
 
-```promql
+promql
 sum by (service) (
   rate(http_requests_total{service!=""}[5m])
 )
-```
 
 successfully displayed:
 
-```text
 asset-service
 auth-service
-```
 
 ### Lessons Learned
 
@@ -3120,35 +3187,29 @@ Auth Service relied on automatic Prometheus instrumentation rather than the cust
 
 Removed automatic instrumentation and implemented a dedicated metrics module:
 
-```text
 services/auth_service/app/metrics.py
-```
 
 Added:
 
-* Request counter
-* Request duration histogram
-* Status code normalization
-* Metrics endpoint
-* Metrics middleware
+- Request counter
+- Request duration histogram
+- Status code normalization
+- Metrics endpoint
+- Metrics middleware
 
 ### Validation
 
 Both services now expose:
 
-```text
 http_requests_total
 http_request_duration_seconds
-```
 
 with identical label structures:
 
-```text
 service
 method
 handler
 status
-```
 
 ### Lessons Learned
 
@@ -3162,31 +3223,23 @@ Consistency between services is more important than convenience. Shared observab
 
 Container CPU Usage dashboard panel displayed:
 
-```text
 No data
-```
 
 ### Root Cause
 
 Grafana query expected cAdvisor metrics to contain:
 
-```text
 name=
-```
 
 or
 
-```text
 container=
-```
 
 labels.
 
 Current cAdvisor deployment exposed container metrics using only:
 
-```text
 id=
-```
 
 labels.
 
@@ -3194,15 +3247,14 @@ labels.
 
 Inspected Prometheus metrics:
 
-```promql
+promql
 container_cpu_usage_seconds_total
-```
 
 Discovered Docker container identifiers were stored in the `id` label.
 
 Updated panel query:
 
-```promql
+promql
 sum by (id) (
   rate(
     container_cpu_usage_seconds_total{
@@ -3210,7 +3262,6 @@ sum by (id) (
     }[5m]
   )
 )
-```
 
 ### Validation
 
@@ -3228,9 +3279,7 @@ Do not assume label names in exported metrics. Always inspect raw Prometheus met
 
 Container Memory Usage dashboard panel displayed:
 
-```text
 No data
-```
 
 ### Root Cause
 
@@ -3238,33 +3287,26 @@ Memory query relied on nonexistent container labels.
 
 cAdvisor exposed Docker metrics through:
 
-```text
 id=
-```
 
 rather than:
 
-```text
 container=
-```
 
 or
 
-```text
 name=
-```
 
 ### Resolution
 
 Updated memory query:
 
-```promql
+promql
 sum by (id) (
   container_memory_usage_bytes{
     id=~"/docker/.*"
   }
 )
-```
 
 ### Validation
 
@@ -3286,9 +3328,7 @@ Container CPU and Memory panels displayed Docker container IDs rather than servi
 
 cAdvisor exported metrics using Docker container identifiers:
 
-```text
 /docker/<container-id>
-```
 
 without human-readable container name labels.
 
@@ -3296,9 +3336,8 @@ without human-readable container name labels.
 
 Mapped Docker IDs to container names using:
 
-```bash
+bash
 docker ps --format "table {{.ID}}\t{{.Names}}"
-```
 
 Documented the relationship between IDs and container names for troubleshooting.
 
@@ -3328,14 +3367,14 @@ Observability validation had not previously been performed using cross-service G
 
 Built and validated the following dashboard panels:
 
-* Service Availability
-* Request Volume by Service
-* 5xx Error Rate by Service
-* 4xx Error Rate by Service
-* P95 Request Latency by Service
-* P95 Request Latency by Endpoint
-* Container CPU Usage
-* Container Memory Usage
+- Service Availability
+- Request Volume by Service
+- 5xx Error Rate by Service
+- 4xx Error Rate by Service
+- P95 Request Latency by Service
+- P95 Request Latency by Endpoint
+- Container CPU Usage
+- Container Memory Usage
 
 Exported dashboard JSON for version control.
 
@@ -3343,11 +3382,11 @@ Exported dashboard JSON for version control.
 
 Dashboard successfully visualized:
 
-* Service health
-* Traffic volume
-* Error rates
-* Request latency
-* Container resource consumption
+- Service health
+- Traffic volume
+- Error rates
+- Request latency
+- Container resource consumption
 
 ### Lessons Learned
 
@@ -3356,16 +3395,16 @@ Operational dashboards are not just visualization tools; they are validation too
 # Phase 5.9.3 — Troubleshooting Notes
 
 ## Issue
+
 ### Symptoms
 
 Security counters appeared in `/metrics` output but no metric values were displayed.
 
 Example:
 
-```text
 # HELP auth_login_success_total Total successful authentication attempts
+
 # TYPE auth_login_success_total counter
-```
 
 without corresponding metric data.
 
@@ -3379,11 +3418,9 @@ Metric definitions existed but no authentication events had occurred since deplo
 
 Generated test activity:
 
-```text
 Successful logins
 Failed logins
 Role changes
-```
 
 to initialize counters.
 
@@ -3391,11 +3428,9 @@ to initialize counters.
 
 Verified metric values appeared:
 
-```text
 auth_login_success_total{...} 1.0
 auth_login_failure_total{...} 2.0
 role_change_total{...} 1.0
-```
 
 ### Lessons Learned
 
@@ -3404,6 +3439,7 @@ Prometheus counters do not emit label values until an event increments the metri
 ---
 
 ## Issue
+
 ### Symptoms
 
 Permission denied metric remained at zero despite testing authorization workflows.
@@ -3412,15 +3448,11 @@ Permission denied metric remained at zero despite testing authorization workflow
 
 Test account:
 
-```text
-viewer2@test.com
-```
+<viewer2@test.com>
 
 had previously been promoted to:
 
-```text
 admin
-```
 
 during earlier testing.
 
@@ -3430,15 +3462,11 @@ The account no longer generated authorization failures.
 
 Created a new viewer-only account:
 
-```text
-viewer3@test.com
-```
+<viewer3@test.com>
 
 and attempted access to:
 
-```text
 /admin
-```
 
 endpoint.
 
@@ -3446,40 +3474,34 @@ endpoint.
 
 Observed:
 
-```json
+json
 {
   "detail": "Insufficient permissions"
 }
-```
 
 Verified metric:
 
-```text
 permission_denied_total{reason="insufficient_role",required_role="admin",service="auth-service"} 1.0
-```
 
 ### Lessons Learned
 
 Maintain dedicated test accounts for:
 
-```text
 viewer
 admin
 security testing
-```
 
 to prevent role drift from affecting validation.
 
 ---
 
 ## Issue
+
 ### Symptoms
 
 Security Operations Dashboard showed:
 
-```text
 No Data
-```
 
 for Expired Token Events.
 
@@ -3493,9 +3515,8 @@ Metric existed but had never been incremented.
 
 Confirmed instrumentation was present in:
 
-```python
+python
 verify_token()
-```
 
 and deferred validation until a future expired token test.
 
@@ -3503,9 +3524,7 @@ and deferred validation until a future expired token test.
 
 Verified metric registration:
 
-```text
 expired_token_total
-```
 
 appeared in `/metrics`.
 
@@ -3515,22 +3534,20 @@ appeared in `/metrics`.
 
 In security monitoring it often indicates:
 
-```text
 No observed security events
-```
 
 which is valid operational information.
 
 ---
 
 ## Issue
+
 ### Symptoms
 
 Loki queries using:
 
-```logql
+logql
 {service="auth-service"}
-```
 
 returned no results.
 
@@ -3540,42 +3557,33 @@ Promtail label values differed from application log values.
 
 Actual label:
 
-```text
 service=auth_service
-```
 
 Expected label:
 
-```text
 service=auth-service
-```
 
 ### Resolution
 
 Inspected Loki labels and discovered:
 
-```text
 container=/ops-auth-service
 service=auth_service
 service_name=auth_service
 job=docker
-```
 
 Updated queries to use:
 
-```logql
+logql
 {container="/ops-auth-service"}
-```
 
 ### Validation
 
 Successfully retrieved:
 
-```text
 auth.failed
 token.invalid
 permission.denied
-```
 
 events.
 
@@ -3588,15 +3596,14 @@ Do not assume label values match application service names.
 ---
 
 ## Issue
+
 ### Symptoms
 
 Security Event Volume panel produced visualization errors.
 
 Example:
 
-```text
 Data is missing a string field
-```
 
 ### Root Cause
 
@@ -3608,13 +3615,12 @@ Initial queries contained malformed quote escaping and filter placement.
 
 Updated query:
 
-```logql
+logql
 count_over_time(
   {container="/ops-auth-service"}
   |= "\"category\": \"security\""
   [5m]
 )
-```
 
 ### Validation
 
@@ -3629,14 +3635,13 @@ Validate queries directly in Explore before dashboard creation.
 ---
 
 ## Issue
+
 ### Symptoms
 
 Loki panel returned:
 
-```text
 parse error at line 1
 syntax error: unexpected IDENTIFIER
-```
 
 ### Root Cause
 
@@ -3644,10 +3649,8 @@ Prometheus and Loki query languages were accidentally mixed.
 
 Example:
 
-```text
 sum(invalid_token_total)
 {container="/ops-auth-service"} |= "token.invalid"
-```
 
 combined PromQL and LogQL syntax.
 
@@ -3655,22 +3658,18 @@ combined PromQL and LogQL syntax.
 
 Separated dashboards into:
 
-```text
 Prometheus Metrics
 Loki Log Queries
-```
 
 Prometheus:
 
-```promql
+promql
 sum(invalid_token_total)
-```
 
 Loki:
 
-```logql
+logql
 {container="/ops-auth-service"} |= "token.invalid"
-```
 
 ### Validation
 
@@ -3683,15 +3682,14 @@ Prometheus metrics and Loki logs should be treated as separate data models even 
 ---
 
 ## Issue
+
 ### Symptoms
 
 Authentication Failure Rate panel appeared to display extremely small values.
 
 Example:
 
-```text
 0.003
-```
 
 instead of expected failure counts.
 
@@ -3699,15 +3697,12 @@ instead of expected failure counts.
 
 Query used:
 
-```promql
+promql
 rate(auth_login_failure_total[5m])
-```
 
 which calculates:
 
-```text
 events per second
-```
 
 rather than total events.
 
@@ -3717,9 +3712,8 @@ Confirmed behavior was correct.
 
 Evaluated alternative query:
 
-```promql
+promql
 increase(auth_login_failure_total[5m])
-```
 
 for count-based visualization.
 
@@ -3731,17 +3725,15 @@ Rate spikes matched generated authentication failures.
 
 Use:
 
-```promql
+promql
 rate()
-```
 
 for velocity and trend monitoring.
 
 Use:
 
-```promql
+promql
 increase()
-```
 
 for event count monitoring.
 
@@ -3750,21 +3742,18 @@ Both provide useful but different operational perspectives.
 ---
 
 ## Issue
+
 ### Symptoms
 
 Docker commands failed after system reboot and BSOD recovery.
 
 Examples:
 
-```text
 docker ps
 Failed to initialize: protocol not available
-```
 
-```text
 unable to get image
 failed to connect to docker API
-```
 
 ### Root Cause
 
@@ -3776,13 +3765,11 @@ Ubuntu WSL instance no longer had access to Docker Desktop's shared socket.
 
 Re-enabled:
 
-```text
 Docker Desktop
 → Settings
 → Resources
 → WSL Integration
 → Ubuntu
-```
 
 Restarted Docker Desktop.
 
@@ -3790,17 +3777,15 @@ Restarted Docker Desktop.
 
 Verified:
 
-```bash
+bash
 docker ps
-```
 
 returned successfully.
 
 Verified:
 
-```bash
+bash
 docker compose up -d
-```
 
 started all platform services.
 
@@ -3810,9 +3795,7 @@ Docker Desktop updates, crashes, and WSL restarts can silently disable WSL integ
 
 When Docker suddenly loses access to:
 
-```text
 /var/run/docker.sock
-```
 
 check WSL Integration settings before troubleshooting containers.
 
@@ -3822,11 +3805,9 @@ Security Metrics Not Appearing In Grafana
 
 ### Symptoms
 
-```text
 auth_login_failure_total returned no data
 invalid_token_total returned no data
 permission_denied_total returned no data
-```
 
 ### Root Cause
 
@@ -3838,25 +3819,19 @@ Prometheus only exposed series after the counters were created and updated.
 
 Generated validation security events:
 
-```text
 Failed Authentication Attempts
 Invalid JWT Requests
 Permission Denied Requests
-```
 
 Confirmed metrics became available through:
 
-```text
-http://localhost:8002/metrics
-```
+<http://localhost:8002/metrics>
 
 ### Validation
 
-```text
 auth_login_failure_total visible
 invalid_token_total visible
 permission_denied_total visible
-```
 
 ### Lessons Learned
 
@@ -3880,24 +3855,18 @@ Detection rule existed but required real event generation for testing.
 
 Generated:
 
-```text
 15+ failed login attempts
-```
 
 Validated:
 
-```text
 auth_login_failure_total
 sum(increase(auth_login_failure_total[5m]))
-```
 
 ### Validation
 
-```text
 Threshold exceeded
 Alert entered FIRING state
 Detection screenshot captured
-```
 
 ### Lessons Learned
 
@@ -3921,24 +3890,18 @@ Alert rule required live security events.
 
 Generated:
 
-```text
 15+ invalid JWT requests
-```
 
 Validated:
 
-```text
 invalid_token_total
 sum(increase(invalid_token_total[5m]))
-```
 
 ### Validation
 
-```text
 Metric incremented
 Threshold exceeded
 Alert evaluated successfully
-```
 
 ### Lessons Learned
 
@@ -3962,10 +3925,9 @@ Log-based detection had not previously been validated.
 
 Queried:
 
-```logql
+logql
 {container="/ops-auth-service"}
 |= "\"category\": \"security\""
-```
 
 Confirmed structured security events existed.
 
@@ -3973,11 +3935,9 @@ Confirmed structured security events existed.
 
 Observed:
 
-```text
 auth.failed
 token.invalid
 permission.denied
-```
 
 events within Loki.
 
@@ -4003,14 +3963,12 @@ Security event volume alert required threshold testing.
 
 Generated:
 
-```text
 Authentication Failures
 Invalid Token Events
-```
 
 Executed:
 
-```logql
+logql
 sum(
   count_over_time(
     {container="/ops-auth-service"}
@@ -4018,15 +3976,12 @@ sum(
     [5m]
   )
 )
-```
 
 ### Validation
 
-```text
 Security event count exceeded threshold
 Alert evaluation successful
 Detection graph captured
-```
 
 ### Lessons Learned
 
@@ -4050,13 +4005,11 @@ New Loki detection required event generation.
 
 Generated:
 
-```text
 15+ invalid token requests
-```
 
 Executed:
 
-```logql
+logql
 sum(
   count_over_time(
     {container="/ops-auth-service"}
@@ -4064,14 +4017,11 @@ sum(
     [5m]
   )
 )
-```
 
 ### Validation
 
-```text
 Threshold exceeded
 Detection logic validated
-```
 
 ### Lessons Learned
 
@@ -4093,18 +4043,17 @@ Auth service container failed to start after adding administrative monitoring te
 
 Added:
 
-* `record_admin_endpoint_access()`
-* `record_privilege_escalation_attempt()`
-* `record_user_management_action()`
+- `record_admin_endpoint_access()`
+- `record_privilege_escalation_attempt()`
+- `record_user_management_action()`
 
 to `services/auth_service/app/metrics.py`.
 
 ### Validation
 
-```bash
-curl -s http://localhost:8002/metrics | grep -E \
+bash
+curl -s <http://localhost:8002/metrics> | grep -E \
 "admin_endpoint_access|privilege_escalation|user_management_action"
-```
 
 Metrics successfully exposed.
 
@@ -4120,9 +4069,7 @@ When adding new telemetry, implement metric definitions before importing them in
 
 Auth service failed startup with:
 
-```text
 ImportError: cannot import name 'record_admin_endpoint_access'
-```
 
 ### Root Cause
 
@@ -4134,9 +4081,8 @@ Corrected indentation so all metric helper functions existed at module scope.
 
 ### Validation
 
-```bash
+bash
 python -m py_compile services/auth_service/app/metrics.py
-```
 
 Returned no errors.
 
@@ -4162,16 +4108,15 @@ Saved all modified files and rebuilt container.
 
 ### Validation
 
-```bash
+bash
 docker compose build --no-cache auth_service
 docker compose up -d auth_service
-```
 
 Container started successfully.
 
 ### Lessons Learned
 
-Always save source files before rebuilding containers. Docker only copies saved filesystem contents into build context.
+Always save source files before rebuilding containers. Docker only copies saved filesystem contents into build con.
 
 ---
 
@@ -4189,26 +4134,22 @@ Rate-limit logging initially used an incorrect logging function signature.
 
 Reworked rate-limit event generation using:
 
-```python
+python
 event_data = base_log_event(...)
 event_data.update(...)
 log_event(event_data)
-```
 
 ### Validation
 
-```bash
+bash
 for i in {1..120}; do
-  curl http://localhost:8001/health
+  curl <http://localhost:8001/health>
 done
-```
 
 Produced:
 
-```text
 100 200
 20 429
-```
 
 ### Lessons Learned
 
@@ -4222,9 +4163,7 @@ Security logging should reuse established structured logging patterns to avoid r
 
 Asset service failed startup with:
 
-```text
 NameError: name 'cat' is not defined
-```
 
 ### Root Cause
 
@@ -4234,19 +4173,17 @@ Shell heredoc commands were accidentally pasted into Python source files.
 
 Removed:
 
-```bash
+bash
 cat > filename <<'EOF'
 ...
 EOF
-```
 
 from application source code.
 
 ### Validation
 
-```bash
+bash
 python -m py_compile services/asset_service/app/*.py
-```
 
 Completed successfully.
 
@@ -4272,15 +4209,12 @@ Generated test traffic exceeding middleware threshold.
 
 ### Validation
 
-```bash
-curl -s http://localhost:8001/metrics | grep rate_limit_exceeded_total
-```
+bash
+curl -s <http://localhost:8001/metrics> | grep rate_limit_exceeded_total
 
 Returned:
 
-```text
 rate_limit_exceeded_total{path="/health",service="asset-service"} 20
-```
 
 ### Lessons Learned
 
@@ -4326,9 +4260,9 @@ New metrics had been added but not exercised.
 
 Executed:
 
-* `/admin`
-* `/audit`
-* `/dev/promote-admin/{email}`
+- `/admin`
+- `/audit`
+- `/dev/promote-admin/{email}`
 
 with both admin and viewer accounts.
 
@@ -4336,13 +4270,11 @@ with both admin and viewer accounts.
 
 Verified:
 
-```text
 admin_endpoint_access_total
 privilege_escalation_attempt_total
 user_management_action_total
 role_change_total
 permission_denied_total
-```
 
 incremented appropriately.
 
@@ -4358,20 +4290,16 @@ Every new metric should have a documented validation procedure before phase comp
 
 ### Symptoms
 
-* Grafana Explore successfully connected to Tempo.
-* Tempo datasource loaded.
-* Query execution returned:
+- Grafana Explore successfully connected to Tempo.
+- Tempo datasource loaded.
+- Query execution returned:
 
-```text
 failed to execute search query
 status: 400 Bad Request
-```
 
-* Searching with:
+- Searching with:
 
-```text
 asset-service
-```
 
 failed.
 
@@ -4387,13 +4315,11 @@ Switched from TraceQL testing to Tempo Search mode.
 
 Validated traces using:
 
-```text
 Service Name:
 asset-service
 
 Service Name:
 auth-service
-```
 
 Confirmed Grafana successfully retrieved traces.
 
@@ -4401,13 +4327,11 @@ Confirmed Grafana successfully retrieved traces.
 
 Verified:
 
-```text
 Asset Service traces visible
 Auth Service traces visible
 Trace IDs visible
 Span IDs visible
 Tempo search operational
-```
 
 ### Lessons Learned
 
@@ -4425,37 +4349,29 @@ Always validate datasource connectivity using Search mode before troubleshooting
 
 Queries returned:
 
-```text
 No logs found
-```
 
 Examples:
 
-```logql
+logql
 {container_name=~".+"}
-```
 
-```logql
+logql
 {container_name=~".*asset.*|.*auth.*"} |= "trace_id"
-```
 
 ### Root Cause
 
 Promtail labels did not include:
 
-```text
 container_name
-```
 
 Available labels were:
 
-```text
 container
 job
 service
 service_name
 stream
-```
 
 Query assumptions did not match actual Loki labels.
 
@@ -4465,27 +4381,23 @@ Used Grafana Label Browser to inspect available labels.
 
 Updated investigation queries to use:
 
-```logql
+logql
 {service=~".*asset.*|.*auth.*"} |= "trace_id"
-```
 
 and
 
-```logql
+logql
 {service_name=~".*asset.*|.*auth.*"} |= "trace_id"
-```
 
 ### Validation
 
 Successfully retrieved:
 
-```text
 trace_id
 span_id
 request.started
 dependency.database.available
 request.completed
-```
 
 events.
 
@@ -4505,18 +4417,14 @@ Always validate labels using Label Browser before building dashboards and invest
 
 All investigation dashboard panels displayed:
 
-```text
 No data
-```
 
 including:
 
-```text
 Authentication Failures
 Invalid Tokens
 Permission Denied Events
 Privilege Escalation Attempts
-```
 
 ### Root Cause
 
@@ -4524,10 +4432,9 @@ Metrics existed and were registered in Prometheus, but no metric samples had bee
 
 Prometheus exposed:
 
-```text
 # HELP
+
 # TYPE
-```
 
 definitions only.
 
@@ -4537,12 +4444,10 @@ No counters had been incremented since container startup.
 
 Generated test security events:
 
-```text
 Authentication failures
 Invalid token attempts
 Permission denied events
 Privilege escalation attempts
-```
 
 using manual API testing.
 
@@ -4550,12 +4455,10 @@ using manual API testing.
 
 Confirmed metric samples existed:
 
-```text
 auth_login_failure_total
 invalid_token_total
 permission_denied_total
 privilege_escalation_attempt_total
-```
 
 Grafana panels populated successfully.
 
@@ -4575,9 +4478,7 @@ Dashboard validation requires event generation, not merely metric registration.
 
 Failed login testing produced:
 
-```text
 422 Unprocessable Entity
-```
 
 Metrics remained unchanged.
 
@@ -4585,21 +4486,19 @@ Metrics remained unchanged.
 
 Test payload used:
 
-```json
+json
 {
   "username": "...",
   "password": "..."
 }
-```
 
 while the endpoint expected:
 
-```json
+json
 {
   "email": "...",
   "password": "..."
 }
-```
 
 Validation failed before authentication logic executed.
 
@@ -4607,20 +4506,17 @@ Validation failed before authentication logic executed.
 
 Retested using:
 
-```json
+json
 {
-  "email": "bad-user@test.com",
+  "email": "<bad-user@test.com>",
   "password": "wrong-password"
 }
-```
 
 ### Validation
 
 Confirmed:
 
-```text
 auth_login_failure_total{method="json_login",reason="user_not_found"} 5
-```
 
 ### Lessons Learned
 
@@ -4638,9 +4534,7 @@ Always verify request schemas before testing observability metrics.
 
 Invalid token panel displayed:
 
-```text
 No data
-```
 
 despite invalid token testing.
 
@@ -4654,20 +4548,17 @@ Dashboard validation occurred before invalid token events were produced.
 
 Generated invalid token events using:
 
-```bash
+bash
 for i in {1..5}; do
-  curl -s http://localhost:8002/me \
+  curl -s <http://localhost:8002/me> \
     -H "Authorization: Bearer invalid.token.value"
 done
-```
 
 ### Validation
 
 Confirmed:
 
-```text
 invalid_token_total{reason="invalid_token",service="auth-service"} 5
-```
 
 ### Lessons Learned
 
@@ -4683,16 +4574,12 @@ Investigation dashboards require representative event generation before validati
 
 Dashboard panels showed:
 
-```text
 No data
-```
 
 for:
 
-```text
 Permission Denied Events
 Privilege Escalation Attempts
-```
 
 ### Root Cause
 
@@ -4702,15 +4589,11 @@ No unauthorized access attempts had occurred since service startup.
 
 Authenticated using viewer account:
 
-```text
-viewertest@test.com
-```
+<viewertest@test.com>
 
 Attempted access to:
 
-```text
 /admin
-```
 
 with viewer role.
 
@@ -4718,15 +4601,11 @@ with viewer role.
 
 Confirmed:
 
-```text
 permission_denied_total{reason="insufficient_role"} 1
-```
 
 and
 
-```text
 privilege_escalation_attempt_total{required_role="admin"} 1
-```
 
 ### Lessons Learned
 
@@ -4742,9 +4621,8 @@ RBAC investigation telemetry should be validated using real authorization failur
 
 Query:
 
-```bash
-curl -s http://localhost:8001/metrics | grep rate_limit_exceeded_total
-```
+bash
+curl -s <http://localhost:8001/metrics> | grep rate_limit_exceeded_total
 
 returned no output.
 
@@ -4752,40 +4630,394 @@ returned no output.
 
 Initial validation occurred before inspecting the full metric output.
 
-Metric existed but required context-aware inspection.
+Metric existed but required con-aware inspection.
 
 ### Resolution
 
 Generated rate limit violations:
 
-```bash
+bash
 for i in {1..120}; do
-  curl http://localhost:8001/health
+  curl <http://localhost:8001/health>
 done
-```
 
 Inspected metrics using:
 
-```bash
-curl -s http://localhost:8001/metrics | grep -A 5 -B 2 rate_limit
-```
+bash
+curl -s <http://localhost:8001/metrics> | grep -A 5 -B 2 rate_limit
 
 ### Validation
 
 Confirmed:
 
-```text
 rate_limit_exceeded_total{path="/health",service="asset-service"} 140
-```
 
 and
 
-```text
 rate_limit_exceeded_total{path="/metrics",service="asset-service"} 2
-```
 
 ### Lessons Learned
 
-Metric validation should inspect full metric context rather than relying solely on simple grep output.
+Metric validation should inspect full metric con rather than relying solely on simple grep output.
 
 Rate limiting telemetry and logging are functioning correctly.
+
+## Issue
+
+Prometheus Alert Rules Not Loading
+
+### Symptoms
+
+- Prometheus started successfully
+- `promtool check config` reported:
+
+SUCCESS: 1 rule files found
+SUCCESS: /etc/prometheus/prometheus.yml is valid
+SUCCESS: 0 rules found
+
+- Alert rules were expected but none appeared in Prometheus
+
+### Root Cause
+
+The `prometheus-alerts.yml` file existed but contained no alert definitions.
+
+Prometheus successfully mounted and parsed the file, but the file was empty.
+
+### Resolution
+
+Created initial alert rule groups:
+
+- ops-platform-availability
+- ops-platform-security
+
+Implemented alert definitions for:
+
+- PrometheusTargetDown
+- AssetServiceDown
+- AuthServiceDown
+- cAdvisorDown
+- AuthenticationFailureSpike
+- InvalidTokenSpike
+- PermissionDeniedSpike
+- RateLimitAbuseDetected
+- PrivilegeEscalationActivity
+- AssetService5xxErrors
+
+### Validation
+
+Validated using:
+
+bash
+docker compose exec prometheus promtool check config /etc/prometheus/prometheus.yml
+
+Verified:
+
+SUCCESS: 10 rules found
+
+Prometheus Rules page displayed both alert groups and all configured alerts.
+
+### Lessons Learned
+
+Prometheus can successfully load an empty rule file without generating errors.
+
+Always verify:
+
+- Rule file existence
+- Rule file contents
+- Rule count reported by promtool
+- Rules page visibility
+
+## Issue
+
+Prometheus Alert Rules Not Loading
+
+### Symptoms
+
+- Prometheus started successfully
+- `promtool check config` reported:
+
+SUCCESS: 1 rule files found
+SUCCESS: /etc/prometheus/prometheus.yml is valid
+SUCCESS: 0 rules found
+
+- Alert rules were expected but none appeared in Prometheus
+
+### Root Cause
+
+The `prometheus-alerts.yml` file existed but contained no alert definitions.
+
+Prometheus successfully mounted and parsed the file, but the file was empty.
+
+### Resolution
+
+Created initial alert rule groups:
+
+- ops-platform-availability
+- ops-platform-security
+
+Implemented alert definitions for:
+
+- PrometheusTargetDown
+- AssetServiceDown
+- AuthServiceDown
+- cAdvisorDown
+- AuthenticationFailureSpike
+- InvalidTokenSpike
+- PermissionDeniedSpike
+- RateLimitAbuseDetected
+- PrivilegeEscalationActivity
+- AssetService5xxErrors
+
+### Validation
+
+Validated using:
+
+bash
+docker compose exec prometheus promtool check config /etc/prometheus/prometheus.yml
+
+Verified:
+
+SUCCESS: 10 rules found
+
+Prometheus Rules page displayed both alert groups and all configured alerts.
+
+### Lessons Learned
+
+Prometheus can successfully load an empty rule file without generating errors.
+
+Always verify:
+
+- Rule file existence
+- Rule file contents
+- Rule count reported by promtool
+- Rules page visibility
+
+## Issue
+
+Prometheus Alert Rule File Not Found Inside Container
+
+### Symptoms
+
+Prometheus configuration validation failed with:
+
+"/etc/prometheus/prometheus-alerts.yml" does not point to an existing file
+
+### Root Cause
+
+The alert rule file existed on the host but was not mounted into the Prometheus container.
+
+Only `prometheus.yml` was mounted.
+
+### Resolution
+
+Added alert rule volume mount:
+
+yaml
+volumes:
+
+- ./infrastructure/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+- ./infrastructure/monitoring/prometheus-alerts.yml:/etc/prometheus/prometheus-alerts.yml:ro
+
+Restarted Prometheus container.
+
+### Validation
+
+Validated configuration:
+
+bash
+docker compose exec prometheus promtool check config /etc/prometheus/prometheus.yml
+
+Prometheus successfully detected the rule file.
+
+### Lessons Learned
+
+Adding a rule file to Prometheus requires:
+
+- rule_files entry in prometheus.yml
+- Docker volume mount
+- Container restart
+
+All three components must exist for rules to load.
+
+## Issue
+
+Prometheus Alert Rules Not Updating After File Modification
+
+### Symptoms
+
+Alert definitions were added in VS Code.
+
+Prometheus continued reporting:
+
+SUCCESS: 0 rules found
+
+### Root Cause
+
+The updated file contents had not been saved to disk.
+
+VS Code contained unsaved changes.
+
+Prometheus was reading the previously saved empty file.
+
+### Resolution
+
+Saved the file and recreated the Prometheus container.
+
+bash
+docker compose rm -sf prometheus
+docker compose up -d prometheus
+
+### Validation
+
+Validated file contents inside the container and confirmed alert rules were loaded.
+
+Prometheus Rules page displayed all configured alerts.
+
+### Lessons Learned
+
+When configuration changes appear to be ignored:
+
+- Verify files are saved
+- Verify bind mounts
+- Verify container contents
+- Verify rule count with promtool
+
+## Issue
+
+Prometheus Container Entered Restart Cycle During Rule Deployment
+
+### Symptoms
+
+Prometheus repeatedly restarted after configuration changes.
+
+Validation commands became unreliable.
+
+### Root Cause
+
+Configuration changes were being tested while Prometheus was restarting and loading new configuration.
+
+The container state became difficult to verify during troubleshooting.
+
+### Resolution
+
+Removed and recreated the Prometheus container:
+
+bash
+docker compose rm -sf prometheus
+docker compose up -d prometheus
+
+Collected startup logs after recreation.
+
+### Validation
+
+Confirmed:
+
+ops-prometheus Started
+
+Prometheus initialized normally and loaded configuration successfully.
+
+### Lessons Learned
+
+When troubleshooting Prometheus configuration:
+
+- Prefer clean recreation over repeated restart attempts
+- Review startup logs immediately after container creation
+- Validate configuration after service stabilization
+
+## Issue
+
+Unexpected Long Container Uptime Appearing In Dashboard
+
+### Symptoms
+
+Grafana dashboard displayed a container uptime value exceeding 160,000 seconds.
+
+Observed value appeared inconsistent with recently restarted platform services.
+
+### Root Cause
+
+The metric originated from Docker BuildKit / Buildx infrastructure rather than Ops Platform application containers.
+
+Docker builder runtime metrics were included in container uptime visualizations.
+
+### Resolution
+
+Investigated:
+
+bash
+docker ps
+docker buildx ls
+
+Confirmed the long-running object belonged to Docker build infrastructure and not the platform stack.
+
+No corrective action required.
+
+### Validation
+
+Verified all Ops Platform containers had expected uptime values.
+
+Observed uptime values aligned with recent container restarts.
+
+### Lessons Learned
+
+Container metrics may include:
+
+- Docker infrastructure containers
+- BuildKit builders
+- Buildx runtimes
+
+Dashboard filtering may be required to isolate platform services from Docker internals.
+
+## Issue
+
+Prometheus Alert Framework Implemented Without Operational Procedures
+
+### Symptoms
+
+Prometheus alerts existed conceptually but no documented response process existed.
+
+Alert recipients would have no standardized response workflow.
+
+### Root Cause
+
+Detection capabilities matured faster than operational documentation.
+
+Runbooks had not yet been developed.
+
+### Resolution
+
+Created incident response runbooks:
+
+- authentication-failure-spike.md
+- invalid-token-spike.md
+- permission-abuse.md
+- privilege-escalation-activity.md
+- rate-limit-abuse.md
+- service-outage.md
+- prometheus-target-down.md
+
+Created:
+
+- 16-alert-routing-review.md
+- 17-alert-tuning-review.md
+
+### Validation
+
+Validated runbook coverage for:
+
+- Security Operations
+- Incident Response
+- Platform Operations
+- Observability Operations
+
+### Lessons Learned
+
+Observability maturity requires:
+
+Metrics
+→ Alerting
+→ Detection
+→ Investigation
+→ Response
+
+Alert generation without response procedures creates operational gaps.
