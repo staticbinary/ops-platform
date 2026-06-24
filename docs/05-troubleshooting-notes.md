@@ -5410,13 +5410,17 @@ Security telemetry populated panels.
 Effective incident response requires dedicated operational visibility separate from detection and investigation workflows.
 
 ## Issue
+
 ### Symptoms
+
 No standardized format existed for documenting investigations, incidents, or post-incident reviews.
 
 ### Root Cause
+
 Operational processes matured through alerting, investigation, and response phases without a formal documentation framework.
 
 ### Resolution
+
 Created reusable incident management templates covering:
 
 - Security Incident Reports
@@ -5424,9 +5428,11 @@ Created reusable incident management templates covering:
 - Post-Incident Reviews
 
 ### Validation
+
 Verified all templates include required operational sections and support metrics, logs, traces, timelines, evidence collection, remediation tracking, and lessons learned.
 
 ### Lessons Learned
+
 Operational maturity requires standardized documentation in addition to observability and response tooling.
 
 ## Issue
@@ -5435,9 +5441,7 @@ Operational maturity requires standardized documentation in addition to observab
 
 Phase 6.0.0 secrets audit identified the use of a known default JWT signing secret:
 
-```text
 ASSET_SERVICE_SECRET_KEY=super-secret-dev-key
-```
 
 Additional auditing revealed `auth_service` was still referencing a hardcoded JWT secret value in source code.
 
@@ -5451,58 +5455,49 @@ The placeholder values were never replaced with generated secrets, and one secre
 
 Created a formal secrets management strategy document:
 
-```text
 docs/16-secrets-management.md
-```
 
 Implemented a platform-wide secrets audit using targeted searches:
 
-```bash
+bash
 grep -R --exclude-dir=.venv --exclude-dir=__pycache__ "password" services infrastructure docs
 
 grep -R --exclude-dir=.venv --exclude-dir=__pycache__ "SECRET_KEY" .
 
 grep -R --exclude-dir=.venv --exclude-dir=__pycache__ "super-secret-dev-key" .
-```
 
 Remediated findings by:
 
-* Removing hardcoded JWT secret from `auth_service`
-* Moving JWT secret loading to environment variables
-* Adding runtime validation for missing secrets
-* Creating unique generated secrets for:
+- Removing hardcoded JWT secret from `auth_service`
+- Moving JWT secret loading to environment variables
+- Adding runtime validation for missing secrets
+- Creating unique generated secrets for:
 
-  * `AUTH_SERVICE_SECRET_KEY`
-  * `ASSET_SERVICE_SECRET_KEY`
-* Updating Docker Compose environment injection
-* Rebuilding affected services
+  - `AUTH_SERVICE_SECRET_KEY`
+  - `ASSET_SERVICE_SECRET_KEY`
+- Updating Docker Compose environment injection
+- Rebuilding affected services
 
 ### Validation
 
 Verified:
 
-```text
 No occurrences of "super-secret-dev-key" remained in the project.
-```
 
 Validated:
 
-```text
 auth_service healthy
 asset_service healthy
 postgres healthy
 observability stack healthy
-```
 
 Confirmed authentication functionality:
 
-```text
 POST /login → 200 OK
 GET /me → 200 OK
 JWT issuance successful
 JWT validation successful
 RBAC claims preserved
-```
 
 ### Lessons Learned
 
@@ -5510,10 +5505,10 @@ Known development secrets should be replaced as soon as production-readiness wor
 
 Secrets should:
 
-* Never be hardcoded in source code
-* Be loaded from environment variables
-* Be documented in a secrets inventory
-* Have defined ownership and rotation procedures
+- Never be hardcoded in source code
+- Be loaded from environment variables
+- Be documented in a secrets inventory
+- Have defined ownership and rotation procedures
 
 Secrets auditing should become a standard production-readiness review activity for future platform phases.
 
@@ -5525,12 +5520,10 @@ Secrets auditing should become a standard production-readiness review activity f
 
 Keyword-based secrets searches returned a large number of irrelevant results originating from:
 
-```text
 .venv/
 __pycache__/
 third-party libraries
 compiled Python files
-```
 
 This made identifying actual platform findings difficult.
 
@@ -5542,23 +5535,20 @@ Recursive grep searches were initially executed against the entire repository wi
 
 Refined audit commands to exclude non-source directories:
 
-```bash
+bash
 grep -R --exclude-dir=.venv --exclude-dir=__pycache__ "password" services infrastructure docs
 
 grep -R --exclude-dir=.venv --exclude-dir=__pycache__ "SECRET_KEY" .
 
 grep -R --exclude-dir=.venv --exclude-dir=__pycache__ "super-secret-dev-key" .
-```
 
 ### Validation
 
 Audit results became focused on:
 
-```text
 Application source code
 Infrastructure configuration
 Project documentation
-```
 
 Noise from dependencies and compiled files was eliminated.
 
@@ -5568,12 +5558,10 @@ Security audits become significantly more effective when dependency and build ar
 
 Future repository audits should standardize exclusion of:
 
-```text
 .venv
 __pycache__
 .git
 node_modules
-```
 
 where applicable.
 
@@ -5589,9 +5577,8 @@ After migrating JWT secrets to environment variables, there was a risk that auth
 
 `auth_service` was modified to require:
 
-```python
+python
 AUTH_SERVICE_SECRET_KEY
-```
 
 at startup.
 
@@ -5601,20 +5588,18 @@ If Docker Compose did not inject the variable correctly, authentication services
 
 Added explicit environment variable injection to:
 
-```yaml
+yaml
 auth_service:
   environment:
     AUTH_SERVICE_SECRET_KEY: ${AUTH_SERVICE_SECRET_KEY}
-```
 
 Implemented startup validation:
 
-```python
+python
 if not SECRET_KEY:
     raise RuntimeError(
         "AUTH_SERVICE_SECRET_KEY environment variable is not set"
     )
-```
 
 Rebuilt and redeployed the service.
 
@@ -5622,24 +5607,18 @@ Rebuilt and redeployed the service.
 
 Verified:
 
-```text
 docker compose ps
-```
 
 showed:
 
-```text
 ops-auth-service Up (healthy)
-```
 
 Authentication tests succeeded:
 
-```text
 POST /login
 GET /me
 JWT validation
 Role extraction
-```
 
 ### Lessons Learned
 
@@ -5663,12 +5642,12 @@ Performed a platform-wide secrets audit using targeted repository searches.
 
 Implemented:
 
-* Environment-managed JWT secrets
-* Runtime secret validation
-* Docker Compose secret injection
-* Secrets inventory documentation
-* Secret ownership model
-* Secret rotation procedures
+- Environment-managed JWT secrets
+- Runtime secret validation
+- Docker Compose secret injection
+- Secrets inventory documentation
+- Secret ownership model
+- Secret rotation procedures
 
 Replaced all known default JWT secret values with generated secrets.
 
@@ -5676,30 +5655,23 @@ Replaced all known default JWT secret values with generated secrets.
 
 Verified:
 
-```bash
+bash
 grep -R --exclude-dir=.venv --exclude-dir=__pycache__ "super-secret-dev-key" .
-```
 
 Result:
 
-```text
 No output
-```
 
 Validated:
 
-```text
 auth_service healthy
 asset_service healthy
-```
 
 Confirmed:
 
-```text
 JWT issuance successful
 JWT validation successful
 RBAC claims preserved
-```
 
 ### Lessons Learned
 
@@ -5715,11 +5687,9 @@ Production-readiness reviews should include repository-wide secret audits and en
 
 Initial keyword-based audit searches returned large amounts of irrelevant data from:
 
-```text
 .venv
 __pycache__
 compiled Python artifacts
-```
 
 making security review difficult.
 
@@ -5731,17 +5701,14 @@ Recursive searches were performed without excluding generated content and depend
 
 Standardized audit commands:
 
-```bash
+bash
 grep -R --exclude-dir=.venv --exclude-dir=__pycache__ "<keyword>" .
-```
 
 Used focused searches for:
 
-```text
 password
 SECRET_KEY
 super-secret-dev-key
-```
 
 ### Validation
 
@@ -5759,9 +5726,7 @@ Security audits should exclude dependency and build directories to improve signa
 
 Initial PostgreSQL backup procedure failed with:
 
-```text
 No such file or directory
-```
 
 when attempting to redirect backup output into a non-existent backup directory.
 
@@ -5773,9 +5738,8 @@ The PostgreSQL backup destination directory had not been created before executin
 
 Created the backup directory before backup execution:
 
-```bash
+bash
 mkdir -p backups/postgres
-```
 
 Updated backup procedures to include directory creation.
 
@@ -5783,15 +5747,12 @@ Updated backup procedures to include directory creation.
 
 Successfully generated:
 
-```text
 backups/postgres/ops_platform_20260624_172955.sql
-```
 
 Verified backup contents:
 
-```bash
+bash
 head -20 backups/postgres/<backup-file>.sql
-```
 
 Confirmed valid PostgreSQL dump output.
 
@@ -5817,21 +5778,16 @@ Created and validated auth volume backup procedures using Docker volume archives
 
 Generated:
 
-```text
 auth-data-backup_20260624_173159.tar.gz
-```
 
 Verified archive contents:
 
-```bash
+bash
 tar tzf <backup-file>.tar.gz
-```
 
 Confirmed:
 
-```text
 ./auth.db
-```
 
 was present within the archive.
 
@@ -5839,9 +5795,7 @@ was present within the archive.
 
 Successfully created:
 
-```text
 backups/auth/auth-data-backup_20260624_173159.tar.gz
-```
 
 Verified archive contents and integrity.
 
@@ -5859,9 +5813,8 @@ Restore documentation contained placeholder values that could not be executed di
 
 Example:
 
-```bash
+bash
 tar xzf /backup/<backup-file>.tar.gz -C /target
-```
 
 ### Root Cause
 
@@ -5873,7 +5826,7 @@ Replaced placeholder values with actual backup filenames during recovery validat
 
 Executed:
 
-```bash
+bash
 docker compose stop auth_service
 
 docker run --rm \
@@ -5883,22 +5836,17 @@ docker run --rm \
   tar xzf /backup/auth-data-backup_20260624_173159.tar.gz -C /target
 
 docker compose start auth_service
-```
 
 ### Validation
 
 Verified:
 
-```text
 auth_service healthy
-```
 
 Validated login functionality:
 
-```text
 JWT issuance successful
 Authentication restored successfully
-```
 
 ### Lessons Learned
 
@@ -5922,19 +5870,15 @@ Backup procedures were initially documented but not operationalized through auto
 
 Created backup automation scripts:
 
-```text
 scripts/backup-postgres.sh
 scripts/backup-auth.sh
 scripts/backup-all.sh
 scripts/cleanup-backups.sh
-```
 
 Implemented retention policies:
 
-```text
 30 PostgreSQL backups
 30 Auth backups
-```
 
 Integrated retention cleanup into automated backup execution.
 
@@ -5942,18 +5886,15 @@ Integrated retention cleanup into automated backup execution.
 
 Executed:
 
-```bash
+bash
 ./scripts/backup-all.sh
-```
 
 Verified:
 
-```text
 PostgreSQL backup completed
 Auth backup completed
 Backup retention cleanup completed
 All backups completed successfully
-```
 
 Generated timestamped backup artifacts successfully.
 
@@ -5961,12 +5902,317 @@ Generated timestamped backup artifacts successfully.
 
 Operational maturity requires progressing from:
 
-```text
 Manual Procedures
 → Documented Procedures
 → Validated Procedures
 → Automated Procedures
 → Retention Management
-```
 
 Automation significantly reduces operational overhead and improves backup consistency.
+
+## Issue
+
+### Symptoms
+
+Asset service readiness validation began failing after secrets and configuration management changes.
+
+Observed:
+
+asset_service (unhealthy)
+
+Readiness endpoint returned:
+
+json
+{
+  "status": "not_ready",
+  "service": "asset-service",
+  "checks": {
+    "database": "unavailable"
+  }
+}
+
+### Root Cause
+
+PostgreSQL credentials configured in the running database no longer matched the credentials being supplied to the asset service.
+
+The PostgreSQL volume retained the original password while environment configuration had been updated with a new password value.
+
+### Resolution
+
+Investigated readiness failures using:
+
+bash
+docker compose logs postgres --tail=50
+
+curl <http://localhost:8001/health/ready>
+
+Identified repeated PostgreSQL authentication failures.
+
+Restored matching credentials between:
+
+- PostgreSQL runtime configuration
+- Asset service runtime configuration
+
+Recreated affected services.
+
+### Validation
+
+Verified:
+
+bash
+curl <http://localhost:8001/health/ready>
+
+Result:
+
+json
+{
+  "status": "ready"
+}
+
+Confirmed:
+
+asset_service healthy
+postgres healthy
+
+### Lessons Learned
+
+Updating environment variables does not automatically rotate credentials stored inside persistent database volumes.
+
+Database credential changes require coordinated updates to both runtime configuration and database-side authentication settings.
+
+---
+
+## Issue
+
+### Symptoms
+
+Runtime configuration audit revealed a mismatch between documented configuration and running container configuration.
+
+Observed:
+
+.env:
+ASSET_SERVICE_SECRET_KEY=<generated-secret>
+
+Runtime:
+
+SECRET_KEY=super-secret-dev-key
+
+### Root Cause
+
+The environment file had been updated but the asset service container had not been recreated.
+
+The running container continued using previously loaded environment variables.
+
+### Resolution
+
+Performed runtime configuration validation:
+
+bash
+docker compose exec asset_service env | sort
+
+Recreated the asset service container:
+
+bash
+docker compose up -d --force-recreate asset_service
+
+### Validation
+
+Verified:
+
+bash
+docker compose exec asset_service env | grep SECRET_KEY
+
+Result:
+
+SECRET_KEY=<generated-asset-secret>
+
+### Lessons Learned
+
+Environment variable changes do not automatically propagate into already-running containers.
+
+Container recreation is required after environment configuration changes.
+
+---
+
+## Issue
+
+### Symptoms
+
+Backup creation initially failed during PostgreSQL backup testing.
+
+Observed:
+
+No such file or directory
+
+when redirecting backup output to the backup location.
+
+### Root Cause
+
+The PostgreSQL backup directory did not exist prior to backup execution.
+
+### Resolution
+
+Created backup storage directories:
+
+bash
+mkdir -p backups/postgres
+mkdir -p backups/auth
+
+Updated backup procedures to ensure backup locations exist before backup execution.
+
+### Validation
+
+Successfully generated:
+
+backups/postgres/ops_platform_<timestamp>.sql
+
+Confirmed valid PostgreSQL dump contents.
+
+### Lessons Learned
+
+Operational procedures should create required filesystem paths automatically rather than relying on pre-existing directory structures.
+
+---
+
+## Issue
+
+### Symptoms
+
+Auth database recovery procedures had never been validated against a live platform deployment.
+
+### Root Cause
+
+Backup documentation existed but no recovery testing had been performed.
+
+### Resolution
+
+Performed a full recovery exercise:
+
+1. Create auth database backup
+2. Stop auth service
+3. Restore backup archive
+4. Restart auth service
+5. Validate authentication functionality
+
+### Validation
+
+Verified:
+
+auth_service healthy
+
+Confirmed:
+
+Login successful
+JWT issuance successful
+Role preservation confirmed
+
+### Lessons Learned
+
+Backups should never be considered valid until restore procedures have been tested successfully.
+
+Recovery validation is as important as backup creation.
+
+---
+
+## Issue
+
+### Symptoms
+
+Configuration management activities required manual verification of platform health and deployment readiness.
+
+### Root Cause
+
+No standardized validation framework existed for configuration verification, deployment validation, or release readiness checks.
+
+### Resolution
+
+Created operational validation tooling:
+
+validate-config.sh
+validate-runtime.sh
+validate-services.sh
+validate-platform.sh
+
+pre-deploy-check.sh
+post-deploy-check.sh
+
+release-readiness.sh
+
+Implemented validation workflow:
+
+Configuration Validation
+        ↓
+Runtime Validation
+        ↓
+Service Validation
+        ↓
+Platform Validation
+        ↓
+Deployment Validation
+        ↓
+Release Validation
+
+### Validation
+
+Successfully executed:
+
+bash
+./scripts/pre-deploy-check.sh
+
+./scripts/post-deploy-check.sh
+
+./scripts/release-readiness.sh
+
+All validation gates completed successfully.
+
+### Lessons Learned
+
+Deployment validation should be standardized and repeatable.
+
+Automated validation gates reduce deployment risk and provide early detection of operational issues.
+
+---
+
+## Issue
+
+### Symptoms
+
+Configuration changes could be applied without verification that runtime state matched documented configuration.
+
+### Root Cause
+
+No formal configuration management process existed.
+
+### Resolution
+
+Implemented:
+
+- Configuration inventory
+- Configuration ownership matrix
+- Configuration classification standards
+- Runtime configuration audits
+- Configuration drift detection procedures
+- Change control standards
+
+Created:
+
+docs/20-configuration-management.md
+
+### Validation
+
+Verified:
+
+bash
+docker compose config
+
+docker compose exec asset_service env | sort
+
+docker compose exec auth_service env | sort
+
+Confirmed runtime configuration matched expected platform configuration.
+
+### Lessons Learned
+
+Configuration drift is one of the most common sources of production incidents.
+
+Regular configuration validation should be treated as a standard operational practice.
