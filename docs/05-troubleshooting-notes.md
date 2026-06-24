@@ -5646,3 +5646,327 @@ Role extraction
 Production services should fail fast when required secrets are missing.
 
 Startup validation prevents insecure operation and immediately surfaces configuration issues during deployment.
+
+## Issue
+
+### Symptoms
+
+Phase 6.0.0 secrets audit identified a hardcoded JWT signing secret within the authentication service source code and a default development secret value within environment configuration.
+
+### Root Cause
+
+Development placeholder secrets were used during initial platform implementation and were not replaced as production-readiness work began.
+
+### Resolution
+
+Performed a platform-wide secrets audit using targeted repository searches.
+
+Implemented:
+
+* Environment-managed JWT secrets
+* Runtime secret validation
+* Docker Compose secret injection
+* Secrets inventory documentation
+* Secret ownership model
+* Secret rotation procedures
+
+Replaced all known default JWT secret values with generated secrets.
+
+### Validation
+
+Verified:
+
+```bash
+grep -R --exclude-dir=.venv --exclude-dir=__pycache__ "super-secret-dev-key" .
+```
+
+Result:
+
+```text
+No output
+```
+
+Validated:
+
+```text
+auth_service healthy
+asset_service healthy
+```
+
+Confirmed:
+
+```text
+JWT issuance successful
+JWT validation successful
+RBAC claims preserved
+```
+
+### Lessons Learned
+
+Hardcoded secrets should never remain in source code after initial development.
+
+Production-readiness reviews should include repository-wide secret audits and environment variable validation.
+
+---
+
+## Issue
+
+### Symptoms
+
+Initial keyword-based audit searches returned large amounts of irrelevant data from:
+
+```text
+.venv
+__pycache__
+compiled Python artifacts
+```
+
+making security review difficult.
+
+### Root Cause
+
+Recursive searches were performed without excluding generated content and dependency directories.
+
+### Resolution
+
+Standardized audit commands:
+
+```bash
+grep -R --exclude-dir=.venv --exclude-dir=__pycache__ "<keyword>" .
+```
+
+Used focused searches for:
+
+```text
+password
+SECRET_KEY
+super-secret-dev-key
+```
+
+### Validation
+
+Search results were reduced to platform source code, infrastructure configuration, and documentation.
+
+### Lessons Learned
+
+Security audits should exclude dependency and build directories to improve signal-to-noise ratio and accelerate review.
+
+---
+
+## Issue
+
+### Symptoms
+
+Initial PostgreSQL backup procedure failed with:
+
+```text
+No such file or directory
+```
+
+when attempting to redirect backup output into a non-existent backup directory.
+
+### Root Cause
+
+The PostgreSQL backup destination directory had not been created before executing the backup command.
+
+### Resolution
+
+Created the backup directory before backup execution:
+
+```bash
+mkdir -p backups/postgres
+```
+
+Updated backup procedures to include directory creation.
+
+### Validation
+
+Successfully generated:
+
+```text
+backups/postgres/ops_platform_20260624_172955.sql
+```
+
+Verified backup contents:
+
+```bash
+head -20 backups/postgres/<backup-file>.sql
+```
+
+Confirmed valid PostgreSQL dump output.
+
+### Lessons Learned
+
+Backup procedures should always create required directories automatically rather than assuming filesystem state.
+
+---
+
+## Issue
+
+### Symptoms
+
+Auth database backup procedures had not been validated and there was no confirmed recovery process for authentication data.
+
+### Root Cause
+
+Backup documentation existed conceptually but had never been executed against the live platform.
+
+### Resolution
+
+Created and validated auth volume backup procedures using Docker volume archives.
+
+Generated:
+
+```text
+auth-data-backup_20260624_173159.tar.gz
+```
+
+Verified archive contents:
+
+```bash
+tar tzf <backup-file>.tar.gz
+```
+
+Confirmed:
+
+```text
+./auth.db
+```
+
+was present within the archive.
+
+### Validation
+
+Successfully created:
+
+```text
+backups/auth/auth-data-backup_20260624_173159.tar.gz
+```
+
+Verified archive contents and integrity.
+
+### Lessons Learned
+
+Backups should not be considered valid until archive contents are inspected and verified.
+
+---
+
+## Issue
+
+### Symptoms
+
+Restore documentation contained placeholder values that could not be executed directly.
+
+Example:
+
+```bash
+tar xzf /backup/<backup-file>.tar.gz -C /target
+```
+
+### Root Cause
+
+Documentation placeholders were copied into a live recovery test.
+
+### Resolution
+
+Replaced placeholder values with actual backup filenames during recovery validation.
+
+Executed:
+
+```bash
+docker compose stop auth_service
+
+docker run --rm \
+  -v ops-platform_auth-data:/target \
+  -v $(pwd)/backups/auth:/backup \
+  alpine \
+  tar xzf /backup/auth-data-backup_20260624_173159.tar.gz -C /target
+
+docker compose start auth_service
+```
+
+### Validation
+
+Verified:
+
+```text
+auth_service healthy
+```
+
+Validated login functionality:
+
+```text
+JWT issuance successful
+Authentication restored successfully
+```
+
+### Lessons Learned
+
+Recovery documentation should be treated as executable documentation and periodically tested.
+
+Placeholder values are common sources of recovery failure during real incidents.
+
+---
+
+## Issue
+
+### Symptoms
+
+Backup creation required multiple manual commands and lacked retention management.
+
+### Root Cause
+
+Backup procedures were initially documented but not operationalized through automation.
+
+### Resolution
+
+Created backup automation scripts:
+
+```text
+scripts/backup-postgres.sh
+scripts/backup-auth.sh
+scripts/backup-all.sh
+scripts/cleanup-backups.sh
+```
+
+Implemented retention policies:
+
+```text
+30 PostgreSQL backups
+30 Auth backups
+```
+
+Integrated retention cleanup into automated backup execution.
+
+### Validation
+
+Executed:
+
+```bash
+./scripts/backup-all.sh
+```
+
+Verified:
+
+```text
+PostgreSQL backup completed
+Auth backup completed
+Backup retention cleanup completed
+All backups completed successfully
+```
+
+Generated timestamped backup artifacts successfully.
+
+### Lessons Learned
+
+Operational maturity requires progressing from:
+
+```text
+Manual Procedures
+→ Documented Procedures
+→ Validated Procedures
+→ Automated Procedures
+→ Retention Management
+```
+
+Automation significantly reduces operational overhead and improves backup consistency.

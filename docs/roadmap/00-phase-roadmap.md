@@ -3654,24 +3654,24 @@ The platform now includes operational incident response procedures covering both
 
 #### Objectives
 
-* Inventory existing Prometheus alert rules
-* Validate alert categories and severity assignments
-* Review alert routing paths
-* Establish alert governance foundation
+- Inventory existing Prometheus alert rules
+- Validate alert categories and severity assignments
+- Review alert routing paths
+- Establish alert governance foundation
 
 #### Deliverables
 
-* Alert inventory documentation
-* Alert routing review
-* Alert classification review
-* Alert severity standardization
+- Alert inventory documentation
+- Alert routing review
+- Alert classification review
+- Alert severity standardization
 
 #### Outcomes
 
-* Validated platform alert coverage
-* Validated security alert coverage
-* Reduced overlapping alert conditions
-* Improved alert signal quality
+- Validated platform alert coverage
+- Validated security alert coverage
+- Reduced overlapping alert conditions
+- Improved alert signal quality
 
 ---
 
@@ -3685,24 +3685,24 @@ Create operational runbooks for common platform and security incidents.
 
 #### Deliverables
 
-* Authentication Failure Spike Runbook
-* Invalid Token Spike Runbook
-* Permission Abuse Runbook
-* Rate Limit Abuse Runbook
-* Privilege Escalation Activity Runbook
-* Service Outage Runbook
-* Prometheus Target Down Runbook
+- Authentication Failure Spike Runbook
+- Invalid Token Spike Runbook
+- Permission Abuse Runbook
+- Rate Limit Abuse Runbook
+- Privilege Escalation Activity Runbook
+- Service Outage Runbook
+- Prometheus Target Down Runbook
 
 #### Outcomes
 
 Standardized procedures for:
 
-* Detection
-* Investigation
-* Validation
-* Response
-* Recovery
-* Post-Incident Review
+- Detection
+- Investigation
+- Validation
+- Response
+- Recovery
+- Post-Incident Review
 
 ---
 
@@ -3716,24 +3716,24 @@ Improve operational signal quality and reduce alert fatigue.
 
 #### Deliverables
 
-* Alert threshold review
-* Severity classification review
-* Alert duration tuning
-* Duplicate alert reduction
+- Alert threshold review
+- Severity classification review
+- Alert duration tuning
+- Duplicate alert reduction
 
 #### Outcomes
 
-* Reduced alert noise
-* Improved severity alignment
-* Reduced false positives
-* Improved operational relevance
+- Reduced alert noise
+- Improved severity alignment
+- Reduced false positives
+- Improved operational relevance
 
 #### Key Improvements
 
-* Removed duplicate availability alert conditions
-* Increased outage alert evaluation windows
-* Reclassified InvalidTokenSpike from High to Medium severity
-* Standardized alert categories and ownership
+- Removed duplicate availability alert conditions
+- Increased outage alert evaluation windows
+- Reclassified InvalidTokenSpike from High to Medium severity
+- Standardized alert categories and ownership
 
 ---
 
@@ -3749,20 +3749,20 @@ Create a dedicated response-oriented operational dashboard.
 
 Dashboard:
 
-* Ops Platform - Security Response
+- Ops Platform - Security Response
 
 Panels:
 
-* Active Security Alerts
-* Active Platform Alerts
-* Alert State By Severity
-* Security Event Volume
-* Authentication Failures
-* Invalid Tokens
-* Permission Denials
-* Privilege Escalation Attempts
-* Rate Limit Violations
-* Service Target Health
+- Active Security Alerts
+- Active Platform Alerts
+- Alert State By Severity
+- Security Event Volume
+- Authentication Failures
+- Invalid Tokens
+- Permission Denials
+- Privilege Escalation Attempts
+- Rate Limit Violations
+- Service Target Health
 
 #### Outcomes
 
@@ -3780,12 +3780,12 @@ Dashboard
 
 Successfully validated:
 
-* Invalid token activity
-* Rate limit abuse activity
-* Alert firing visibility
-* ALERTS metric integration
-* Dashboard population
-* Security response visibility
+- Invalid token activity
+- Rate limit abuse activity
+- Alert firing visibility
+- ALERTS metric integration
+- Dashboard population
+- Security response visibility
 
 ---
 
@@ -3799,18 +3799,18 @@ Establish standardized incident documentation.
 
 #### Planned Deliverables
 
-* Security Incident Report Template
-* Investigation Summary Template
-* Post-Incident Review Template
+- Security Incident Report Template
+- Investigation Summary Template
+- Post-Incident Review Template
 
 #### Expected Outcomes
 
 Standardized:
 
-* Incident documentation
-* Investigation reporting
-* Lessons learned capture
-* Operational knowledge retention
+- Incident documentation
+- Investigation reporting
+- Lessons learned capture
+- Operational knowledge retention
 
 ---
 
@@ -3860,12 +3860,12 @@ Incident Documentation Framework
 
 The platform is now positioned to begin Production Engineering initiatives including:
 
-* Secrets Management
-* Backup & Recovery
-* Configuration Management
-* CI/CD Foundations
-* SLOs / SLIs
-* Production Readiness Reviews
+- Secrets Management
+- Backup & Recovery
+- Configuration Management
+- CI/CD Foundations
+- SLOs / SLIs
+- Production Readiness Reviews
 
 ### Phase 5.11.5 — Incident Management Templates ✅
 
@@ -3899,9 +3899,7 @@ Completed the operational incident management lifecycle and improved organizatio
 
 Phase 6.0.0 secrets audit identified the use of a known default JWT signing secret:
 
-```text
 ASSET_SERVICE_SECRET_KEY=super-secret-dev-key
-```
 
 Additional auditing revealed `auth_service` was still referencing a hardcoded JWT secret value in source code.
 
@@ -3915,58 +3913,49 @@ The placeholder values were never replaced with generated secrets, and one secre
 
 Created a formal secrets management strategy document:
 
-```text
 docs/16-secrets-management.md
-```
 
 Implemented a platform-wide secrets audit using targeted searches:
 
-```bash
-grep -R --exclude-dir=.venv --exclude-dir=__pycache__ "password" services infrastructure docs
+bash
+grep -R --exclude-dir=.venv --exclude-dir=**pycache** "password" services infrastructure docs
 
-grep -R --exclude-dir=.venv --exclude-dir=__pycache__ "SECRET_KEY" .
+grep -R --exclude-dir=.venv --exclude-dir=**pycache** "SECRET_KEY" .
 
-grep -R --exclude-dir=.venv --exclude-dir=__pycache__ "super-secret-dev-key" .
-```
+grep -R --exclude-dir=.venv --exclude-dir=**pycache** "super-secret-dev-key" .
 
 Remediated findings by:
 
-* Removing hardcoded JWT secret from `auth_service`
-* Moving JWT secret loading to environment variables
-* Adding runtime validation for missing secrets
-* Creating unique generated secrets for:
+- Removing hardcoded JWT secret from `auth_service`
+- Moving JWT secret loading to environment variables
+- Adding runtime validation for missing secrets
+- Creating unique generated secrets for:
 
-  * `AUTH_SERVICE_SECRET_KEY`
-  * `ASSET_SERVICE_SECRET_KEY`
-* Updating Docker Compose environment injection
-* Rebuilding affected services
+  - `AUTH_SERVICE_SECRET_KEY`
+  - `ASSET_SERVICE_SECRET_KEY`
+- Updating Docker Compose environment injection
+- Rebuilding affected services
 
 ### Validation
 
 Verified:
 
-```text
 No occurrences of "super-secret-dev-key" remained in the project.
-```
 
 Validated:
 
-```text
 auth_service healthy
 asset_service healthy
 postgres healthy
 observability stack healthy
-```
 
 Confirmed authentication functionality:
 
-```text
 POST /login → 200 OK
 GET /me → 200 OK
 JWT issuance successful
 JWT validation successful
 RBAC claims preserved
-```
 
 ### Lessons Learned
 
@@ -3974,10 +3963,10 @@ Known development secrets should be replaced as soon as production-readiness wor
 
 Secrets should:
 
-* Never be hardcoded in source code
-* Be loaded from environment variables
-* Be documented in a secrets inventory
-* Have defined ownership and rotation procedures
+- Never be hardcoded in source code
+- Be loaded from environment variables
+- Be documented in a secrets inventory
+- Have defined ownership and rotation procedures
 
 Secrets auditing should become a standard production-readiness review activity for future platform phases.
 
@@ -3989,12 +3978,10 @@ Secrets auditing should become a standard production-readiness review activity f
 
 Keyword-based secrets searches returned a large number of irrelevant results originating from:
 
-```text
 .venv/
-__pycache__/
+**pycache**/
 third-party libraries
 compiled Python files
-```
 
 This made identifying actual platform findings difficult.
 
@@ -4006,23 +3993,20 @@ Recursive grep searches were initially executed against the entire repository wi
 
 Refined audit commands to exclude non-source directories:
 
-```bash
-grep -R --exclude-dir=.venv --exclude-dir=__pycache__ "password" services infrastructure docs
+bash
+grep -R --exclude-dir=.venv --exclude-dir=**pycache** "password" services infrastructure docs
 
-grep -R --exclude-dir=.venv --exclude-dir=__pycache__ "SECRET_KEY" .
+grep -R --exclude-dir=.venv --exclude-dir=**pycache** "SECRET_KEY" .
 
-grep -R --exclude-dir=.venv --exclude-dir=__pycache__ "super-secret-dev-key" .
-```
+grep -R --exclude-dir=.venv --exclude-dir=**pycache** "super-secret-dev-key" .
 
 ### Validation
 
 Audit results became focused on:
 
-```text
 Application source code
 Infrastructure configuration
 Project documentation
-```
 
 Noise from dependencies and compiled files was eliminated.
 
@@ -4032,12 +4016,10 @@ Security audits become significantly more effective when dependency and build ar
 
 Future repository audits should standardize exclusion of:
 
-```text
 .venv
-__pycache__
+**pycache**
 .git
 node_modules
-```
 
 where applicable.
 
@@ -4053,9 +4035,8 @@ After migrating JWT secrets to environment variables, there was a risk that auth
 
 `auth_service` was modified to require:
 
-```python
+python
 AUTH_SERVICE_SECRET_KEY
-```
 
 at startup.
 
@@ -4065,20 +4046,18 @@ If Docker Compose did not inject the variable correctly, authentication services
 
 Added explicit environment variable injection to:
 
-```yaml
+yaml
 auth_service:
   environment:
     AUTH_SERVICE_SECRET_KEY: ${AUTH_SERVICE_SECRET_KEY}
-```
 
 Implemented startup validation:
 
-```python
+python
 if not SECRET_KEY:
     raise RuntimeError(
         "AUTH_SERVICE_SECRET_KEY environment variable is not set"
     )
-```
 
 Rebuilt and redeployed the service.
 
@@ -4086,27 +4065,243 @@ Rebuilt and redeployed the service.
 
 Verified:
 
-```text
 docker compose ps
-```
 
 showed:
 
-```text
 ops-auth-service Up (healthy)
-```
 
 Authentication tests succeeded:
 
-```text
 POST /login
 GET /me
 JWT validation
 Role extraction
-```
 
 ### Lessons Learned
 
 Production services should fail fast when required secrets are missing.
 
 Startup validation prevents insecure operation and immediately surfaces configuration issues during deployment.
+
+## Phase 6.1 — Backup & Recovery
+
+### Objective
+
+Establish foundational backup and recovery capabilities for the Ops Platform and validate the platform's ability to recover critical operational data.
+
+### Completed
+
+Created:
+
+docs/19-backup-recovery.md
+
+Documented:
+
+- Backup inventory
+- Recovery priority matrix
+- Recovery Time Objectives (RTO)
+- Recovery Point Objectives (RPO)
+- PostgreSQL backup procedures
+- PostgreSQL restore procedures
+- Auth database backup procedures
+- Auth database restore procedures
+- Repository recovery procedures
+- Environment configuration recovery procedures
+- Backup validation standards
+
+### Backup Inventory
+
+Classified platform assets by recovery priority:
+
+#### Critical
+
+PostgreSQL
+Auth Database
+Repository Source Code
+Environment Configuration
+
+#### High
+
+Grafana Dashboards
+Alerting Configuration
+Operational Documentation
+
+#### Medium
+
+Prometheus Metrics
+Loki Logs
+
+#### Low
+
+Tempo Trace History
+
+### PostgreSQL Backup Validation
+
+Created backup storage structure:
+
+backups/postgres/
+
+Executed:
+
+bash
+docker compose exec postgres pg_dump \
+  -U ops_user \
+  ops_platform \
+  > backups/postgres/ops_platform_<timestamp>.sql
+
+Validated:
+
+PostgreSQL backup file generated successfully
+Valid SQL dump confirmed
+Database metadata verified
+
+### Auth Database Backup Validation
+
+Created backup storage structure:
+
+backups/auth/
+
+Executed Docker volume backup:
+
+bash
+docker run --rm \
+  -v ops-platform_auth-data:/source \
+  -v $(pwd)/backups/auth:/backup \
+  alpine \
+  tar czf /backup/auth-data-backup_<timestamp>.tar.gz \
+  -C /source .
+
+Validated:
+
+Archive generated successfully
+auth.db present within archive
+Archive integrity verified
+
+### Restore Validation
+
+Performed live recovery testing.
+
+Executed:
+
+Stop auth_service
+Restore auth volume
+Start auth_service
+Validate authentication
+
+Validated:
+
+auth_service healthy
+Login successful
+JWT issuance successful
+Role preservation confirmed
+
+### Recovery Validation Outcome
+
+Successfully demonstrated:
+
+Backup Creation
+Backup Verification
+Restore Execution
+Service Recovery
+Authentication Recovery
+
+This represents the first validated disaster recovery exercise performed against the platform.
+
+---
+
+## Phase 6.1.1 — Backup Automation & Retention
+
+### Objective
+
+Reduce operational overhead through backup automation and implement backup lifecycle management.
+
+### Completed
+
+Created:
+
+scripts/backup-postgres.sh
+scripts/backup-auth.sh
+scripts/backup-all.sh
+scripts/cleanup-backups.sh
+
+### Backup Automation
+
+Implemented:
+
+Automated PostgreSQL backups
+Automated auth database backups
+Unified backup execution workflow
+
+Executed:
+
+bash
+./scripts/backup-all.sh
+
+Validated:
+
+PostgreSQL backup completed
+Auth backup completed
+All backups completed successfully
+
+### Backup Retention Policy
+
+Implemented:
+
+30 PostgreSQL backups retained
+30 Auth backups retained
+
+Created automated retention cleanup:
+
+bash
+./scripts/cleanup-backups.sh
+
+Validated:
+
+Retention cleanup executed successfully
+Backup lifecycle management operational
+
+### Operational Maturity Improvements
+
+Progressed backup capabilities through:
+
+Manual Procedures
+        ↓
+Documented Procedures
+        ↓
+Validated Procedures
+        ↓
+Automated Procedures
+        ↓
+Retention Management
+
+### Outcome
+
+The platform now supports:
+
+Backup Creation
+Backup Validation
+Restore Validation
+Recovery Documentation
+Backup Automation
+Retention Management
+
+This establishes the platform's first operational disaster recovery framework and provides a foundation for future backup scheduling, offsite storage, and recovery testing initiatives.
+
+### Next Phase
+
+6.2 Configuration Management
+
+Focus Areas:
+
+Configuration Inventory
+
+Configuration Standards
+
+Environment Separation
+
+Configuration Validation
+
+Configuration Drift Detection
+
+Operational Consistency
