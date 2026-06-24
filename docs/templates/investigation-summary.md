@@ -64,7 +64,7 @@ Document significant findings.
 
 ## Conclusion
 
-Summarize investigation outcome.
+Summarize results of investigation.
 
 ---
 

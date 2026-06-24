@@ -3892,3 +3892,221 @@ Deliverables:
 Outcome:
 
 Completed the operational incident management lifecycle and improved organizational readiness for future production operations.
+
+## Issue
+
+### Symptoms
+
+Phase 6.0.0 secrets audit identified the use of a known default JWT signing secret:
+
+```text
+ASSET_SERVICE_SECRET_KEY=super-secret-dev-key
+```
+
+Additional auditing revealed `auth_service` was still referencing a hardcoded JWT secret value in source code.
+
+### Root Cause
+
+Early development used placeholder JWT secrets to accelerate implementation and testing.
+
+The placeholder values were never replaced with generated secrets, and one secret remained hardcoded in the application source.
+
+### Resolution
+
+Created a formal secrets management strategy document:
+
+```text
+docs/16-secrets-management.md
+```
+
+Implemented a platform-wide secrets audit using targeted searches:
+
+```bash
+grep -R --exclude-dir=.venv --exclude-dir=__pycache__ "password" services infrastructure docs
+
+grep -R --exclude-dir=.venv --exclude-dir=__pycache__ "SECRET_KEY" .
+
+grep -R --exclude-dir=.venv --exclude-dir=__pycache__ "super-secret-dev-key" .
+```
+
+Remediated findings by:
+
+* Removing hardcoded JWT secret from `auth_service`
+* Moving JWT secret loading to environment variables
+* Adding runtime validation for missing secrets
+* Creating unique generated secrets for:
+
+  * `AUTH_SERVICE_SECRET_KEY`
+  * `ASSET_SERVICE_SECRET_KEY`
+* Updating Docker Compose environment injection
+* Rebuilding affected services
+
+### Validation
+
+Verified:
+
+```text
+No occurrences of "super-secret-dev-key" remained in the project.
+```
+
+Validated:
+
+```text
+auth_service healthy
+asset_service healthy
+postgres healthy
+observability stack healthy
+```
+
+Confirmed authentication functionality:
+
+```text
+POST /login → 200 OK
+GET /me → 200 OK
+JWT issuance successful
+JWT validation successful
+RBAC claims preserved
+```
+
+### Lessons Learned
+
+Known development secrets should be replaced as soon as production-readiness work begins.
+
+Secrets should:
+
+* Never be hardcoded in source code
+* Be loaded from environment variables
+* Be documented in a secrets inventory
+* Have defined ownership and rotation procedures
+
+Secrets auditing should become a standard production-readiness review activity for future platform phases.
+
+---
+
+## Issue
+
+### Symptoms
+
+Keyword-based secrets searches returned a large number of irrelevant results originating from:
+
+```text
+.venv/
+__pycache__/
+third-party libraries
+compiled Python files
+```
+
+This made identifying actual platform findings difficult.
+
+### Root Cause
+
+Recursive grep searches were initially executed against the entire repository without excluding generated content and dependency directories.
+
+### Resolution
+
+Refined audit commands to exclude non-source directories:
+
+```bash
+grep -R --exclude-dir=.venv --exclude-dir=__pycache__ "password" services infrastructure docs
+
+grep -R --exclude-dir=.venv --exclude-dir=__pycache__ "SECRET_KEY" .
+
+grep -R --exclude-dir=.venv --exclude-dir=__pycache__ "super-secret-dev-key" .
+```
+
+### Validation
+
+Audit results became focused on:
+
+```text
+Application source code
+Infrastructure configuration
+Project documentation
+```
+
+Noise from dependencies and compiled files was eliminated.
+
+### Lessons Learned
+
+Security audits become significantly more effective when dependency and build artifacts are excluded from searches.
+
+Future repository audits should standardize exclusion of:
+
+```text
+.venv
+__pycache__
+.git
+node_modules
+```
+
+where applicable.
+
+---
+
+## Issue
+
+### Symptoms
+
+After migrating JWT secrets to environment variables, there was a risk that authentication functionality could fail if environment injection was incomplete.
+
+### Root Cause
+
+`auth_service` was modified to require:
+
+```python
+AUTH_SERVICE_SECRET_KEY
+```
+
+at startup.
+
+If Docker Compose did not inject the variable correctly, authentication services would fail.
+
+### Resolution
+
+Added explicit environment variable injection to:
+
+```yaml
+auth_service:
+  environment:
+    AUTH_SERVICE_SECRET_KEY: ${AUTH_SERVICE_SECRET_KEY}
+```
+
+Implemented startup validation:
+
+```python
+if not SECRET_KEY:
+    raise RuntimeError(
+        "AUTH_SERVICE_SECRET_KEY environment variable is not set"
+    )
+```
+
+Rebuilt and redeployed the service.
+
+### Validation
+
+Verified:
+
+```text
+docker compose ps
+```
+
+showed:
+
+```text
+ops-auth-service Up (healthy)
+```
+
+Authentication tests succeeded:
+
+```text
+POST /login
+GET /me
+JWT validation
+Role extraction
+```
+
+### Lessons Learned
+
+Production services should fail fast when required secrets are missing.
+
+Startup validation prevents insecure operation and immediately surfaces configuration issues during deployment.

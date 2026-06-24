@@ -44,6 +44,8 @@ services:
     container_name: ops-auth-service
     ports:
       - "8002:8000"
+    environment:
+      AUTH_SERVICE_SECRET_KEY: ${AUTH_SERVICE_SECRET_KEY}
     volumes:
       - auth-data:/app/data
     healthcheck:
