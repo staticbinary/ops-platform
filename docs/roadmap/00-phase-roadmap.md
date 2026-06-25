@@ -4583,3 +4583,129 @@ Platform Validation Tests
 Automated Test Execution
 
 Future GitHub Actions Integration
+
+### Phase 6.4 – Automated Testing Framework ✅ COMPLETE
+
+#### Objectives
+
+Establish automated functional testing for core platform services and workflows.
+
+#### Deliverables
+
+- Automated platform smoke testing
+- Authentication testing
+- JWT validation testing
+- RBAC authorization testing
+- Asset CRUD testing
+- Unified automated test execution framework
+- Release readiness integration
+
+#### Implemented Components
+
+```text
+scripts/tests/test-config.sh
+scripts/tests/test-utils.sh
+
+scripts/tests/test-platform.sh
+scripts/tests/test-auth.sh
+scripts/tests/test-rbac.sh
+scripts/tests/test-assets.sh
+
+scripts/tests/test-all.sh
+```
+
+#### Validation Coverage
+
+Platform Validation:
+
+```text
+Asset Service Health
+
+Asset Service Readiness
+
+Auth Service Health
+
+Prometheus Health
+
+Grafana Health
+
+Loki Readiness
+
+Tempo Readiness
+```
+
+Authentication Validation:
+
+```text
+Valid Login
+
+Invalid Password Rejection
+
+Invalid User Rejection
+
+JWT Token Validation
+```
+
+Authorization Validation:
+
+```text
+Viewer Asset Read Access
+
+Viewer Asset Create Denial
+
+Admin Asset Read Access
+
+Admin Asset Create Access
+```
+
+Application Validation:
+
+```text
+Asset Creation
+
+Asset Retrieval
+
+Asset Update
+
+Asset Deletion
+
+Deletion Verification
+```
+
+#### Operational Improvements
+
+```text
+Repeatable Automated Testing
+
+Release Validation Gates
+
+Functional Service Validation
+
+Cross-Service Authentication Validation
+
+Regression Detection
+```
+
+#### Key Findings
+
+Automated testing detected and helped resolve a cross-service JWT trust configuration issue between auth_service and asset_service.
+
+This represented the first instance where the testing framework identified a real platform defect that was not detected by health checks or configuration validation alone.
+
+#### Outcome
+
+The platform now supports:
+
+```text
+Configuration Validation
+
+Runtime Validation
+
+Service Validation
+
+Functional Testing
+
+Release Readiness Validation
+```
+
+This establishes the foundation for CI/CD pipeline automation and GitHub Actions integration in Phase 6.5.
