@@ -6216,3 +6216,610 @@ Confirmed runtime configuration matched expected platform configuration.
 Configuration drift is one of the most common sources of production incidents.
 
 Regular configuration validation should be treated as a standard operational practice.
+
+## Issue
+### Symptoms
+
+RBAC testing failed during manual validation.
+
+Authenticated admin user successfully logged into auth_service.
+
+Authenticated token successfully accessed:
+
+- GET /me
+
+However:
+
+- POST /assets
+
+returned:
+
+```text
+401 Unauthorized
+Invalid token
+```
+
+### Root Cause
+
+auth_service and asset_service were configured with different JWT signing secrets.
+
+Environment configuration:
+
+```env
+ASSET_SERVICE_SECRET_KEY=<generated-asset-secret>
+
+AUTH_SERVICE_SECRET_KEY=<generated-auth-secret>
+```
+
+Result:
+
+```text
+auth_service signed JWTs with AUTH_SERVICE_SECRET_KEY
+
+asset_service attempted to validate JWTs using
+ASSET_SERVICE_SECRET_KEY
+```
+
+JWT signature verification failed.
+
+### Resolution
+
+Updated environment configuration so both services used the same JWT signing secret.
+
+```env
+ASSET_SERVICE_SECRET_KEY=<shared-secret>
+
+AUTH_SERVICE_SECRET_KEY=<shared-secret>
+```
+
+Recreated services:
+
+```bash
+docker compose up -d --force-recreate auth_service asset_service
+```
+
+### Validation
+
+```text
+POST /login  → 200
+GET /me      → 200
+POST /assets → 200
+```
+
+RBAC testing proceeded successfully.
+
+### Lessons Learned
+
+Cross-service authentication requires a shared trust boundary.
+
+Automated testing immediately exposed a JWT configuration mismatch that had not been detected by health checks or validation scripts.
+
+Future Keycloak/OIDC implementation will eliminate direct secret sharing through centralized identity management.
+
+## Issue
+### Symptoms
+
+Platform smoke testing initially failed.
+
+Output:
+
+```text
+[FAIL] Loki Readiness returned HTTP 503
+```
+
+All other platform services passed validation.
+
+### Root Cause
+
+Loki readiness endpoint was queried before Loki completed startup initialization.
+
+The container was running and reachable but not yet ready to serve requests.
+
+### Resolution
+
+Allowed Loki additional startup time and re-ran the platform smoke tests.
+
+```bash
+./scripts/tests/test-platform.sh
+```
+
+### Validation
+
+```text
+[PASS] Loki Readiness
+```
+
+All platform smoke tests completed successfully.
+
+### Lessons Learned
+
+Readiness endpoints provide stricter validation than container health checks.
+
+Transient startup conditions should be expected and accommodated during automated testing.
+
+## Issue
+### Symptoms
+
+Authentication testing failed during token validation.
+
+Output:
+
+```text
+[PASS] Valid admin login
+[PASS] JWT token returned
+[FAIL] Token validation returned HTTP 401
+```
+
+### Root Cause
+
+JWT extraction logic incorrectly parsed the login response.
+
+The login endpoint returned structured JSON but the token extraction logic did not properly isolate the access_token value.
+
+### Resolution
+
+Replaced manual string parsing with JSON parsing.
+
+```bash
+TOKEN=$(python -c 'import json; print(json.load(open("/tmp/auth-login-response.json"))["access_token"])')
+```
+
+### Validation
+
+```text
+[PASS] Valid admin login
+[PASS] JWT token returned
+[PASS] Token validation with /me
+```
+
+Authentication testing completed successfully.
+
+### Lessons Learned
+
+Structured JSON responses should always be parsed using a JSON parser rather than string manipulation.
+
+JSON parsing is more reliable and resilient to future API response changes.
+
+## Issue
+### Symptoms
+
+RBAC testing failed during token acquisition.
+
+Output:
+
+```text
+KeyError: 'access_token'
+```
+
+### Root Cause
+
+test-config.sh contained outdated test credentials.
+
+The authentication requests failed and returned error responses instead of access tokens.
+
+### Resolution
+
+Updated test-config.sh:
+
+```bash
+TEST_ADMIN_USER="admintest@test.com"
+TEST_ADMIN_PASSWORD="Password123!"
+
+TEST_VIEWER_USER="viewertest@test.com"
+TEST_VIEWER_PASSWORD="Password123!"
+```
+
+### Validation
+
+```text
+[PASS] Admin token acquired
+[PASS] Viewer token acquired
+```
+
+RBAC testing continued successfully.
+
+### Lessons Learned
+
+Centralized test configuration reduces duplication but becomes a critical dependency for all automated testing.
+
+Configuration drift affects testing infrastructure just as easily as production services.
+
+## Issue
+### Symptoms
+
+RBAC testing failed on repeated execution.
+
+Output:
+
+```text
+[FAIL] Admin create returned HTTP 409
+```
+
+### Root Cause
+
+The test attempted to create assets using a static hostname.
+
+Repeated executions caused duplicate asset creation attempts and triggered application uniqueness constraints.
+
+### Resolution
+
+Implemented unique test resource generation.
+
+```bash
+TEST_RUN_ID="$(date +%s)"
+```
+
+Updated asset hostnames to include a timestamp.
+
+### Validation
+
+```text
+[PASS] Admin can create assets
+```
+
+Repeated test executions completed successfully.
+
+### Lessons Learned
+
+Automated tests should be idempotent whenever possible.
+
+Dynamic test data prevents failures caused by repeated execution.
+
+## Issue
+### Symptoms
+
+RBAC testing failed.
+
+Output:
+
+```text
+[FAIL] Viewer write returned HTTP 422
+```
+
+### Root Cause
+
+JSON payload formatting became invalid while introducing dynamic hostname generation.
+
+Request validation failed before RBAC authorization logic was evaluated.
+
+### Resolution
+
+Simplified the viewer-denied test payload and restored valid JSON formatting.
+
+```json
+{
+  "hostname": "viewer-rbac-denied-host",
+  "owner": "phase-6-4",
+  "status": "active"
+}
+```
+
+### Validation
+
+```text
+[PASS] Viewer denied asset creation
+```
+
+Expected authorization behavior returned:
+
+```text
+403 Forbidden
+```
+
+### Lessons Learned
+
+Authorization testing requires valid request payloads.
+
+Malformed requests can hide authorization failures and create misleading test results.
+
+## Issue
+### Symptoms
+
+release-readiness.sh terminated before backup verification and automated testing executed.
+
+Output stopped after:
+
+```text
+Checking repository status...
+```
+
+### Root Cause
+
+pre-deploy-check.sh exited with status code:
+
+```text
+1
+```
+
+because uncommitted Phase 6.4 files existed in the repository.
+
+release-readiness.sh used:
+
+```bash
+set -e
+```
+
+which terminated execution immediately after the failure.
+
+### Resolution
+
+Verified repository state using:
+
+```bash
+git status
+```
+
+Confirmed expected Phase 6.4 modifications and completed staging and commit activities before rerunning release validation.
+
+### Validation
+
+```text
+nothing to commit
+working tree clean
+```
+
+Release readiness workflow completed successfully.
+
+### Lessons Learned
+
+Release validation gates should fail when repository state is not clean.
+
+The validation framework correctly prevented a release-readiness confirmation while uncommitted changes existed.
+
+## Issue
+
+### Symptoms
+
+Initial CI/CD pipeline automation had not yet been implemented.
+
+Repository validation depended entirely on manual execution of local validation scripts.
+
+No automated verification occurred when code was pushed to the repository.
+
+### Root Cause
+
+Validation tooling existed locally but was not integrated into a continuous integration workflow.
+
+Engineering controls required manual execution and operator discipline.
+
+### Resolution
+
+Created the initial GitHub Actions workflow:
+
+```text
+.github/workflows/ci.yml
+```
+
+Implemented automated validation for:
+
+```text
+Repository Checkout
+
+Docker Compose Validation
+
+Shell Script Syntax Validation
+
+Repository Structure Validation
+```
+
+### Validation
+
+Workflow file successfully created and committed.
+
+GitHub Actions configuration validated locally.
+
+Repository structure validation logic reviewed and confirmed.
+
+### Lessons Learned
+
+CI/CD adoption should begin with deterministic static validation before introducing runtime dependencies.
+
+Automated validation reduces the risk of configuration and repository structure regressions.
+
+---
+
+## Issue
+
+### Symptoms
+
+CI scope initially appeared suitable for full platform testing.
+
+Existing automated tests already supported:
+
+```text
+Authentication Validation
+
+RBAC Validation
+
+Asset CRUD Validation
+
+Platform Smoke Testing
+```
+
+### Root Cause
+
+Functional test execution depends on live platform infrastructure.
+
+Current test suite requires:
+
+```text
+Running Containers
+
+Database Availability
+
+Configured Test Accounts
+
+Shared JWT Secrets
+
+Operational Services
+```
+
+These dependencies are not yet available inside the CI runtime environment.
+
+### Resolution
+
+Limited initial CI implementation to static validation only.
+
+Deferred runtime testing and platform startup validation to future CI maturity phases.
+
+Established a phased CI expansion strategy.
+
+### Validation
+
+CI workflow contains only deterministic validation stages.
+
+No database, container, or service dependencies required for workflow execution.
+
+### Lessons Learned
+
+Stable CI pipelines should begin with predictable validation steps.
+
+Runtime testing should be introduced incrementally after static validation proves reliable.
+
+---
+
+## Issue
+
+### Symptoms
+
+Platform engineering controls existed across multiple independent validation layers.
+
+Validation responsibilities were distributed across numerous scripts and workflows.
+
+### Root Cause
+
+As platform maturity increased, validation capabilities evolved organically through multiple phases.
+
+No centralized automation layer existed to enforce repository standards automatically.
+
+### Resolution
+
+Integrated CI validation into the existing engineering validation hierarchy.
+
+Current validation chain:
+
+```text
+Configuration Validation
+        ↓
+Runtime Validation
+        ↓
+Service Validation
+        ↓
+Automated Functional Testing
+        ↓
+Release Readiness Validation
+        ↓
+CI Validation Automation
+```
+
+### Validation
+
+CI workflow successfully integrates with the existing validation framework without replacing existing operational controls.
+
+### Lessons Learned
+
+Engineering maturity is achieved through layered validation rather than reliance on a single testing mechanism.
+
+CI automation should complement existing validation controls rather than replace them.
+
+---
+
+## Issue
+
+### Symptoms
+
+Workflow file staging and modification states became inconsistent after post-staging file edits.
+
+Git reported:
+
+```text
+Changes to be committed
+
+Changes not staged for commit
+```
+
+for the same workflow file.
+
+### Root Cause
+
+The workflow file was modified after being staged.
+
+Git correctly tracked both the staged version and the working directory version.
+
+### Resolution
+
+Re-staged the workflow file using:
+
+```bash
+git add .github/workflows/ci.yml
+```
+
+Committed the final workflow version.
+
+### Validation
+
+Git status returned:
+
+```text
+working tree clean
+```
+
+Commit completed successfully:
+
+```text
+773602e Add initial CI validation workflow
+```
+
+### Lessons Learned
+
+Git staging reflects a snapshot of file state at the time of staging.
+
+Any modifications after staging require re-staging before commit to ensure the intended version is committed.
+
+---
+
+## Issue
+
+### Symptoms
+
+VS Code terminal displayed corrupted or partially rendered text during Git operations.
+
+Text appeared fragmented, misplaced, or invisible until selected.
+
+### Root Cause
+
+Issue was determined to be related to terminal rendering behavior rather than Git, repository contents, or file corruption.
+
+Potential contributors included:
+
+```text
+VS Code Rendering
+
+GPU Acceleration
+
+Integrated Terminal Rendering
+
+Pending VS Code Update
+```
+
+### Resolution
+
+Confirmed repository data remained intact.
+
+Verified Git output correctness through command-line inspection.
+
+Planned VS Code update and terminal renderer validation.
+
+### Validation
+
+Repository files remained readable.
+
+Git operations completed successfully.
+
+Workflow file committed without data loss.
+
+### Lessons Learned
+
+Rendering issues can mimic repository or file corruption while underlying data remains unaffected.
+
+Always validate repository state independently before assuming file integrity issues.
