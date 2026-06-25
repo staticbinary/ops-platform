@@ -1,0 +1,39 @@
+name: Ops Platform CI
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Validate Docker Compose Configuration
+        run: |
+          docker compose config
+
+      - name: Validate Shell Scripts
+        run: |
+          find scripts -type f -name "*.sh" -exec bash -n {} \;
+
+      - name: Validate Repository Structure
+        run: |
+          test -f docker-compose.yml
+          test -d services
+          test -d scripts
+          test -d infrastructure
+          test -d docs
+
+      - name: CI Validation Complete
+        run: |
+          echo "Repository validation successful"
