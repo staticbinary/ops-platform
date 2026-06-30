@@ -34,6 +34,32 @@ jobs:
           test -d infrastructure
           test -d docs
 
+      - name: Start Platform Runtime
+        run: |
+          docker compose up -d --build
+
+      - name: Show Container Status
+        run: |
+          docker compose ps
+
+      - name: Validate Asset Service Health
+        run: |
+          curl --fail http://localhost:8001/health
+
+      - name: Validate Auth Service Health
+        run: |
+          curl --fail http://localhost:8002/health
+
+      - name: Show Logs on Failure
+        if: failure()
+        run: |
+          docker compose logs --tail=100
+
+      - name: Stop Platform Runtime
+        if: always()
+        run: |
+          docker compose down -v
+
       - name: CI Validation Complete
         run: |
-          echo "Repository validation successful"
+          echo "Repository and runtime validation successful"

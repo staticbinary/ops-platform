@@ -4840,3 +4840,311 @@ Health Validation Automation
 Service Validation Automation
 
 Preparation for Full CI Test Execution
+
+
+
+
+
+## Future Observability & Platform Expansion Roadmap
+
+### Observability Platform Enhancements
+
+#### Grafana Infrastructure as Code
+
+- Provision Grafana dashboards automatically from repository JSON files.
+- Provision Grafana data sources (Prometheus, Loki, Tempo).
+- Provision Grafana alerting resources where practical.
+- Eliminate manual dashboard and data source recovery after environment rebuilds.
+- Treat Grafana configuration as code alongside the rest of the platform.
+
+#### Observability Quality Improvements
+
+- Replace Docker container IDs with friendly service names using Docker metadata, Prometheus relabeling, or Grafana transformations.
+- Improve dashboard consistency and visualization standards.
+- Expand dashboard drill-down capabilities for investigations.
+- Standardize dashboard export/version control workflow.
+
+---
+
+### Infrastructure Monitoring
+
+#### PostgreSQL Data Source
+
+Integrate PostgreSQL as a Grafana data source for operational reporting.
+
+Potential dashboards:
+
+- Asset inventory
+- User activity
+- Audit reporting
+- Database growth
+- Configuration drift
+- Backup statistics
+- Operational analytics
+
+---
+
+#### Node Exporter
+
+Add host-level infrastructure monitoring.
+
+Metrics include:
+
+- CPU utilization
+- Memory utilization
+- Disk usage
+- Filesystem utilization
+- Network utilization
+- System load
+- Process monitoring
+
+---
+
+#### Blackbox Exporter
+
+Implement synthetic monitoring for service availability.
+
+Monitor:
+
+- Reverse Proxy
+- Asset Service
+- Auth Service
+- Grafana
+- Prometheus
+- Loki
+- Tempo
+- Future Keycloak deployment
+- Future application endpoints
+
+---
+
+#### SNMP Exporter
+
+Expand monitoring into physical infrastructure.
+
+Potential devices:
+
+- Managed switches
+- Routers
+- Firewalls
+- NAS
+- UPS
+- Wireless access points
+- Printers
+- Home lab infrastructure
+
+---
+
+### Identity & Access Monitoring
+
+Following future Keycloak integration, add monitoring for:
+
+- Authentication activity
+- Failed login attempts
+- Active sessions
+- MFA utilization
+- OIDC client activity
+- Service account usage
+- API token activity
+- Identity platform health
+
+---
+
+### Security Operations Expansion
+
+Future integrations may include:
+
+#### Wazuh
+
+Endpoint detection and response.
+
+Capabilities:
+
+- Vulnerability management
+- File integrity monitoring
+- Malware detection
+- Compliance reporting
+- Endpoint security telemetry
+
+#### Suricata
+
+Network intrusion detection.
+
+Capabilities:
+
+- IDS event monitoring
+- Network attack visibility
+- DNS monitoring
+- HTTP monitoring
+- TLS inspection
+- Threat detection
+
+---
+
+### Kubernetes Observability
+
+Following Kubernetes adoption:
+
+- kube-state-metrics
+- Kubernetes cluster dashboards
+- Node monitoring
+- Pod monitoring
+- Namespace monitoring
+- Deployment monitoring
+- ReplicaSet monitoring
+- Cluster health reporting
+
+---
+
+### CI/CD Observability
+
+Expand GitHub Actions monitoring.
+
+Potential dashboards:
+
+- Build success rate
+- Build failures
+- Pipeline duration
+- Deployment frequency
+- Release readiness
+- Validation history
+- Mean Time to Recovery (MTTR)
+
+---
+
+### Business Intelligence Dashboards
+
+As applications mature, introduce operational dashboards for:
+
+- Assets managed
+- Organizations
+- Users
+- Authentication volume
+- API utilization
+- Storage utilization
+- Audit activity
+- Configuration management
+- Operational reporting
+
+---
+
+### Future Application Monitoring
+
+#### Secure File Sharing Platform
+
+Monitor:
+
+- Upload activity
+- Download activity
+- Storage utilization
+- Sharing activity
+- Malware scan results
+- Audit events
+- Access denials
+- User activity
+
+#### Home Network Operations Center (NOC)
+
+Monitor:
+
+- Internet connectivity
+- ISP latency
+- Gateway health
+- Firewall status
+- Wireless infrastructure
+- Raspberry Pi systems
+- Servers
+- NAS
+- UPS
+- IoT infrastructure
+
+#### AI / Local LLM Infrastructure
+
+Monitor:
+
+- GPU utilization
+- VRAM utilization
+- Inference latency
+- Request throughput
+- Queue depth
+- Model health
+- AI service availability
+
+## Phase 6.6.1 — Dashboard Modernization & Observability Standards
+
+**Status:** Completed
+
+### Objectives
+
+- Modernize Grafana dashboards following Grafana database recovery.
+- Update legacy PromQL queries to current platform metrics.
+- Standardize dashboard organization by operational responsibility.
+- Remove duplicate and low-value panels.
+- Improve operational visibility while reducing dashboard complexity.
+- Establish long-term dashboard architecture standards.
+
+### Completed
+
+- Recreated Grafana environment after Docker volume removal.
+- Recreated Prometheus, Loki, and Tempo data sources.
+- Re-imported all dashboard JSON files.
+- Modernized legacy PromQL metric names.
+- Updated dashboard queries to standardized platform metrics.
+- Removed monitoring endpoint noise from application traffic panels.
+- Reorganized dashboards according to operational ownership.
+- Eliminated duplicate panels across dashboards.
+- Removed panels that measured implementation details rather than operational signals.
+- Standardized panel organization, visualization purpose, and dashboard responsibilities.
+- Established Kubernetes-ready dashboard philosophy using service-oriented metrics.
+- Created `26-dashboard-standards.md` documenting dashboard architecture and design principles.
+
+### Platform Maturity Improvements
+
+- Dashboard architecture now reflects real operational workflows.
+- Platform Overview simplified to executive operational health.
+- Service Reliability focuses on service availability and recovery.
+- Security dashboards now separate operations, investigation, detection, and response.
+- Dashboard design now prioritizes actionable operational questions over metric quantity.
+
+### Future Roadmap
+
+#### Dashboard Provisioning
+
+- Automatic Grafana dashboard provisioning
+- Automatic data source provisioning
+- Folder provisioning
+- Alert provisioning
+
+#### Observability Expansion
+
+- PostgreSQL monitoring
+- Node Exporter
+- Blackbox Exporter
+- SNMP Exporter
+- Kubernetes observability
+- CI/CD dashboards
+- Keycloak monitoring
+- Infrastructure health dashboards
+
+#### Security Operations
+
+- Wazuh endpoint monitoring
+- Suricata network intrusion detection
+- Threat intelligence enrichment
+- GeoIP visualization
+- Cross-platform incident correlation
+
+#### Home Network Operations
+
+- Home NOC dashboards
+- Network traffic monitoring
+- Device inventory
+- ISP health monitoring
+- Security event correlation
+- AI infrastructure monitoring
+
+### Lessons Learned
+
+Observability should be treated as platform architecture rather than dashboard creation.
+
+Every dashboard should answer a clearly defined operational question, while every panel should provide meaningful operational value. Dashboard organization, documentation, and observability standards now form a permanent architectural foundation for future platform expansion.

@@ -6218,6 +6218,7 @@ Configuration drift is one of the most common sources of production incidents.
 Regular configuration validation should be treated as a standard operational practice.
 
 ## Issue
+
 ### Symptoms
 
 RBAC testing failed during manual validation.
@@ -6234,10 +6235,8 @@ However:
 
 returned:
 
-```text
 401 Unauthorized
 Invalid token
-```
 
 ### Root Cause
 
@@ -6245,20 +6244,17 @@ auth_service and asset_service were configured with different JWT signing secret
 
 Environment configuration:
 
-```env
+env
 ASSET_SERVICE_SECRET_KEY=<generated-asset-secret>
 
 AUTH_SERVICE_SECRET_KEY=<generated-auth-secret>
-```
 
 Result:
 
-```text
 auth_service signed JWTs with AUTH_SERVICE_SECRET_KEY
 
 asset_service attempted to validate JWTs using
 ASSET_SERVICE_SECRET_KEY
-```
 
 JWT signature verification failed.
 
@@ -6266,25 +6262,21 @@ JWT signature verification failed.
 
 Updated environment configuration so both services used the same JWT signing secret.
 
-```env
+env
 ASSET_SERVICE_SECRET_KEY=<shared-secret>
 
 AUTH_SERVICE_SECRET_KEY=<shared-secret>
-```
 
 Recreated services:
 
-```bash
+bash
 docker compose up -d --force-recreate auth_service asset_service
-```
 
 ### Validation
 
-```text
 POST /login  → 200
 GET /me      → 200
 POST /assets → 200
-```
 
 RBAC testing proceeded successfully.
 
@@ -6297,15 +6289,14 @@ Automated testing immediately exposed a JWT configuration mismatch that had not 
 Future Keycloak/OIDC implementation will eliminate direct secret sharing through centralized identity management.
 
 ## Issue
+
 ### Symptoms
 
 Platform smoke testing initially failed.
 
 Output:
 
-```text
 [FAIL] Loki Readiness returned HTTP 503
-```
 
 All other platform services passed validation.
 
@@ -6319,15 +6310,12 @@ The container was running and reachable but not yet ready to serve requests.
 
 Allowed Loki additional startup time and re-ran the platform smoke tests.
 
-```bash
+bash
 ./scripts/tests/test-platform.sh
-```
 
 ### Validation
 
-```text
 [PASS] Loki Readiness
-```
 
 All platform smoke tests completed successfully.
 
@@ -6338,17 +6326,16 @@ Readiness endpoints provide stricter validation than container health checks.
 Transient startup conditions should be expected and accommodated during automated testing.
 
 ## Issue
+
 ### Symptoms
 
 Authentication testing failed during token validation.
 
 Output:
 
-```text
 [PASS] Valid admin login
 [PASS] JWT token returned
 [FAIL] Token validation returned HTTP 401
-```
 
 ### Root Cause
 
@@ -6360,17 +6347,14 @@ The login endpoint returned structured JSON but the token extraction logic did n
 
 Replaced manual string parsing with JSON parsing.
 
-```bash
+bash
 TOKEN=$(python -c 'import json; print(json.load(open("/tmp/auth-login-response.json"))["access_token"])')
-```
 
 ### Validation
 
-```text
 [PASS] Valid admin login
 [PASS] JWT token returned
 [PASS] Token validation with /me
-```
 
 Authentication testing completed successfully.
 
@@ -6381,15 +6365,14 @@ Structured JSON responses should always be parsed using a JSON parser rather tha
 JSON parsing is more reliable and resilient to future API response changes.
 
 ## Issue
+
 ### Symptoms
 
 RBAC testing failed during token acquisition.
 
 Output:
 
-```text
 KeyError: 'access_token'
-```
 
 ### Root Cause
 
@@ -6401,20 +6384,17 @@ The authentication requests failed and returned error responses instead of acces
 
 Updated test-config.sh:
 
-```bash
-TEST_ADMIN_USER="admintest@test.com"
+bash
+TEST_ADMIN_USER="<admintest@test.com>"
 TEST_ADMIN_PASSWORD="Password123!"
 
-TEST_VIEWER_USER="viewertest@test.com"
+TEST_VIEWER_USER="<viewertest@test.com>"
 TEST_VIEWER_PASSWORD="Password123!"
-```
 
 ### Validation
 
-```text
 [PASS] Admin token acquired
 [PASS] Viewer token acquired
-```
 
 RBAC testing continued successfully.
 
@@ -6425,15 +6405,14 @@ Centralized test configuration reduces duplication but becomes a critical depend
 Configuration drift affects testing infrastructure just as easily as production services.
 
 ## Issue
+
 ### Symptoms
 
 RBAC testing failed on repeated execution.
 
 Output:
 
-```text
 [FAIL] Admin create returned HTTP 409
-```
 
 ### Root Cause
 
@@ -6445,17 +6424,14 @@ Repeated executions caused duplicate asset creation attempts and triggered appli
 
 Implemented unique test resource generation.
 
-```bash
+bash
 TEST_RUN_ID="$(date +%s)"
-```
 
 Updated asset hostnames to include a timestamp.
 
 ### Validation
 
-```text
 [PASS] Admin can create assets
-```
 
 Repeated test executions completed successfully.
 
@@ -6466,15 +6442,14 @@ Automated tests should be idempotent whenever possible.
 Dynamic test data prevents failures caused by repeated execution.
 
 ## Issue
+
 ### Symptoms
 
 RBAC testing failed.
 
 Output:
 
-```text
 [FAIL] Viewer write returned HTTP 422
-```
 
 ### Root Cause
 
@@ -6486,25 +6461,20 @@ Request validation failed before RBAC authorization logic was evaluated.
 
 Simplified the viewer-denied test payload and restored valid JSON formatting.
 
-```json
+json
 {
   "hostname": "viewer-rbac-denied-host",
   "owner": "phase-6-4",
   "status": "active"
 }
-```
 
 ### Validation
 
-```text
 [PASS] Viewer denied asset creation
-```
 
 Expected authorization behavior returned:
 
-```text
 403 Forbidden
-```
 
 ### Lessons Learned
 
@@ -6513,31 +6483,27 @@ Authorization testing requires valid request payloads.
 Malformed requests can hide authorization failures and create misleading test results.
 
 ## Issue
+
 ### Symptoms
 
 release-readiness.sh terminated before backup verification and automated testing executed.
 
 Output stopped after:
 
-```text
 Checking repository status...
-```
 
 ### Root Cause
 
 pre-deploy-check.sh exited with status code:
 
-```text
 1
-```
 
 because uncommitted Phase 6.4 files existed in the repository.
 
 release-readiness.sh used:
 
-```bash
+bash
 set -e
-```
 
 which terminated execution immediately after the failure.
 
@@ -6545,18 +6511,15 @@ which terminated execution immediately after the failure.
 
 Verified repository state using:
 
-```bash
+bash
 git status
-```
 
 Confirmed expected Phase 6.4 modifications and completed staging and commit activities before rerunning release validation.
 
 ### Validation
 
-```text
 nothing to commit
 working tree clean
-```
 
 Release readiness workflow completed successfully.
 
@@ -6586,13 +6549,10 @@ Engineering controls required manual execution and operator discipline.
 
 Created the initial GitHub Actions workflow:
 
-```text
 .github/workflows/ci.yml
-```
 
 Implemented automated validation for:
 
-```text
 Repository Checkout
 
 Docker Compose Validation
@@ -6600,7 +6560,6 @@ Docker Compose Validation
 Shell Script Syntax Validation
 
 Repository Structure Validation
-```
 
 ### Validation
 
@@ -6626,7 +6585,6 @@ CI scope initially appeared suitable for full platform testing.
 
 Existing automated tests already supported:
 
-```text
 Authentication Validation
 
 RBAC Validation
@@ -6634,7 +6592,6 @@ RBAC Validation
 Asset CRUD Validation
 
 Platform Smoke Testing
-```
 
 ### Root Cause
 
@@ -6642,7 +6599,6 @@ Functional test execution depends on live platform infrastructure.
 
 Current test suite requires:
 
-```text
 Running Containers
 
 Database Availability
@@ -6652,7 +6608,6 @@ Configured Test Accounts
 Shared JWT Secrets
 
 Operational Services
-```
 
 These dependencies are not yet available inside the CI runtime environment.
 
@@ -6698,7 +6653,6 @@ Integrated CI validation into the existing engineering validation hierarchy.
 
 Current validation chain:
 
-```text
 Configuration Validation
         ↓
 Runtime Validation
@@ -6710,7 +6664,6 @@ Automated Functional Testing
 Release Readiness Validation
         ↓
 CI Validation Automation
-```
 
 ### Validation
 
@@ -6732,11 +6685,9 @@ Workflow file staging and modification states became inconsistent after post-sta
 
 Git reported:
 
-```text
 Changes to be committed
 
 Changes not staged for commit
-```
 
 for the same workflow file.
 
@@ -6750,9 +6701,8 @@ Git correctly tracked both the staged version and the working directory version.
 
 Re-staged the workflow file using:
 
-```bash
+bash
 git add .github/workflows/ci.yml
-```
 
 Committed the final workflow version.
 
@@ -6760,15 +6710,11 @@ Committed the final workflow version.
 
 Git status returned:
 
-```text
 working tree clean
-```
 
 Commit completed successfully:
 
-```text
 773602e Add initial CI validation workflow
-```
 
 ### Lessons Learned
 
@@ -6782,9 +6728,9 @@ Any modifications after staging require re-staging before commit to ensure the i
 
 ### Symptoms
 
-VS Code terminal displayed corrupted or partially rendered text during Git operations.
+VS Code terminal displayed corrupted or partially rendered  during Git operations.
 
-Text appeared fragmented, misplaced, or invisible until selected.
+ appeared fragmented, misplaced, or invisible until selected.
 
 ### Root Cause
 
@@ -6792,7 +6738,6 @@ Issue was determined to be related to terminal rendering behavior rather than Gi
 
 Potential contributors included:
 
-```text
 VS Code Rendering
 
 GPU Acceleration
@@ -6800,7 +6745,6 @@ GPU Acceleration
 Integrated Terminal Rendering
 
 Pending VS Code Update
-```
 
 ### Resolution
 
@@ -6823,3 +6767,277 @@ Workflow file committed without data loss.
 Rendering issues can mimic repository or file corruption while underlying data remains unaffected.
 
 Always validate repository state independently before assuming file integrity issues.
+
+# Phase 6.6.1 Dashboard Modernization Troubleshooting Notes
+
+## Issue
+
+### Grafana database removed after Docker volume cleanup
+
+### Symptoms
+
+- Grafana login failed after rebuilding the environment.
+- Previous dashboards were no longer available.
+- Prometheus, Loki, and Tempo data sources were missing.
+- Grafana prompted for first-time administrator setup.
+
+### Root Cause
+
+Running:
+
+bash
+docker compose down -v
+
+removed the persistent Grafana volume containing:
+
+- User accounts
+- Dashboard database
+- Data sources
+- Folder organization
+- Alert configuration
+
+### Resolution
+
+- Recreated Grafana administrator account.
+- Recreated Prometheus data source.
+- Recreated Loki data source.
+- Recreated Tempo data source.
+- Re-imported dashboard JSON files.
+- Verified all dashboards loaded successfully.
+
+### Validation
+
+- Grafana login successful.
+- All data sources connected successfully.
+- Dashboards imported without errors.
+- Metrics displayed correctly.
+
+### Lessons Learned
+
+- Docker volume removal deletes Grafana state.
+- Dashboard provisioning should be implemented in a future phase.
+- Dashboard JSON exports provide rapid recovery capability.
+
+---
+
+## Issue
+
+### Legacy PromQL metrics no longer matched application metrics
+
+### Symptoms
+
+- Multiple dashboard panels displayed "No data."
+- Panels referenced deprecated metric names.
+- Legacy service-specific metrics no longer existed.
+
+### Root Cause
+
+Application metrics were standardized during previous platform phases while dashboard queries continued referencing legacy metrics.
+
+Examples included:
+
+- asset_service_http_request_duration_seconds_*
+- asset_service_http_requests_total
+
+### Resolution
+
+Updated dashboard queries to current standardized metrics including:
+
+- http_requests_total
+- http_request_duration_seconds
+- Current label names
+- Current handler labels
+
+### Validation
+
+- Panels populated successfully.
+- Request metrics matched live application traffic.
+- Latency panels displayed correctly.
+
+### Lessons Learned
+
+- Dashboard queries must evolve alongside application instrumentation.
+- Prefer standardized metric names across all services.
+
+---
+
+## Issue
+
+### Platform Overview contained duplicate operational information
+
+### Symptoms
+
+- Multiple dashboards displayed identical metrics.
+- Platform Overview became cluttered.
+- Operational responsibilities between dashboards overlapped.
+
+### Root Cause
+
+Dashboards evolved incrementally without clearly defined ownership for individual metrics.
+
+### Resolution
+
+Reorganized dashboards according to operational responsibility.
+
+Platform Overview now focuses on platform health while specialized dashboards own detailed operational data.
+
+### Validation
+
+- Duplicate panels removed.
+- Dashboard responsibilities clearly separated.
+- Platform Overview significantly simplified.
+
+### Lessons Learned
+
+- Every metric should have one primary dashboard.
+- Overview dashboards should summarize rather than duplicate detailed operational views.
+
+---
+
+## Issue
+
+### Monitoring endpoints inflated application traffic metrics
+
+### Symptoms
+
+Application request panels included:
+
+- /metrics
+- /health
+- /health/live
+- /health/ready
+- /health/startup
+- /docs
+- /openapi.json
+
+Resulting traffic graphs primarily reflected monitoring activity rather than user activity.
+
+### Root Cause
+
+PromQL queries counted every HTTP request regardless of purpose.
+
+### Resolution
+
+Updated application traffic queries to exclude monitoring endpoints where appropriate.
+
+Platform health dashboards continue monitoring those endpoints separately.
+
+### Validation
+
+Application traffic now reflects actual API usage.
+
+### Lessons Learned
+
+Operational dashboards should distinguish between monitoring traffic and application traffic.
+
+---
+
+## Issue
+
+### Dashboard panels measured implementation details rather than operational signals
+
+### Symptoms
+
+Several panels existed solely because metrics were available rather than because they answered meaningful operational questions.
+
+Example:
+
+- Database Health Checks
+
+### Root Cause
+
+Earlier dashboard development prioritized collecting available metrics.
+
+### Resolution
+
+Removed panels that did not provide meaningful operational value.
+
+Retained panels focused on:
+
+- Failures
+- Recovery
+- Availability
+- Reliability
+- Active incidents
+
+### Validation
+
+Dashboard complexity reduced while preserving operational visibility.
+
+### Lessons Learned
+
+Every panel should answer a specific operational question.
+
+If a panel does not improve decision making, it should be removed.
+
+---
+
+## Issue
+
+### Loki query modernization required validation against current label schema
+
+### Symptoms
+
+Several proposed Loki queries returned parser errors or no data.
+
+### Root Cause
+
+Current Loki deployment supports structured logging but query syntax and available labels differ from newer LogQL examples.
+
+### Resolution
+
+Standardized on working query patterns using verified labels.
+
+Preferred pattern:
+
+logql
+{job="docker", compose_service="asset_service"}
+|= `"event":"event.name"`
+
+Used JSON parsing only where supported.
+
+### Validation
+
+Existing event panels continued functioning correctly.
+
+Database failure and recovery panels validated successfully.
+
+### Lessons Learned
+
+Modernization should prioritize working queries over adopting newer syntax unnecessarily.
+
+Always validate available labels before refactoring LogQL queries.
+
+---
+
+## Issue
+
+### Dashboard architecture lacked documented design standards
+
+### Symptoms
+
+Dashboard growth increased the likelihood of duplicate metrics, inconsistent organization, and unclear ownership.
+
+### Root Cause
+
+Dashboard development preceded formal observability standards.
+
+### Resolution
+
+Created dashboard design standards documenting:
+
+- Dashboard responsibilities
+- Panel ownership
+- Metric organization
+- Operational design principles
+- Future Kubernetes compatibility
+
+### Validation
+
+Dashboard organization now follows documented architectural standards.
+
+### Lessons Learned
+
+Observability should be treated as platform architecture rather than dashboard creation.
+
+Documented standards improve long-term consistency and maintainability.
