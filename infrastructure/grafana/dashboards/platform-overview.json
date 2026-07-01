@@ -2,7 +2,7 @@
   "apiVersion": "dashboard.grafana.app/v2",
   "kind": "Dashboard",
   "metadata": {
-    "name": "adtqc5p",
+    "name": "platform-overview",
     "namespace": "default",
     "uid": "2dc94683-8d32-4a93-aa05-44aa729579b1",
     "resourceVersion": "1782859200122997",
@@ -65,7 +65,7 @@
                       "group": "prometheus",
                       "version": "v0",
                       "datasource": {
-                        "name": "ffqq5iujh3ytca"
+                        "name": "prometheus"
                       },
                       "spec": {
                         "editorMode": "code",
@@ -183,7 +183,7 @@
                       "group": "prometheus",
                       "version": "v0",
                       "datasource": {
-                        "name": "ffqq5iujh3ytca"
+                        "name": "prometheus"
                       },
                       "spec": {
                         "editorMode": "code",
@@ -302,7 +302,7 @@
                       "group": "prometheus",
                       "version": "v0",
                       "datasource": {
-                        "name": "ffqq5iujh3ytca"
+                        "name": "prometheus"
                       },
                       "spec": {
                         "editorMode": "code",
@@ -386,7 +386,7 @@
                       "group": "prometheus",
                       "version": "v0",
                       "datasource": {
-                        "name": "ffqq5iujh3ytca"
+                        "name": "prometheus"
                       },
                       "spec": {
                         "editorMode": "code",
@@ -487,7 +487,7 @@
                       "group": "loki",
                       "version": "v0",
                       "datasource": {
-                        "name": "bfqq5ldc7qk8wa"
+                        "name": "loki"
                       },
                       "spec": {
                         "direction": "backward",
@@ -551,7 +551,7 @@
                       "group": "loki",
                       "version": "v0",
                       "datasource": {
-                        "name": "bfqq5ldc7qk8wa"
+                        "name": "loki"
                       },
                       "spec": {
                         "direction": "backward",
@@ -615,7 +615,7 @@
                       "group": "loki",
                       "version": "v0",
                       "datasource": {
-                        "name": "bfqq5ldc7qk8wa"
+                        "name": "loki"
                       },
                       "spec": {
                         "direction": "backward",
@@ -679,7 +679,7 @@
                       "group": "prometheus",
                       "version": "v0",
                       "datasource": {
-                        "name": "ffqq5iujh3ytca"
+                        "name": "prometheus"
                       },
                       "spec": {
                         "editorMode": "code",
@@ -798,7 +798,7 @@
                       "group": "prometheus",
                       "version": "v0",
                       "datasource": {
-                        "name": "ffqq5iujh3ytca"
+                        "name": "prometheus"
                       },
                       "spec": {
                         "editorMode": "code",
@@ -916,7 +916,7 @@
                       "group": "prometheus",
                       "version": "v0",
                       "datasource": {
-                        "name": "ffqq5iujh3ytca"
+                        "name": "prometheus"
                       },
                       "spec": {
                         "editorMode": "code",
@@ -1035,7 +1035,7 @@
                       "group": "prometheus",
                       "version": "v0",
                       "datasource": {
-                        "name": "ffqq5iujh3ytca"
+                        "name": "prometheus"
                       },
                       "spec": {
                         "editorMode": "code",
@@ -1153,7 +1153,7 @@
                       "group": "loki",
                       "version": "v0",
                       "datasource": {
-                        "name": "bfqq5ldc7qk8wa"
+                        "name": "loki"
                       },
                       "spec": {
                         "direction": "backward",
@@ -1217,7 +1217,7 @@
                       "group": "prometheus",
                       "version": "v0",
                       "datasource": {
-                        "name": "ffqq5iujh3ytca"
+                        "name": "prometheus"
                       },
                       "spec": {
                         "editorMode": "code",
@@ -1301,7 +1301,7 @@
                       "group": "prometheus",
                       "version": "v0",
                       "datasource": {
-                        "name": "ffqq5iujh3ytca"
+                        "name": "prometheus"
                       },
                       "spec": {
                         "editorMode": "code",
@@ -1419,7 +1419,7 @@
                       "group": "prometheus",
                       "version": "v0",
                       "datasource": {
-                        "name": "ffqq5iujh3ytca"
+                        "name": "prometheus"
                       },
                       "spec": {
                         "editorMode": "code",
@@ -1538,7 +1538,7 @@
                       "group": "prometheus",
                       "version": "v0",
                       "datasource": {
-                        "name": "ffqq5iujh3ytca"
+                        "name": "prometheus"
                       },
                       "spec": {
                         "editorMode": "code",
@@ -1657,7 +1657,7 @@
                       "group": "prometheus",
                       "version": "v0",
                       "datasource": {
-                        "name": "ffqq5iujh3ytca"
+                        "name": "prometheus"
                       },
                       "spec": {
                         "editorMode": "code",
@@ -1989,10 +1989,14 @@
     "links": [],
     "liveNow": false,
     "preload": false,
-    "tags": [],
+    "tags": [
+      "ops-platform",
+      "overview",
+      "observability"
+    ],
     "timeSettings": {
       "timezone": "browser",
-      "from": "now-6h",
+      "from": "now-1h",
       "to": "now",
       "autoRefresh": "",
       "autoRefreshIntervals": [

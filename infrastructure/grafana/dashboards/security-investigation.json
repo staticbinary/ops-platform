@@ -2,7 +2,7 @@
   "apiVersion": "dashboard.grafana.app/v2",
   "kind": "Dashboard",
   "metadata": {
-    "name": "ad4c8fp",
+    "name": "security-investigation",
     "namespace": "default",
     "uid": "d1cd0c1a-57d4-4d98-bcae-9d06ee26502f",
     "resourceVersion": "1782859279869014",
@@ -65,7 +65,7 @@
                       "group": "prometheus",
                       "version": "v0",
                       "datasource": {
-                        "name": "ffqq5iujh3ytca"
+                        "name": "prometheus"
                       },
                       "spec": {
                         "editorMode": "code",
@@ -183,7 +183,7 @@
                       "group": "loki",
                       "version": "v0",
                       "datasource": {
-                        "name": "bfqq5ldc7qk8wa"
+                        "name": "loki"
                       },
                       "spec": {
                         "direction": "backward",
@@ -247,7 +247,7 @@
                       "group": "loki",
                       "version": "v0",
                       "datasource": {
-                        "name": "bfqq5ldc7qk8wa"
+                        "name": "loki"
                       },
                       "spec": {
                         "direction": "backward",
@@ -365,7 +365,7 @@
                       "group": "loki",
                       "version": "v0",
                       "datasource": {
-                        "name": "bfqq5ldc7qk8wa"
+                        "name": "loki"
                       },
                       "spec": {
                         "direction": "backward",
@@ -429,7 +429,7 @@
                       "group": "loki",
                       "version": "v0",
                       "datasource": {
-                        "name": "bfqq5ldc7qk8wa"
+                        "name": "loki"
                       },
                       "spec": {
                         "direction": "backward",
@@ -493,7 +493,7 @@
                       "group": "prometheus",
                       "version": "v0",
                       "datasource": {
-                        "name": "ffqq5iujh3ytca"
+                        "name": "prometheus"
                       },
                       "spec": {
                         "editorMode": "code",
@@ -611,7 +611,7 @@
                       "group": "prometheus",
                       "version": "v0",
                       "datasource": {
-                        "name": "ffqq5iujh3ytca"
+                        "name": "prometheus"
                       },
                       "spec": {
                         "editorMode": "code",
@@ -729,7 +729,7 @@
                       "group": "prometheus",
                       "version": "v0",
                       "datasource": {
-                        "name": "ffqq5iujh3ytca"
+                        "name": "prometheus"
                       },
                       "spec": {
                         "editorMode": "code",
@@ -847,7 +847,7 @@
                       "group": "prometheus",
                       "version": "v0",
                       "datasource": {
-                        "name": "ffqq5iujh3ytca"
+                        "name": "prometheus"
                       },
                       "spec": {
                         "editorMode": "code",
@@ -965,7 +965,7 @@
                       "group": "prometheus",
                       "version": "v0",
                       "datasource": {
-                        "name": "ffqq5iujh3ytca"
+                        "name": "prometheus"
                       },
                       "spec": {
                         "editorMode": "code",
@@ -1083,7 +1083,7 @@
                       "group": "prometheus",
                       "version": "v0",
                       "datasource": {
-                        "name": "ffqq5iujh3ytca"
+                        "name": "prometheus"
                       },
                       "spec": {
                         "editorMode": "code",
@@ -1201,7 +1201,7 @@
                       "group": "prometheus",
                       "version": "v0",
                       "datasource": {
-                        "name": "ffqq5iujh3ytca"
+                        "name": "prometheus"
                       },
                       "spec": {
                         "editorMode": "code",
@@ -1517,10 +1517,14 @@
     "links": [],
     "liveNow": false,
     "preload": false,
-    "tags": [],
+    "tags": [
+      "ops-platform",
+      "security",
+      "investigation"
+    ],
     "timeSettings": {
       "timezone": "browser",
-      "from": "now-6h",
+      "from": "now-1h",
       "to": "now",
       "autoRefresh": "",
       "autoRefreshIntervals": [

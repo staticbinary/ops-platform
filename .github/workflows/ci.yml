@@ -26,6 +26,18 @@ jobs:
         run: |
           find scripts -type f -name "*.sh" -exec bash -n {} \;
 
+      - name: Validate Grafana Provisioning
+        run: |
+          ./scripts/validate-grafana-provisioning.sh
+
+      - name: Validate Prometheus Alert Rules
+        run: |
+          docker run --rm \
+            --entrypoint promtool \
+            -v ${{ github.workspace }}/infrastructure/monitoring:/etc/prometheus:ro \
+            prom/prometheus:latest \
+            check rules /etc/prometheus/prometheus-alerts.yml
+
       - name: Validate Repository Structure
         run: |
           test -f docker-compose.yml
@@ -49,6 +61,18 @@ jobs:
       - name: Validate Auth Service Health
         run: |
           curl --fail http://localhost:8002/health
+
+      - name: Show Grafana Status
+        run: |
+          docker compose ps grafana
+
+      - name: Validate Grafana Provisioning Files
+        run: |
+          test -f infrastructure/grafana/provisioning/datasources/datasources.yml
+          test -f infrastructure/grafana/provisioning/dashboards/dashboards.yml
+          test -f infrastructure/grafana/provisioning/alerting/contact-points.yml
+          test -f infrastructure/grafana/provisioning/alerting/notification-policies.yml
+          test -f infrastructure/grafana/provisioning/alerting/templates.yml
 
       - name: Show Logs on Failure
         if: failure()

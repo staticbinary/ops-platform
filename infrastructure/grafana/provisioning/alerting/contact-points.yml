@@ -1,0 +1,12 @@
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: Ops Platform Email
+    receivers:
+      - uid: ops-platform-email
+        type: email
+        settings:
+          addresses: staticbinaryops@gmail.com
+          singleEmail: false
+        disableResolveMessage: false

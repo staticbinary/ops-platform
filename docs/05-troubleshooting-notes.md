@@ -7041,3 +7041,204 @@ Dashboard organization now follows documented architectural standards.
 Observability should be treated as platform architecture rather than dashboard creation.
 
 Documented standards improve long-term consistency and maintainability.
+
+# Phase 6.7.1 — Grafana Provisioning as Code
+
+## Objective
+
+Transition Grafana configuration from manual UI management to declarative Infrastructure as Code.
+
+---
+
+## Issue
+
+Grafana datasources, dashboards, and alert routing existed only inside the Grafana volume.
+
+This created several problems:
+
+- Fresh deployments required manual configuration.
+- Dashboard imports were not reproducible.
+- Datasources were manually created.
+- Contact points and notification policies were stored only inside the Grafana database.
+
+---
+
+## Resolution
+
+Implemented Grafana provisioning directories:
+
+```text
+infrastructure/grafana/provisioning/
+
+├── alerting/
+│   ├── contact-points.yml
+│   ├── notification-policies.yml
+│   ├── templates.yml
+│   └── .gitkeep
+│
+├── dashboards/
+│   └── dashboards.yml
+│
+├── datasources/
+│   └── datasources.yml
+│
+└── plugins/
+    └── .gitkeep
+```
+
+Docker Compose now mounts:
+
+```text
+/etc/grafana/provisioning
+```
+
+Dashboard JSON files are mounted into:
+
+```text
+/var/lib/grafana/dashboards
+```
+
+---
+
+## Datasources
+
+Provisioned automatically:
+
+- Prometheus
+- Loki
+- Tempo
+
+Datasource editing disabled to encourage Infrastructure as Code.
+
+---
+
+## Alert Provisioning
+
+Provisioned automatically:
+
+- Contact Points
+- Notification Policies
+- Notification Templates
+
+Grafana SMTP continues handling outbound email.
+
+---
+
+## Dashboard Provisioning
+
+Dashboards now load automatically during container startup.
+
+No manual imports required.
+
+---
+
+## Lessons Learned
+
+Infrastructure should own observability configuration.
+
+Grafana should be reproducible from Git alone.
+
+Manual UI configuration should be minimized whenever possible.
+
+---
+
+# Phase 6.7.2 — Validation & Operational Maturity
+
+## Objective
+
+Ensure provisioning can be validated automatically before deployment.
+
+---
+
+## Grafana Validation Script
+
+Created:
+
+```text
+scripts/validate-grafana-provisioning.sh
+```
+
+Validation includes:
+
+- Required provisioning files
+- Dashboard JSON parsing
+- Dashboard titles
+- Dashboard UIDs
+- Duplicate UID detection
+
+---
+
+## CI Improvements
+
+GitHub Actions now validates:
+
+- Docker Compose
+- Shell scripts
+- Grafana provisioning
+- Prometheus alert rules
+- Repository structure
+- Runtime startup
+- Service health
+- Grafana provisioning files
+
+---
+
+## Prometheus Validation
+
+Implemented:
+
+```text
+promtool check rules
+```
+
+using:
+
+```bash
+docker run --rm \
+  --entrypoint promtool \
+  prom/prometheus:latest
+```
+
+Validation confirms:
+
+- Alert syntax
+- Rule parsing
+- Total rule count
+
+Current validation:
+
+```text
+SUCCESS: 9 rules found
+```
+
+---
+
+## Dashboard Recovery
+
+Discovered duplicate dashboard UID conflicts caused by existing Grafana database entries.
+
+Resolution:
+
+- Created Grafana volume backup.
+- Recreated Grafana volume.
+- Allowed provisioning to rebuild dashboards automatically.
+
+Result:
+
+- Seven dashboards provision successfully.
+- Datasources provision automatically.
+- Contact points provision automatically.
+- Notification policies provision automatically.
+- Templates provision automatically.
+
+---
+
+## Lessons Learned
+
+Provisioning assumes ownership of dashboard UIDs.
+
+Existing Grafana databases may contain conflicting objects.
+
+Backing up the Grafana volume prior to migration greatly reduces risk.
+
+Infrastructure as Code significantly improves reproducibility and disaster recovery.

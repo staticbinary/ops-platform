@@ -1,0 +1,24 @@
+apiVersion: 1
+
+templates:
+  - orgId: 1
+    name: Ops Platform Alert Template
+    template: |
+      {{ define "ops_platform_alert" }}
+      Ops Platform Alert
+
+      Status: {{ .Status }}
+
+      {{ range .Alerts }}
+      Alert: {{ .Labels.alertname }}
+      Severity: {{ .Labels.severity }}
+      Category: {{ .Labels.category }}
+      Service: {{ .Labels.service }}
+
+      Summary: {{ .Annotations.summary }}
+      Description: {{ .Annotations.description }}
+      Runbook: {{ .Annotations.runbook }}
+
+      Starts At: {{ .StartsAt }}
+      {{ end }}
+      {{ end }}
