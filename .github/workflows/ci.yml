@@ -17,6 +17,23 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Create CI Environment File
+        run: |
+          cat > .env <<'EOF'
+          POSTGRES_USER=ops_user
+          POSTGRES_PASSWORD=ops_password
+          POSTGRES_DB=ops_platform
+
+          REVERSE_PROXY_PORT=8000
+
+          ASSET_SERVICE_NAME=asset-service
+          ASSET_SERVICE_ENVIRONMENT=development
+          ASSET_SERVICE_SECRET_KEY=ci-asset-secret-key
+          ASSET_SERVICE_JWT_ALGORITHM=HS256
+
+          AUTH_SERVICE_SECRET_KEY=ci-auth-secret-key
+          EOF
+
       - name: Validate Docker Compose Configuration
         run: |
           docker compose config
