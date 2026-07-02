@@ -14,7 +14,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Checkout Repository
         uses: actions/checkout@v4
 
@@ -26,64 +25,82 @@ jobs:
         run: |
           find scripts -type f -name "*.sh" -exec bash -n {} \;
 
+      - name: Validate Repository Structure
+        run: |
+          test -f docker-compose.yml
+          test -d services
+          test -d infrastructure
+          test -d infrastructure/grafana
+          test -d infrastructure/grafana/dashboards
+          test -d infrastructure/grafana/provisioning
+          test -d infrastructure/monitoring
+          test -f infrastructure/monitoring/prometheus.yml
+          test -f infrastructure/monitoring/prometheus-alerts.yml
+          test -f infrastructure/monitoring/blackbox/blackbox.yml
+
+      - name: Validate Grafana Dashboard JSON
+        run: |
+          find infrastructure/grafana/dashboards -type f -name "*.json" -exec python -m json.tool {} >/dev/null \;
+
       - name: Validate Grafana Provisioning
         run: |
-          ./scripts/validate-grafana-provisioning.sh
+          bash scripts/validate-grafana-provisioning.sh
 
       - name: Validate Prometheus Alert Rules
         run: |
           docker run --rm \
             --entrypoint promtool \
-            -v ${{ github.workspace }}/infrastructure/monitoring:/etc/prometheus:ro \
+            -v "$PWD/infrastructure/monitoring:/etc/prometheus:ro" \
             prom/prometheus:latest \
             check rules /etc/prometheus/prometheus-alerts.yml
 
-      - name: Validate Repository Structure
-        run: |
-          test -f docker-compose.yml
-          test -d services
-          test -d scripts
-          test -d infrastructure
-          test -d docs
-
-      - name: Start Platform Runtime
+      - name: Start Platform
         run: |
           docker compose up -d --build
+
+      - name: Wait For Services
+        run: |
+          sleep 45
 
       - name: Show Container Status
         run: |
           docker compose ps
 
-      - name: Validate Asset Service Health
+      - name: Validate Service Health
         run: |
-          curl --fail http://localhost:8001/health
+          docker compose ps
 
-      - name: Validate Auth Service Health
-        run: |
+          curl --fail http://localhost:8000/api/assets/health
+          curl --fail http://localhost:8000/api/assets/health/ready
           curl --fail http://localhost:8002/health
+          curl --fail http://localhost:9090/-/ready
+          curl --fail http://localhost:3000/api/health
+          curl --fail http://localhost:9100/metrics
+          curl --fail http://localhost:9187/metrics
+          curl --fail http://localhost:9115/metrics
 
-      - name: Show Grafana Status
+      - name: Validate Prometheus Targets
         run: |
-          docker compose ps grafana
+          curl --fail "http://localhost:9090/api/v1/query?query=up"
 
-      - name: Validate Grafana Provisioning Files
+      - name: Validate Blackbox Metrics
         run: |
-          test -f infrastructure/grafana/provisioning/datasources/datasources.yml
-          test -f infrastructure/grafana/provisioning/dashboards/dashboards.yml
-          test -f infrastructure/grafana/provisioning/alerting/contact-points.yml
-          test -f infrastructure/grafana/provisioning/alerting/notification-policies.yml
-          test -f infrastructure/grafana/provisioning/alerting/templates.yml
+          curl --fail "http://localhost:9090/api/v1/query?query=probe_success"
+          curl --fail "http://localhost:9090/api/v1/query?query=probe_http_status_code"
 
-      - name: Show Logs on Failure
+      # --------------------------------------------------
+      # Failure Diagnostics
+      # --------------------------------------------------
+
+      - name: Print Docker Compose Logs On Failure
         if: failure()
         run: |
-          docker compose logs --tail=100
-
-      - name: Stop Platform Runtime
-        if: always()
-        run: |
-          docker compose down -v
-
-      - name: CI Validation Complete
-        run: |
-          echo "Repository and runtime validation successful"
+          docker compose ps
+          docker compose logs postgres
+          docker compose logs postgres-exporter
+          docker compose logs node-exporter
+          docker compose logs blackbox-exporter
+          docker compose logs prometheus
+          docker compose logs grafana
+          docker compose logs asset_service
+          docker compose logs auth_service
