@@ -77,6 +77,33 @@ services:
     networks:
       - ops-platform-network
 
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: ops-postgres-exporter
+    ports:
+      - "9187:9187"
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--spider",
+          "-q",
+          "http://localhost:9187/metrics"
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+    networks:
+      - ops-platform-network
+
   prometheus:
     image: prom/prometheus:latest
     container_name: ops-prometheus
@@ -132,6 +159,58 @@ services:
     networks:
       - ops-platform-network
     restart: "unless-stopped"
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: ops-node-exporter
+    ports:
+      - "9100:9100"
+    command:
+      - "--path.rootfs=/host"
+    volumes:
+      - /:/host:ro
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--spider",
+          "-q",
+          "http://localhost:9100/metrics"
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+    networks:
+      - ops-platform-network
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:latest
+    container_name: ops-blackbox-exporter
+    ports:
+      - "9115:9115"
+    volumes:
+      - ./infrastructure/monitoring/blackbox/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
+    command:
+      - "--config.file=/etc/blackbox_exporter/config.yml"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--spider",
+          "-q",
+          "http://localhost:9115/metrics"
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+    networks:
+      - ops-platform-network
 
   loki:
     image: grafana/loki:latest

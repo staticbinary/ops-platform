@@ -5188,3 +5188,167 @@ Completed:
 Result:
 
 The CI pipeline now validates both infrastructure configuration and observability assets before deployment, significantly improving deployment reliability and long-term maintainability.
+
+## Phase 6.8 - Infrastructure Observability Expansion
+
+Status: Complete
+
+Phase 6.8 expanded the Ops Platform from application observability into full-stack infrastructure observability.
+
+Completed:
+
+- Integrated Node Exporter for host-level metrics.
+- Integrated PostgreSQL Exporter for database observability.
+- Integrated Blackbox Exporter for synthetic endpoint monitoring.
+- Added Blackbox probe configuration.
+- Expanded Prometheus scrape configuration.
+- Created Infrastructure Overview dashboard.
+- Modernized Grafana dashboard suite.
+- Added daily startup and health validation workflow.
+- Reorganized documentation into structured engineering folders.
+
+Dashboards modernized:
+
+- Platform Overview
+- Infrastructure Overview
+- Service Reliability
+- Security Operations
+- Security Detection
+- Security Investigation
+- Security Response
+- System Metrics
+
+New observability coverage:
+
+- Host CPU
+- Host memory
+- Host load
+- Host uptime
+- Container metrics
+- PostgreSQL health
+- Database size
+- Database connections
+- Transaction activity
+- Endpoint availability
+- HTTP status codes
+- Probe response time
+- Exporter health
+- Prometheus scrape health
+
+Validation completed:
+
+- Docker Compose configuration validated.
+- Grafana dashboard JSON validated.
+- Grafana provisioning verified.
+- Prometheus restarted successfully.
+- Exporters confirmed healthy.
+- Blackbox probes confirmed successful.
+
+## Phase 6.8.1 - Host Infrastructure Monitoring
+
+Status: Complete
+
+Completed:
+
+- Integrated Prometheus Node Exporter.
+- Added host-level metrics collection.
+- Added Node Exporter Docker service.
+- Added Prometheus scrape configuration.
+- Validated exporter health.
+- Added host CPU, memory, filesystem, network and uptime monitoring.
+
+---
+
+## Phase 6.8.2 - PostgreSQL Infrastructure Monitoring
+
+Status: Complete
+
+Completed:
+
+- Integrated PostgreSQL Exporter.
+- Added PostgreSQL metrics collection.
+- Added database health monitoring.
+- Added database performance metrics.
+- Validated exporter integration.
+- Expanded Infrastructure Overview dashboard.
+
+---
+
+## Phase 6.8.3 - Synthetic Monitoring
+
+Status: Complete
+
+Completed:
+
+- Integrated Blackbox Exporter.
+- Added HTTP endpoint probing.
+- Configured Blackbox modules.
+- Added synthetic monitoring targets.
+- Validated probe_success metrics.
+- Added endpoint availability monitoring.
+- Added HTTP status code monitoring.
+- Removed unnecessary reverse proxy root probe.
+
+---
+
+## Phase 6.8.4 - Infrastructure Dashboard Modernization
+
+Status: Complete
+
+Completed:
+
+- Created Infrastructure Overview dashboard.
+- Added infrastructure status overview.
+- Added exporter health panels.
+- Added PostgreSQL monitoring panels.
+- Added Blackbox monitoring panels.
+- Added scrape target monitoring.
+- Standardized dashboard layout.
+
+---
+
+## Phase 6.8.5 - Grafana Dashboard Modernization
+
+Status: Complete
+
+Completed:
+
+Modernized:
+
+- Platform Overview
+- Service Reliability
+- Security Operations
+- Security Detection
+- Security Investigation
+- Security Response
+- System Metrics
+
+Enhancements:
+
+- Standardized layouts.
+- Improved panel organization.
+- Updated PromQL queries.
+- Improved operational workflows.
+- Improved infrastructure visibility.
+- Improved security monitoring.
+- Improved dashboard consistency.
+
+---
+
+## Phase 6.8.6 - Documentation Modernization
+
+Status: Complete
+
+Completed:
+
+- Added Daily Startup workflow.
+- Reorganized documentation hierarchy.
+- Categorized engineering documentation.
+- Created Operations Procedures section.
+- Created Platform section.
+- Created Observability section.
+- Created Security section.
+- Created CI/CD section.
+- Created API section.
+- Created Reference section.
+- Renamed documentation for consistency.
