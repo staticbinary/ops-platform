@@ -155,6 +155,26 @@ def health_startup():
         "service": "asset-service",
     }
 
+def verify_required_tables(db: Session) -> list[str]:
+    required_tables = [
+        "alembic_version",
+        "assets",
+        "audit_logs",
+    ]
+
+    missing_tables = []
+
+    for table in required_tables:
+        result = db.execute(
+            text("SELECT to_regclass(:table_name)"),
+            {"table_name": f"public.{table}"},
+        ).scalar()
+
+        if result is None:
+            missing_tables.append(table)
+
+    return missing_tables
+
 @app.get("/health/ready", tags=["Health"])
 def health_ready(db: Session = Depends(get_db)):
     try:
@@ -162,6 +182,13 @@ def health_ready(db: Session = Depends(get_db)):
             lambda: db.execute(text("SELECT 1")),
             db=db,
         )
+
+        missing_tables = verify_required_tables(db)
+
+        if missing_tables:
+            raise RuntimeError(
+                f"Missing required database tables: {', '.join(missing_tables)}"
+            )
 
         log_event(
             build_dependency_health_log(
@@ -176,6 +203,8 @@ def health_ready(db: Session = Depends(get_db)):
             "service": "asset-service",
             "checks": {
                 "database": "ok",
+                "schema": "ok",
+                "required_tables": "ok",
             },
         }
 
@@ -199,7 +228,9 @@ def health_ready(db: Session = Depends(get_db)):
                 "service": "asset-service",
                 "checks": {
                     "database": "unavailable",
+                    "schema": "invalid",
                 },
+                "error": str(exc),
             },
         )
 

@@ -26,30 +26,41 @@ Navigate to the project directory and activate the Python virtual environment.
 
 ---
 
-# Step 2 - Start Platform
+## Step 2 - Start Platform
 
-Start all platform services.
+Run the standard platform startup workflow.
 
-**Normal Startup**
+**Run**
 
-    docker compose up -d
+bash
+./scripts/daily-startup.sh
 
-**Rebuild Images (Only When Required)**
+The startup script automatically performs the following tasks:
 
-    docker compose up -d --build
+- Starts all platform containers.
+- Verifies container status.
+- Executes the database health check.
+- Executes the service health check.
+- Executes the observability health check.
+- Displays platform access URLs.
 
-**Use --build When**
+**Use Manual Rebuild Only When Required**
 
-- Dockerfile changes.
-- Python dependency changes.
-- Application source changes copied into container images.
-- Base images have changed.
+bash
+docker compose up -d --build
+
+Use `--build` when:
+
+- Dockerfiles change.
+- Python dependencies change.
+- Container images require rebuilding.
+- Base images are updated.
 
 **Expected Result**
 
-- All containers start successfully.
-- No restart loops occur.
-- Health checks begin passing within approximately one minute.
+- All platform containers start successfully.
+- Health checks pass.
+- All operational validation scripts complete successfully.
 
 ---
 
@@ -257,6 +268,62 @@ When development is complete:
 
 ---
 
+# Operational Validation Scripts
+
+The Ops Platform includes standardized operational validation scripts.
+
+## Daily Startup
+
+bash
+./scripts/daily-startup.sh
+
+Performs the complete startup workflow.
+
+---
+
+## Database Health
+
+bash
+./scripts/database-health-check.sh
+
+Validates:
+
+- PostgreSQL container
+- Database connectivity
+- Required tables
+- Alembic migration revision
+
+---
+
+## Service Health
+
+bash
+./scripts/service-health-check.sh
+
+Validates:
+
+- Required platform services
+- Docker health status
+- Running containers
+
+---
+
+## Observability Health
+
+bash
+./scripts/observability-health-check.sh
+
+Validates:
+
+- Prometheus
+- Grafana
+- Loki
+- Tempo
+- cAdvisor
+- Node Exporter
+- PostgreSQL Exporter
+- Blackbox Exporter
+
 # Quick Troubleshooting
 
 ## Prometheus not updating
@@ -293,13 +360,8 @@ View logs for a specific service:
 
 Always begin development from a known healthy platform.
 
-Before writing or debugging application code, verify:
+Use the automated operational validation workflow before beginning development.
 
-- All containers are healthy.
-- Prometheus targets are UP.
-- Grafana dashboards load correctly.
-- Exporters are reporting metrics.
-- Synthetic monitoring succeeds.
-- Repository status is understood.
+After the startup workflow completes successfully, optionally perform manual verification using Grafana, Prometheus, and Docker logs when investigating specific issues.
 
-Starting from a validated environment significantly reduces troubleshooting time and helps isolate application issues from infrastructure problems.
+Beginning development from a validated environment significantly reduces troubleshooting time, improves consistency, and helps isolate application issues from infrastructure problems.

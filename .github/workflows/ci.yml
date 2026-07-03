@@ -10,8 +10,67 @@ on:
       - main
 
 jobs:
-  validate:
+  repository-validation:
+    name: Repository Validation
     runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set Up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Validate Repository Structure
+        run: |
+          test -f docker-compose.yml
+
+          test -d services
+          test -d services/asset_service
+          test -d services/auth_service
+
+          test -d infrastructure
+          test -d infrastructure/grafana
+          test -d infrastructure/grafana/dashboards
+          test -d infrastructure/grafana/provisioning
+          test -d infrastructure/monitoring
+          test -f infrastructure/monitoring/prometheus.yml
+          test -f infrastructure/monitoring/prometheus-alerts.yml
+          test -f infrastructure/monitoring/blackbox/blackbox.yml
+
+          test -d scripts
+
+          test -d docs
+          test -d docs/00-operating-procedures
+          test -d docs/01-platform
+          test -d docs/02-observability
+          test -d docs/03-security
+          test -d docs/04-cicd
+          test -d docs/05-api
+          test -d docs/06-reference
+          test -d docs/roadmap
+          test -d docs/runbooks
+
+      - name: Validate Shell Scripts
+        run: |
+          find scripts -type f -name "*.sh" -exec bash -n {} \;
+
+      - name: Validate Python Syntax
+        run: |
+          python -m compileall services/asset_service/app
+          python -m compileall services/auth_service/app
+
+      - name: Validate Grafana Dashboard JSON
+        run: |
+          find infrastructure/grafana/dashboards -type f -name "*.json" -exec python -m json.tool {} >/dev/null \;
+
+  docker-compose-validation:
+    name: Docker Compose Validation
+    runs-on: ubuntu-latest
+    needs:
+      - repository-validation
 
     steps:
       - name: Checkout Repository
@@ -38,26 +97,15 @@ jobs:
         run: |
           docker compose config
 
-      - name: Validate Shell Scripts
-        run: |
-          find scripts -type f -name "*.sh" -exec bash -n {} \;
+  observability-configuration-validation:
+    name: Observability Configuration Validation
+    runs-on: ubuntu-latest
+    needs:
+      - repository-validation
 
-      - name: Validate Repository Structure
-        run: |
-          test -f docker-compose.yml
-          test -d services
-          test -d infrastructure
-          test -d infrastructure/grafana
-          test -d infrastructure/grafana/dashboards
-          test -d infrastructure/grafana/provisioning
-          test -d infrastructure/monitoring
-          test -f infrastructure/monitoring/prometheus.yml
-          test -f infrastructure/monitoring/prometheus-alerts.yml
-          test -f infrastructure/monitoring/blackbox/blackbox.yml
-
-      - name: Validate Grafana Dashboard JSON
-        run: |
-          find infrastructure/grafana/dashboards -type f -name "*.json" -exec python -m json.tool {} >/dev/null \;
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
       - name: Validate Grafana Provisioning
         run: |
@@ -71,30 +119,43 @@ jobs:
             prom/prometheus:latest \
             check rules /etc/prometheus/prometheus-alerts.yml
 
+  platform-runtime-validation:
+    name: Platform Runtime Validation
+    runs-on: ubuntu-latest
+    needs:
+      - docker-compose-validation
+      - observability-configuration-validation
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Create CI Environment File
+        run: |
+          cat > .env <<'EOF'
+          POSTGRES_USER=ops_user
+          POSTGRES_PASSWORD=ops_password
+          POSTGRES_DB=ops_platform
+
+          REVERSE_PROXY_PORT=8000
+
+          ASSET_SERVICE_NAME=asset-service
+          ASSET_SERVICE_ENVIRONMENT=development
+          ASSET_SERVICE_SECRET_KEY=ci-asset-secret-key
+          ASSET_SERVICE_JWT_ALGORITHM=HS256
+
+          AUTH_SERVICE_SECRET_KEY=ci-auth-secret-key
+          EOF
+
       - name: Start Platform
         run: |
-          docker compose up -d --build
+          ./scripts/daily-startup.sh
 
-      - name: Wait For Services
+      - name: Validate API Health Endpoints
         run: |
-          sleep 45
-
-      - name: Show Container Status
-        run: |
-          docker compose ps
-
-      - name: Validate Service Health
-        run: |
-          docker compose ps
-
           curl --fail http://localhost:8000/api/assets/health
           curl --fail http://localhost:8000/api/assets/health/ready
           curl --fail http://localhost:8002/health
-          curl --fail http://localhost:9090/-/ready
-          curl --fail http://localhost:3000/api/health
-          curl --fail http://localhost:9100/metrics
-          curl --fail http://localhost:9187/metrics
-          curl --fail http://localhost:9115/metrics
 
       - name: Validate Prometheus Targets
         run: |
@@ -105,19 +166,23 @@ jobs:
           curl --fail "http://localhost:9090/api/v1/query?query=probe_success"
           curl --fail "http://localhost:9090/api/v1/query?query=probe_http_status_code"
 
-      # --------------------------------------------------
-      # Failure Diagnostics
-      # --------------------------------------------------
-
       - name: Print Docker Compose Logs On Failure
         if: failure()
         run: |
           docker compose ps
+
           docker compose logs postgres
           docker compose logs postgres-exporter
           docker compose logs node-exporter
           docker compose logs blackbox-exporter
-          docker compose logs prometheus
-          docker compose logs grafana
+          docker compose logs cadvisor
+
           docker compose logs asset_service
           docker compose logs auth_service
+          docker compose logs reverse-proxy
+
+          docker compose logs prometheus
+          docker compose logs grafana
+          docker compose logs loki
+          docker compose logs promtail
+          docker compose logs tempo

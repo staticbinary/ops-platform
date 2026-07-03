@@ -7243,6 +7243,154 @@ Backing up the Grafana volume prior to migration greatly reduces risk.
 
 Infrastructure as Code significantly improves reproducibility and disaster recovery.
 
+# Phase 6.8.1 – Host Infrastructure Monitoring
+
+## Objective
+
+Expand platform observability beyond application services by integrating host-level infrastructure metrics.
+
+## Implementation
+
+- Integrated Prometheus Node Exporter.
+- Added Node Exporter service to Docker Compose.
+- Configured Prometheus scrape job for node-exporter.
+- Added health check for exporter availability.
+- Validated successful metric collection.
+- Added host-level monitoring for:
+  - CPU utilization
+  - Memory utilization
+  - System uptime
+  - Filesystem utilization
+  - Network throughput
+  - System load
+
+## Validation
+
+- Confirmed node-exporter container reached healthy state.
+- Verified `up{job="node-exporter"} == 1`.
+- Verified host metrics available through Prometheus API.
+- Confirmed Infrastructure dashboard displayed host telemetry correctly.
+
+## Lessons Learned
+
+- Node Exporter provides operating system telemetry rather than application metrics.
+- Host metrics complement cAdvisor container metrics to provide complete infrastructure visibility.
+- Infrastructure monitoring should remain independent from application-level instrumentation.
+
+# Phase 6.8.2 – PostgreSQL Database Observability
+
+## Objective
+
+Provide production-style PostgreSQL performance and health monitoring through Prometheus.
+
+## Implementation
+
+- Integrated PostgreSQL Exporter.
+- Added exporter service to Docker Compose.
+- Configured exporter connection using environment variables.
+- Added Prometheus scrape target.
+- Validated PostgreSQL metrics collection.
+- Added PostgreSQL monitoring panels to Grafana.
+
+## Validation
+
+Verified collection of:
+
+- pg_up
+- pg_database_size_bytes
+- pg_stat_database_xact_commit
+- pg_stat_database_xact_rollback
+- pg_stat_database_deadlocks
+- pg_stat_database_numbackends
+
+Confirmed:
+
+- Exporter health checks passed.
+- Prometheus target status UP.
+- Grafana visualized PostgreSQL metrics successfully.
+
+## Lessons Learned
+
+- PostgreSQL Exporter exposes internal database statistics unavailable through application metrics.
+- Database telemetry provides visibility into capacity planning, connection health, transaction activity, and locking behavior.
+- Database monitoring forms a critical layer of full-stack observability.
+
+# Phase 6.8.3 – Infrastructure Operations Dashboard
+
+## Objective
+
+Develop a centralized infrastructure dashboard focused on platform health and operational visibility.
+
+## Implementation
+
+Created a dedicated Infrastructure Overview dashboard including:
+
+- Host CPU usage
+- Host memory utilization
+- Filesystem usage
+- Host uptime
+- Prometheus scrape health
+- Exporter availability
+- PostgreSQL database health
+- Infrastructure status overview
+
+Modernized dashboard layout using consistent panel sizing and improved organization.
+
+## Validation
+
+- Verified successful Grafana provisioning.
+- Confirmed dashboard JSON validation.
+- Restarted Grafana without provisioning errors.
+- Validated all infrastructure panels displayed live data.
+
+## Lessons Learned
+
+- Separating infrastructure telemetry from application telemetry improves operational clarity.
+- Infrastructure dashboards should emphasize availability, exporter health, and resource utilization.
+- Dashboard modernization significantly improves operational usability.
+
+# Phase 6.8.4 – Synthetic Monitoring & Endpoint Validation
+
+## Objective
+
+Implement synthetic monitoring to validate platform availability from an end-user perspective.
+
+## Implementation
+
+- Integrated Prometheus Blackbox Exporter.
+- Added Docker Compose service.
+- Configured HTTP probe module.
+- Added Prometheus Blackbox scrape configuration.
+- Created endpoint probe targets including:
+  - Reverse Proxy
+  - Asset Service
+  - Asset Ready endpoint
+  - Authentication Service
+  - Grafana
+  - Prometheus
+
+Removed unnecessary reverse proxy root probe after confirming expected HTTP 404 behavior.
+
+## Validation
+
+Verified:
+
+- probe_success
+- probe_http_status_code
+- probe_duration_seconds
+
+Confirmed:
+
+- Successful HTTP 200 responses.
+- Prometheus target status UP.
+- Synthetic monitoring panels updated correctly.
+
+## Lessons Learned
+
+- Blackbox Exporter validates services from the perspective of external consumers rather than internal service health.
+- Synthetic monitoring complements application metrics and infrastructure monitoring.
+- HTTP response validation provides rapid detection of endpoint availability issues.
+
 # Phase 6.8.5 – Grafana Dashboard Modernization
 
 ## Objective
@@ -7290,3 +7438,350 @@ Validated:
 - Standardized layouts improve usability across the monitoring suite.
 - Modern dashboards reduce investigation time during operational incidents.
 - Infrastructure, application, security, and response dashboards should each serve distinct operational purposes.
+
+## Phase 6.8.6 — Documentation Modernization
+
+Completed:
+
+- Documentation hierarchy redesign
+- Engineering handbook structure
+- Daily Startup guide
+- Dashboard standards update
+- Troubleshooting documentation expansion
+- Roadmap updates
+
+New documentation layout:
+
+- 00-operating-procedures
+- 01-platform
+- 02-observability
+- 03-security
+- 04-cicd
+- 05-api
+- 06-reference
+
+## Phase 6.8.7 — GitHub Actions Modernization
+
+Completed:
+
+- Docker Compose validation improvements
+- CI environment generation
+- Prometheus validation
+- Blackbox validation
+- Failure diagnostics
+- Platform startup validation
+
+Added:
+
+- Automatic CI .env generation
+- Docker Compose log collection
+- Improved troubleshooting workflow
+
+## Phase 6.8.8 — CI Environment Initialization & Validation
+
+Completed:
+
+Resolved GitHub Actions startup failure caused by missing CI environment variables.
+
+Implemented:
+
+- Temporary CI .env generation
+- Successful PostgreSQL startup
+- Successful Docker Compose startup
+- Green GitHub Actions pipeline
+
+Lessons learned:
+
+- CI runners require explicit environment initialization.
+- Local Docker Compose behavior should not be assumed in CI.
+- Failure diagnostics greatly simplify troubleshooting.
+
+# Phase 6.8.9 - Database Administration, Operational Automation & CI Modernization
+
+## Issue
+PostgreSQL was operational and accepting connections, but DBeaver displayed an empty schema.
+
+### Root Cause
+
+Alembic had been initialized, but no initial migration had ever been generated or applied.
+
+### Resolution
+
+Generated the initial Alembic migration.
+
+Applied the migration to PostgreSQL.
+
+Verified the following tables were created:
+
+- alembic_version
+- assets
+- audit_logs
+
+Verified schema visibility within DBeaver.
+
+---
+
+## Issue
+
+Needed a repeatable method to inspect and administer the PostgreSQL database.
+
+### Resolution
+
+Created:
+
+- docs/01-platform/database-administration.md
+
+Documented:
+
+- DBeaver connection workflow
+- Schema verification
+- SQLAlchemy model comparison
+- Alembic migration workflow
+- Database administration procedures
+- Common SQL commands
+- Operational validation
+
+---
+
+## Issue
+
+Database readiness endpoint only validated a simple SQL connection.
+
+### Root Cause
+
+Executing `SELECT 1` alone does not verify that the expected application schema exists.
+
+### Resolution
+
+Expanded the Asset Service readiness endpoint to validate:
+
+- Database connectivity
+- Schema availability
+- Required application tables
+
+This provides stronger operational validation before reporting the service as ready.
+
+---
+
+## Issue
+
+Needed repeatable database validation before beginning development.
+
+### Resolution
+
+Created:
+
+scripts/database-health-check.sh
+
+Validation includes:
+
+- PostgreSQL container health
+- Database connectivity
+- Required tables
+- Alembic migration revision
+
+Verified successful execution.
+
+---
+
+## Issue
+
+Daily platform startup required numerous repetitive manual validation steps.
+
+### Resolution
+
+Created:
+
+scripts/daily-startup.sh
+
+The startup workflow now automatically:
+
+- Starts platform containers
+- Displays container status
+- Executes database health validation
+- Executes service health validation
+- Executes observability health validation
+- Displays platform access URLs
+
+Daily startup is now standardized.
+
+---
+
+## Issue
+
+No centralized operational validation existed for platform services.
+
+### Resolution
+
+Created:
+
+scripts/service-health-check.sh
+
+Validates:
+
+- Required platform services
+- Docker health status
+- Container availability
+
+Verified all services report healthy.
+
+---
+
+## Issue
+
+Observability validation required manually checking multiple dashboards and endpoints.
+
+### Resolution
+
+Created:
+
+scripts/observability-health-check.sh
+
+Validates:
+
+- Prometheus
+- Grafana
+- Loki
+- Tempo
+- cAdvisor
+- Node Exporter
+- PostgreSQL Exporter
+- Blackbox Exporter
+
+---
+
+## Issue
+
+Loki readiness endpoint returned HTTP 503 despite normal operation.
+
+### Root Cause
+
+The readiness endpoint reflects internal ingestion readiness rather than overall service availability.
+
+### Resolution
+
+Modified observability validation to use:
+
+/metrics
+
+instead of:
+
+/ready
+
+The health check now accurately reflects service availability.
+
+---
+
+## Issue
+
+Temporary HTTP 502 responses occurred immediately after rebuilding Asset Service.
+
+### Root Cause
+
+NGINX attempted to proxy requests before the Asset Service completed startup and passed its health check.
+
+### Resolution
+
+Allowed the container health checks to complete before validating endpoints.
+
+Confirmed normal behavior after service startup.
+
+No application issue was present.
+
+---
+
+## Issue
+
+Docker builds intermittently failed with:
+
+docker-credential-desktop.exe
+
+not found.
+
+### Root Cause
+
+WSL retained stale Docker Desktop credential helper configuration.
+
+### Resolution
+
+Performed Docker logout.
+
+Docker rebuilt images successfully afterward.
+
+---
+
+## Issue
+
+requirements.txt unexpectedly changed after package installation.
+
+### Root Cause
+
+A full environment export overwrote the project's curated dependency list.
+
+### Resolution
+
+Restored the managed project requirements file.
+
+Maintained explicit dependency management rather than environment snapshots.
+
+---
+
+## Issue
+
+CI/CD pipeline had become monolithic and difficult to extend.
+
+### Resolution
+
+Refactored GitHub Actions into multiple validation stages:
+
+- Repository Validation
+- Docker Compose Validation
+- Observability Configuration Validation
+- Platform Runtime Validation
+
+Each stage now validates a distinct portion of the platform.
+
+---
+
+## Issue
+
+Operational validation differed between local development and CI.
+
+### Resolution
+
+GitHub Actions now executes the same operational scripts used during daily development.
+
+Shared validation includes:
+
+- daily-startup.sh
+- database-health-check.sh
+- service-health-check.sh
+- observability-health-check.sh
+
+Local development and CI now follow a unified operational workflow.
+
+---
+
+## Issue
+
+Platform documentation no longer reflected current operational practices.
+
+### Resolution
+
+Updated:
+
+- Database Administration Guide
+- Daily Startup Guide
+- CI/CD Foundations
+
+Documentation now aligns with the operational workflow implemented during Phase 6.9.
+
+---
+
+## Lessons Learned
+
+Operational maturity extends beyond application development.
+
+Introducing standardized health validation, operational automation, schema management, and layered CI validation significantly improves platform reliability, troubleshooting efficiency, and deployment confidence.
+
+This phase represents the transition from a development environment to an operationally managed platform suitable for continued expansion in Phase 7.
