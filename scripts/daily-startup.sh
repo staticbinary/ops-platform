@@ -19,6 +19,10 @@ echo "Running database health check..."
 ./scripts/database-health-check.sh
 
 echo
+echo "Waiting for Docker health checks to settle..."
+sleep 20
+
+echo
 echo "Running service health check..."
 ./scripts/service-health-check.sh
 
