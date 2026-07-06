@@ -12,3 +12,4 @@ opentelemetry-instrumentation-fastapi
 opentelemetry-instrumentation-sqlalchemy
 opentelemetry-exporter-otlp
 opentelemetry-instrumentation-requests
+alembic

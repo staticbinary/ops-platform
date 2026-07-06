@@ -147,6 +147,20 @@ jobs:
           AUTH_SERVICE_SECRET_KEY=ci-auth-secret-key
           EOF
 
+      - name: Start Database
+        run: |
+          docker compose up -d postgres
+
+      - name: Wait For PostgreSQL
+        run: |
+          until docker compose exec postgres pg_isready -U ops_user -d ops_platform; do
+            sleep 2
+          done
+
+      - name: Run Database Migrations
+        run: |
+          docker compose run --rm asset_service python -m alembic upgrade head
+
       - name: Start Platform
         run: |
           ./scripts/daily-startup.sh
