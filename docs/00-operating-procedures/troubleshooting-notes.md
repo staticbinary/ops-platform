@@ -7785,3 +7785,151 @@ Operational maturity extends beyond application development.
 Introducing standardized health validation, operational automation, schema management, and layered CI validation significantly improves platform reliability, troubleshooting efficiency, and deployment confidence.
 
 This phase represents the transition from a development environment to an operationally managed platform suitable for continued expansion in Phase 7.
+
+# Phase 6.9.1 - CI/CD Pipeline Stabilization and Deployment Lifecycle Hardening
+
+## Objectives
+
+- Resolve GitHub Actions runtime validation failures
+- Integrate Alembic into the Asset Service container image
+- Automate database schema migrations during CI execution
+- Improve platform startup sequencing
+- Eliminate CI race conditions
+- Improve operational health check reliability
+
+---
+
+## Completed Work
+
+### Asset Service Container Modernization
+
+Updated the Asset Service Docker image to support database migrations.
+
+Implemented:
+
+- Added Alembic package to Asset Service requirements
+- Included alembic.ini within the container image
+- Included Alembic migration directory within the container image
+- Verified Alembic operation both locally and inside the running container
+
+---
+
+### Database Deployment Workflow
+
+CI now provisions a clean PostgreSQL instance and automatically initializes the database schema.
+
+New deployment sequence:
+
+Repository Validation
+
+↓
+
+Docker Compose Validation
+
+↓
+
+Observability Configuration Validation
+
+↓
+
+Start PostgreSQL
+
+↓
+
+Wait for PostgreSQL Readiness
+
+↓
+
+Execute Alembic Migrations
+
+↓
+
+Execute Daily Startup Workflow
+
+↓
+
+Platform Runtime Validation
+
+↓
+
+Health Checks
+
+↓
+
+Observability Validation
+
+---
+
+### Startup Automation Improvements
+
+Improved startup sequencing by introducing an explicit stabilization period before Docker health validation.
+
+Benefits:
+
+- Reduced startup race conditions
+- More consistent GitHub Actions execution
+- Improved reliability across slower runners
+
+---
+
+### Service Health Validation Improvements
+
+Updated service-health-check.sh.
+
+Changes:
+
+- Continue validating cAdvisor container execution
+- Removed Docker health dependency for cAdvisor
+- Continue validating cAdvisor availability through observability-health-check.sh
+
+Result:
+
+Operational validation now measures actual service availability rather than Docker health timing.
+
+---
+
+### GitHub Actions Improvements
+
+Platform Runtime Validation now includes:
+
+- PostgreSQL startup
+- PostgreSQL readiness verification
+- Alembic migration execution
+- Automated platform startup
+- Runtime health validation
+- Observability validation
+- Failure diagnostics
+
+---
+
+## Validation Results
+
+Successfully verified:
+
+- Docker Compose validation
+- Repository validation
+- Grafana provisioning validation
+- Prometheus alert validation
+- Alembic migration execution
+- Database initialization
+- Platform startup
+- Runtime health validation
+- Observability endpoint validation
+
+GitHub Actions status:
+
+PASS Repository Validation
+
+PASS Docker Compose Validation
+
+PASS Observability Configuration Validation
+
+PASS Platform Runtime Validation
+
+---
+
+## Outcome
+
+Phase 6 now concludes with a fully automated CI/CD deployment workflow capable of provisioning a clean environment, applying database migrations, validating platform health, and confirming operational readiness without manual intervention.
+
+This establishes a production-style deployment lifecycle and completes the operational maturity goals for Phase 6.
