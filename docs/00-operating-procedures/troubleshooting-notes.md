@@ -7067,7 +7067,6 @@ This created several problems:
 
 Implemented Grafana provisioning directories:
 
-```text
 infrastructure/grafana/provisioning/
 
 ├── alerting/
@@ -7084,19 +7083,14 @@ infrastructure/grafana/provisioning/
 │
 └── plugins/
     └── .gitkeep
-```
 
 Docker Compose now mounts:
 
-```text
 /etc/grafana/provisioning
-```
 
 Dashboard JSON files are mounted into:
 
-```text
 /var/lib/grafana/dashboards
-```
 
 ---
 
@@ -7154,9 +7148,7 @@ Ensure provisioning can be validated automatically before deployment.
 
 Created:
 
-```text
 scripts/validate-grafana-provisioning.sh
-```
 
 Validation includes:
 
@@ -7187,17 +7179,14 @@ GitHub Actions now validates:
 
 Implemented:
 
-```text
 promtool check rules
-```
 
 using:
 
-```bash
+bash
 docker run --rm \
   --entrypoint promtool \
   prom/prometheus:latest
-```
 
 Validation confirms:
 
@@ -7207,9 +7196,7 @@ Validation confirms:
 
 Current validation:
 
-```text
 SUCCESS: 9 rules found
-```
 
 ---
 
@@ -7499,6 +7486,7 @@ Lessons learned:
 # Phase 6.8.9 - Database Administration, Operational Automation & CI Modernization
 
 ## Issue
+
 PostgreSQL was operational and accepting connections, but DBeaver displayed an empty schema.
 
 ### Root Cause
@@ -7933,3 +7921,216 @@ PASS Platform Runtime Validation
 Phase 6 now concludes with a fully automated CI/CD deployment workflow capable of provisioning a clean environment, applying database migrations, validating platform health, and confirming operational readiness without manual intervention.
 
 This establishes a production-style deployment lifecycle and completes the operational maturity goals for Phase 6.
+
+# Phase 6.9.3 Troubleshooting Notes
+
+---
+
+## Configuration Modernization
+
+### Issue
+
+Grafana SMTP credentials were hardcoded directly in `docker-compose.yml`.
+
+Example:
+
+yaml
+GF_SMTP_USER: "<staticbinaryops@gmail.com>"
+GF_SMTP_PASSWORD: "<app-password>"
+
+This prevented secure repository distribution and violated the goal of externalized configuration.
+
+### Resolution
+
+Migrated all Grafana SMTP configuration into `.env`.
+
+Updated `docker-compose.yml` to consume environment variables:
+
+yaml
+GF_SMTP_ENABLED: ${GF_SMTP_ENABLED}
+GF_SMTP_HOST: ${GF_SMTP_HOST}
+GF_SMTP_USER: ${GF_SMTP_USER}
+GF_SMTP_PASSWORD: ${GF_SMTP_PASSWORD}
+GF_SMTP_FROM_ADDRESS: ${GF_SMTP_FROM_ADDRESS}
+GF_SMTP_FROM_NAME: ${GF_SMTP_FROM_NAME}
+GF_SMTP_SKIP_VERIFY: ${GF_SMTP_SKIP_VERIFY}
+GF_SMTP_STARTTLS_POLICY: ${GF_SMTP_STARTTLS_POLICY}
+
+Result:
+
+- SMTP credentials removed from source-controlled configuration
+- Local configuration centralized in `.env`
+- Repository safe for distribution
+
+---
+
+## .env.example Expansion
+
+Expanded `.env.example` to include:
+
+- Platform ports
+- Asset Service configuration
+- Auth Service configuration
+- PostgreSQL configuration
+- Grafana SMTP configuration
+
+Added explanatory comments for each section.
+
+Purpose:
+
+Allow new developers to create a complete `.env` file with minimal documentation lookup.
+
+---
+
+## Missing Environment Variable
+
+### Symptom
+
+Running:
+
+bash
+docker compose config
+
+Produced:
+
+The "REVERSE_PROXY_PORT" variable is not set.
+
+### Cause
+
+`REVERSE_PROXY_PORT` had been accidentally removed from `.env`.
+
+### Resolution
+
+Re-added:
+
+REVERSE_PROXY_PORT=8000
+ASSET_SERVICE_PORT=8001
+AUTH_SERVICE_PORT=8002
+
+Configuration validation completed successfully afterward.
+
+---
+
+## JWT Secret Validation Failure
+
+### Symptom
+
+RBAC tests failed.
+
+Viewer authentication returned:
+
+HTTP 401 Unauthorized
+
+while authentication tests succeeded.
+
+### Root Cause
+
+`AUTH_SERVICE_SECRET_KEY`
+
+and
+
+`ASSET_SERVICE_SECRET_KEY`
+
+contained different values.
+
+The Auth Service signs JWTs while the Asset Service validates them.
+
+Both services must use the same signing secret.
+
+### Resolution
+
+Configured identical secret values for:
+
+AUTH_SERVICE_SECRET_KEY
+
+ASSET_SERVICE_SECRET_KEY
+
+Restarted:
+
+bash
+docker compose up -d --force-recreate auth_service asset_service
+
+RBAC validation completed successfully afterward.
+
+---
+
+## RBAC Test Environment
+
+### Symptom
+
+RBAC tests initially failed while acquiring tokens.
+
+### Cause
+
+Expected test users were not present.
+
+Required users:
+
+<admintest@test.com>
+
+<viewertest@test.com>
+
+### Resolution
+
+Registered required users.
+
+Promoted admin test account using development endpoint:
+
+POST /dev/promote-admin/{email}
+
+Validated:
+
+- Authentication
+- RBAC
+- CRUD operations
+
+---
+
+## Full Platform Validation
+
+Completed successfully after configuration updates.
+
+Validated:
+
+- Platform startup
+- Service health
+- PostgreSQL
+- Authentication
+- RBAC
+- Asset CRUD
+- Loki
+- Tempo
+- Prometheus
+- Grafana
+
+Final result:
+
+All automated tests passed
+
+---
+
+## Future Refactor
+
+Current configuration:
+
+AUTH_SERVICE_SECRET_KEY
+
+ASSET_SERVICE_SECRET_KEY
+
+Although named separately, both variables must always contain the same value.
+
+Planned improvement:
+
+Replace with:
+
+JWT_SECRET_KEY
+JWT_ALGORITHM
+
+Shared by every service issuing or validating JWTs.
+
+Benefits:
+
+- Eliminates duplicate configuration
+- Prevents secret mismatch
+- Improves developer understanding
+- Simplifies future Kubernetes Secret management
