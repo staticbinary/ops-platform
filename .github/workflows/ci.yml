@@ -87,10 +87,18 @@ jobs:
 
           ASSET_SERVICE_NAME=asset-service
           ASSET_SERVICE_ENVIRONMENT=development
-          ASSET_SERVICE_SECRET_KEY=ci-asset-secret-key
-          ASSET_SERVICE_JWT_ALGORITHM=HS256
 
-          AUTH_SERVICE_SECRET_KEY=ci-auth-secret-key
+          JWT_SECRET_KEY=ci-shared-jwt-secret-key
+          JWT_ALGORITHM=HS256
+
+          GF_SMTP_ENABLED=false
+          GF_SMTP_HOST=smtp.example.com:587
+          GF_SMTP_USER=ci-placeholder
+          GF_SMTP_PASSWORD=ci-placeholder
+          GF_SMTP_FROM_ADDRESS=ops-platform@example.com
+          GF_SMTP_FROM_NAME=Ops Platform Grafana
+          GF_SMTP_SKIP_VERIFY=false
+          GF_SMTP_STARTTLS_POLICY=MandatoryStartTLS
           EOF
 
       - name: Validate Docker Compose Configuration
@@ -141,10 +149,18 @@ jobs:
 
           ASSET_SERVICE_NAME=asset-service
           ASSET_SERVICE_ENVIRONMENT=development
-          ASSET_SERVICE_SECRET_KEY=ci-asset-secret-key
-          ASSET_SERVICE_JWT_ALGORITHM=HS256
 
-          AUTH_SERVICE_SECRET_KEY=ci-auth-secret-key
+          JWT_SECRET_KEY=ci-shared-jwt-secret-key
+          JWT_ALGORITHM=HS256
+
+          GF_SMTP_ENABLED=false
+          GF_SMTP_HOST=smtp.example.com:587
+          GF_SMTP_USER=ci-placeholder
+          GF_SMTP_PASSWORD=ci-placeholder
+          GF_SMTP_FROM_ADDRESS=ops-platform@example.com
+          GF_SMTP_FROM_NAME=Ops Platform Grafana
+          GF_SMTP_SKIP_VERIFY=false
+          GF_SMTP_STARTTLS_POLICY=MandatoryStartTLS
           EOF
 
       - name: Start Database
@@ -170,6 +186,7 @@ jobs:
           curl --fail http://localhost:8000/api/assets/health
           curl --fail http://localhost:8000/api/assets/health/ready
           curl --fail http://localhost:8002/health
+          curl --fail http://localhost:8002/health/ready
 
       - name: Validate Prometheus Targets
         run: |
