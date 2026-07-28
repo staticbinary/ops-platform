@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from datetime import datetime
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
@@ -24,6 +25,19 @@ from .models import Asset, AuditLog
 from .schemas import AssetCreate, AssetResponse, AssetUpdate
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    app.state.startup_complete = False
+
+    # Add any required initialization checks here.
+    # For now, reaching this point means the application initialized successfully.
+    app.state.startup_complete = True
+
+    yield
+
+    app.state.startup_complete = False
+    
+
 app = FastAPI(
     title="Asset Service",
     description="Operations platform asset management service",
@@ -31,6 +45,7 @@ app = FastAPI(
     root_path="/api/assets",
     docs_url="/docs",
     openapi_url="/openapi.json",
+    lifespan=lifespan,
 )
 
 setup_tracing(app)
@@ -149,7 +164,16 @@ def health_live():
 
 
 @app.get("/health/startup", tags=["Health"])
-def health_startup():
+def health_startup(request: Request):
+    if not getattr(request.app.state, "startup_complete", False):
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "starting",
+                "service": "asset-service",
+            },
+        )
+
     return {
         "status": "started",
         "service": "asset-service",

@@ -23,8 +23,8 @@ services:
     environment:
       SERVICE_NAME: ${ASSET_SERVICE_NAME}
       ENVIRONMENT: ${ASSET_SERVICE_ENVIRONMENT}
-      SECRET_KEY: ${ASSET_SERVICE_SECRET_KEY}
-      JWT_ALGORITHM: ${ASSET_SERVICE_JWT_ALGORITHM}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
     depends_on:
       postgres:
@@ -45,7 +45,8 @@ services:
     ports:
       - "8002:8000"
     environment:
-      AUTH_SERVICE_SECRET_KEY: ${AUTH_SERVICE_SECRET_KEY}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
     volumes:
       - auth-data:/app/data
     healthcheck:

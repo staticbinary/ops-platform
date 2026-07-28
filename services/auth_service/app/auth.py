@@ -18,11 +18,12 @@ from app.metrics import (
 
 from . import models
 
-SECRET_KEY = os.getenv("AUTH_SERVICE_SECRET_KEY")
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 
-if not SECRET_KEY:
-    raise RuntimeError("AUTH_SERVICE_SECRET_KEY environment variable is not set")
-ALGORITHM = "HS256"
+if not JWT_SECRET_KEY:
+    raise RuntimeError("JWT_SECRET_KEY environment variable is not set")
+
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
 logger = logging.getLogger("auth-service")
@@ -91,8 +92,8 @@ def create_access_token(data: dict):
 
     encoded_jwt = jwt.encode(
         to_encode,
-        SECRET_KEY,
-        algorithm=ALGORITHM
+        JWT_SECRET_KEY,
+        algorithm=JWT_ALGORITHM
     )
 
     return encoded_jwt
@@ -102,8 +103,8 @@ def verify_token(token: str, request: Request = None):
     try:
         payload = jwt.decode(
             token,
-            SECRET_KEY,
-            algorithms=[ALGORITHM]
+            JWT_SECRET_KEY,
+            algorithms=[JWT_ALGORITHM]
         )
 
         return payload

@@ -35,7 +35,7 @@ def verify_token(token: str):
     try:
         payload = jwt.decode(
             token,
-            settings.SECRET_KEY,
+            settings.JWT_SECRET_KEY,
             algorithms=[settings.JWT_ALGORITHM],    
         )
 

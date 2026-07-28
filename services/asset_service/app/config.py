@@ -5,14 +5,14 @@ class Settings:
     SERVICE_NAME: str = os.getenv("SERVICE_NAME", "asset-service")
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
 
-    SECRET_KEY: str | None = os.getenv("SECRET_KEY")
+    JWT_SECRET_KEY: str | None = os.getenv("JWT_SECRET_KEY")
     JWT_ALGORITHM: str | None = os.getenv("JWT_ALGORITHM")
 
     VALID_ENVIRONMENTS = {"development", "staging", "production"}
 
     def validate(self):
-        if not self.SECRET_KEY:
-            raise RuntimeError("Missing required config: SECRET_KEY")
+        if not self.JWT_SECRET_KEY:
+            raise RuntimeError("Missing required config: JWT_SECRET_KEY")
 
         if not self.JWT_ALGORITHM:
             raise RuntimeError("Missing required config: JWT_ALGORITHM")
