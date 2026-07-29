@@ -2,16 +2,19 @@
 
 ## Project Vision
 
-Build a modular enterprise-style operations platform capable of:
+Build a modular enterprise platform that demonstrates modern Platform Engineering, Infrastructure Engineering, DevSecOps, Site Reliability Engineering (SRE), and Security Operations through practical implementation.
+
+The platform will support:
 
 - device inventory management
 - telemetry and monitoring
-- media hosting/catalog services
 - authentication and identity management
-- storefront/e-commerce experimentation
 - observability and analytics
 - AI-assisted operational tooling
-- homelab/self-hosted deployment
+- media hosting and catalog services
+- workflow automation
+- enterprise application development
+- homelab and self-hosted deployment
 - real-world infrastructure demonstrations
 
 Long-term deployment goals:
@@ -21,22 +24,20 @@ Long-term deployment goals:
 - authentication-protected services
 - T5500 homelab deployment
 - production-style operational workflows
+- GitOps-driven deployments
+- highly observable, self-healing infrastructure
+- 
+# Engineering Principles
 
----
+The platform will be developed according to the following principles:
 
-# Architectural Principles
-
-Core platform goals:
-
-- modular service-oriented architecture
-- infrastructure-first development
-- operational discipline
-- persistent relational data modeling
-- centralized ingress management
-- environment-driven configuration
-- separation of concerns
-- controlled complexity growth
-- documentation-first operational workflows
+- Understand systems before automating them.
+- Prefer architecture over shortcuts.
+- Validate every major component through failure testing.
+- Keep services modular and loosely coupled.
+- Separate configuration, secrets, storage, networking, and runtime responsibilities.
+- Reduce technical debt before introducing new technologies.
+- Build production-style systems that are observable, reproducible, and recoverable.
 
 ---
 
@@ -5631,6 +5632,80 @@ Remaining objective:
 
 Complete developer onboarding and bootstrap automation before beginning Kubernetes migration.
 
+# Kubernetes Phase 3 Roadmap
+
+## Completed
+
+- Kubernetes local cluster
+- Namespace
+- ConfigMap
+- Secret management
+- PostgreSQL StatefulSet
+- PostgreSQL Service
+- PostgreSQL PVC
+- Persistent storage validation
+- Alembic Migration Job
+- Auth Service Deployment
+- Auth Service Service
+- Auth Service PVC
+- EndpointSlice validation
+- Internal DNS validation
+- Self-healing validation
+- Git integration
+
+---
+
+## Next Session
+
+### Asset Service
+
+- Build image
+- Push image
+- Deployment
+- Service
+- ConfigMap integration
+- Secret integration
+- PostgreSQL connectivity
+- Health probes
+- Startup validation
+
+---
+
+### Platform Validation
+
+- JWT validation
+- RBAC validation
+- CRUD validation
+- API testing
+
+---
+
+### Networking
+
+- Reverse Proxy / Ingress
+- External routing
+- API accessibility
+
+---
+
+### Observability Migration
+
+- Prometheus
+- Grafana
+- Loki
+- Tempo
+- Exporters
+
+---
+
+### Advanced Kubernetes
+
+- Rolling updates
+- Replica scaling
+- Resource requests/limits
+- Autoscaling
+- Network Policies
+- Production hardening
 
 
 
@@ -5638,204 +5713,186 @@ Complete developer onboarding and bootstrap automation before beginning Kubernet
 
 
 
-# Future Development Goals
 
-## Phase 7 — Platform Orchestration & Identity
 
-Planned work:
 
-- Kubernetes Fundamentals
-- Kubernetes Deployment Migration
-- Helm
+
+
+
+
+# Future Development Roadmap
+
+---
+
+# Phase 7 — Kubernetes Platform Migration (Current)
+
+## Platform Foundation
+
+- Kubernetes architecture
+- Namespace strategy
+- Deployments
+- StatefulSets
+- Services
 - ConfigMaps
-- Secrets Management
-- Ingress Controllers
+- Secrets
 - Persistent Volumes
-- Rolling Updates
-- Horizontal Pod Autoscaling
-- Production-style Kubernetes Architecture
+- Storage Classes
+- Health probes
+- Database migration Jobs
 
-Identity Platform:
+## Platform Migration
+
+- Asset Service
+- Auth Service
+- Reverse Proxy
+- Prometheus
+- Grafana
+- Loki
+- Tempo
+- Exporters
+
+## Kubernetes Operations
+
+- Rolling updates
+- Replica scaling
+- Resource requests and limits
+- Node scheduling
+- Ingress Controller
+- Horizontal Pod Autoscaling
+- Production validation
+- Failure testing
+
+---
+
+# Phase 8 — Enterprise Identity Platform
+
+## Authentication
 
 - Keycloak
 - OpenID Connect (OIDC)
 - OAuth2
 - Single Sign-On
 - Multi-Factor Authentication
+
+## Authorization
+
 - Enterprise RBAC
 - Service Accounts
 - API Tokens
-
----
-
-## Phase 8 — Enterprise Security Operations
-
-Planned integrations:
-
-- Suricata IDS
-- Wazuh
-- Threat Intelligence Enrichment
-- GeoIP Correlation
-- Security Event Correlation
-- Centralized Incident Investigation
-- Advanced Security Dashboards
-
----
-
-## Phase 9 — Home NOC / SOC
-
-Planned capabilities:
-
-- Home Network Monitoring
-- Device Inventory
-- Network Topology
-- IDS Dashboard
-- Endpoint Monitoring
-- Home Infrastructure Observability
-- Unified NOC/SOC Dashboard
-
----
-
-## Phase 10 — Enterprise Applications
-
-Planned development:
-
-- Secure File Sharing Platform
-- Enterprise Asset Portal
-- Device Management
-- Workflow Automation
-- Operations Portal
-- Administrative Dashboard
-- Enterprise API Gateway
-
----
-
-# Future Development Goals
-
-## Phase 7 - Enterprise Identity & Kubernetes Foundation
-
-### Identity Platform
-
-- Keycloak deployment
-- OpenID Connect (OIDC)
-- Single Sign-On (SSO)
-- JWT token management
 - Role mapping
-- Service accounts
-- API token management
 - Organization management
 - Identity federation
 
-### Kubernetes Foundation
-
-- Local Kubernetes cluster
-- Deployments
-- Services
-- Namespaces
-- ConfigMaps
-- Secrets
-- Persistent Volumes
-- Ingress Controller
-- Health probes
-- Rolling updates
-
 ---
 
-## Phase 8 - Kubernetes Platform Migration
+# Phase 9 — GitOps & Platform Engineering
 
-- Migrate platform services to Kubernetes
-- Prometheus Operator
-- Grafana on Kubernetes
-- Loki on Kubernetes
-- Tempo on Kubernetes
-- Helm chart development
-- Storage strategy
-- High availability planning
-- Environment configuration management
+## Deployment Automation
 
----
-
-## Phase 9 - GitOps & Platform Engineering
-
+- Helm
 - Argo CD
-- GitOps deployment model
+- GitOps
 - Release promotion
 - Environment management
-- Automated deployments
+
+## Platform Security
+
 - Image lifecycle management
-- Security scanning
+- Image signing
+- Vulnerability scanning
 - Policy enforcement
 - Infrastructure as Code expansion
 
 ---
 
-## Phase 10 - Home NOC / Home SOC
+# Phase 10 — Security Operations Platform
 
-### Network Security
+## Network Security
 
 - Suricata IDS
-- Network intrusion detection
+- Zeek
+- Threat Intelligence
 - GeoIP enrichment
-- Threat intelligence feeds
-- Internet traffic analysis
+- Network telemetry
 
-### Endpoint Security
+## Endpoint Security
 
-- Wazuh deployment
+- Wazuh
 - Endpoint monitoring
-- File integrity monitoring
-- Vulnerability detection
-- Security event correlation
+- File Integrity Monitoring
+- Vulnerability Detection
+- Compliance Monitoring
 
-### Security Dashboards
+## Detection Engineering
 
-- Grafana SOC dashboards
-- Loki security analytics
-- Incident investigation workflows
+- Security correlation
+- Threat hunting
+- Detection rules
+- Incident timelines
+- Automated response
+
+---
+
+# Phase 11 — Home NOC / SOC
+
+## Infrastructure
+
+- Tailscale
+- Multi-site connectivity
+- Home network inventory
+- Device topology
+- Infrastructure monitoring
+
+## Operations
+
+- Unified Grafana dashboards
+- Security dashboards
+- Capacity monitoring
+- Availability monitoring
 - Alert correlation
 
----
+## Automation
 
-## Phase 11 - Advanced Security Operations
-
-- Zeek network monitoring
-- Network telemetry analysis
-- Cross-platform event correlation
-- Security investigation workflows
-- Automated incident response
-- Threat hunting dashboards
-- Detection engineering
-- Security analytics
+- Automated remediation
+- Scheduled maintenance
+- Configuration management
+- Backup validation
+- Disaster recovery testing
 
 ---
 
-## Phase 12 - Enterprise Applications
+# Phase 12 — Enterprise Applications
 
-- Secure file-sharing platform
-- Device management portal
-- Asset lifecycle management
-- Automation workflows
-- Administrative portal
-- Operations dashboard
-- Enterprise reporting
-- User self-service capabilities
+## Platform Services
+
+- Secure File Sharing
+- Enterprise Asset Portal
+- Device Management
+- Operations Portal
+- Administrative Dashboard
+
+## Automation
+
+- Workflow engine
+- Enterprise API Gateway
+- Reporting
+- User self-service
+- Administrative automation
 
 ---
 
 # Long-Term Vision
 
-The Ops Platform roadmap has evolved beyond a learning project into a comprehensive enterprise operations platform.
+The Ops Platform is evolving into a complete Platform Engineering environment that combines:
 
-The long-term architecture will integrate:
-
+- Kubernetes
 - Identity Management
-- Kubernetes Orchestration
 - Observability
-- Security Operations
-- Network Monitoring
-- Endpoint Protection
-- Automation
+- GitOps
+- DevSecOps
+- Network Security
+- Endpoint Security
+- Home NOC / SOC
 - Enterprise Applications
-- Home NOC / SOC capabilities
 
-The objective is to create a production-grade platform that demonstrates modern Platform Engineering, Site Reliability Engineering (SRE), DevSecOps, Cloud Infrastructure, and Enterprise Operations practices while serving as a practical environment for continued learning and experimentation.
+The objective is to maintain a production-style environment that continuously expands practical experience in Platform Engineering, Infrastructure Engineering, DevSecOps, Site Reliability Engineering (SRE), and Security Operations while serving as a long-term portfolio and experimentation platform.

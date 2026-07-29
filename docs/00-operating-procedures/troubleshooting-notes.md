@@ -8134,3 +8134,493 @@ Benefits:
 - Prevents secret mismatch
 - Improves developer understanding
 - Simplifies future Kubernetes Secret management
+
+# Troubleshooting Notes - Kubernetes Phase 3 (Day 1)
+
+## Objective
+
+Begin migration of the Ops Platform from Docker Compose to Kubernetes while preserving the existing application architecture and minimizing technical debt.
+
+---
+
+# Kubernetes Cluster
+
+Validated local Docker Desktop Kubernetes cluster.
+
+Verified:
+
+- Kubernetes API
+- Control Plane
+- CoreDNS
+- Node readiness
+
+Commands
+
+bash
+kubectl config current-con
+kubectl cluster-info
+kubectl get nodes -o wide
+kubectl get pods -A
+
+
+Result
+
+Cluster healthy.
+
+---
+
+# Namespace
+
+Created dedicated namespace.
+
+Verified namespace isolation.
+
+Result
+
+Successful.
+
+---
+
+# ConfigMap
+
+Created:
+
+
+ops-platform-config
+
+
+Contents
+
+- ENVIRONMENT
+- JWT_ALGORITHM
+
+Verified
+
+bash
+kubectl describe configmap ops-platform-config
+
+
+Result
+
+Configuration available to workloads.
+
+---
+
+# Secret Management
+
+Created Kubernetes Secret.
+
+Validated:
+
+
+JWT_SECRET_KEY
+
+
+Verified:
+
+bash
+kubectl describe secret ops-platform-secret
+
+
+Important
+
+Secret manifest excluded from Git using:
+
+
+secret.local.yaml
+
+
+and validated with:
+
+bash
+git check-ignore
+
+
+No credentials committed.
+
+---
+
+# PostgreSQL ClusterIP Service
+
+Created Service before StatefulSet.
+
+Observation
+
+Service initially contained:
+
+Endpoints: <none>
+
+Reason
+
+No Pods matched selector.
+
+Resolution
+
+Expected behavior.
+
+Endpoints populated automatically after StatefulSet creation.
+
+---
+
+# PostgreSQL Persistent Volume Claim
+
+PVC remained:
+
+Pending
+
+Observation
+
+StorageClass reported:
+
+WaitForFirstConsumer
+
+Reason
+
+Volume provisioning delayed until Pod scheduled.
+
+Resolution
+
+Expected Kubernetes behavior.
+
+PVC bound immediately after StatefulSet created.
+
+---
+
+# PostgreSQL StatefulSet
+
+Created StatefulSet.
+
+Lifecycle observed:
+
+Pending
+
+↓
+
+ContainerCreating
+
+↓
+
+Running
+
+↓
+
+Ready
+
+Verified
+
+PostgreSQL initialized successfully.
+
+---
+
+# PostgreSQL Initialization
+
+Observed initialization logs.
+
+Confirmed:
+
+- Database creation
+- User creation
+- Initial startup
+- Final PostgreSQL server startup
+
+Locale warning observed:
+
+locale: not found
+
+Reason
+
+Normal Alpine Linux behavior.
+
+No impact.
+
+---
+
+# Persistent Storage Validation
+
+Created test table.
+
+Inserted test row.
+
+Deleted PostgreSQL Pod.
+
+Observed:
+
+StatefulSet recreated Pod.
+
+Validated:
+
+Test row remained.
+
+Conclusion
+
+Persistent storage functioning correctly.
+
+---
+
+# Alembic Migration Job
+
+Initial issue
+
+Job failed:
+
+ErrImageNeverPull
+
+Reason
+
+Image unavailable to cluster.
+
+Resolution
+
+Built image.
+
+Tagged image.
+
+Pushed image to Docker Hub.
+
+Updated Job image.
+
+Recreated Job.
+
+Result
+
+Migration completed successfully.
+
+Validated:
+
+- alembic_version
+- assets
+- audit_logs
+
+---
+
+# Git
+
+Created initial Kubernetes project structure.
+
+Excluded secrets.
+
+Committed only Kubernetes work.
+
+TSFA documentation intentionally left unstaged.
+
+# Troubleshooting Notes - Kubernetes Phase 3 (Day 2)
+
+## Objective
+
+Deploy first stateless application using Kubernetes Deployments and validate self-healing architecture.
+
+---
+
+# Auth Service Persistent Volume
+
+Created:
+
+
+auth-data
+
+
+Observation
+
+PVC initially:
+
+
+Pending
+
+
+Reason
+
+Waiting for first consumer.
+
+Resolution
+
+Bound automatically after Deployment created.
+
+---
+
+# Auth Service Image
+
+Built Docker image.
+
+Initial push failed.
+
+Reason
+
+Incorrect Docker Hub namespace.
+
+Resolution
+
+Pushed using:
+
+
+visualbinary/
+
+
+Successful.
+
+---
+
+# Auth Service Deployment
+
+Created Deployment.
+
+Observed lifecycle:
+
+ContainerCreating
+
+↓
+
+Running 0/1
+
+↓
+
+Running 1/1
+
+Explanation
+
+Running state achieved before readiness probe succeeded.
+
+Traffic accepted only after Ready.
+
+---
+
+# Deployment Validation
+
+Verified:
+
+Deployment
+
+↓
+
+ReplicaSet
+
+↓
+
+Pod
+
+Relationship confirmed.
+
+---
+
+# Auth Service Service
+
+Created ClusterIP Service.
+
+Verified:
+
+EndpointSlice populated.
+
+Internal Service DNS operational.
+
+---
+
+# Internal DNS Validation
+
+Executed temporary curl Pod.
+
+Validated:
+
+
+http://auth-service:8000/health/ready
+
+
+Returned:
+
+
+HTTP 200
+
+
+Confirmed:
+
+- CoreDNS
+- ClusterIP
+- EndpointSlice
+- Service routing
+
+---
+
+# Self-Healing Validation
+
+Deleted running Auth Service Pod.
+
+Observed:
+
+Old Pod
+
+↓
+
+Terminating
+
+↓
+
+New Pod
+
+↓
+
+Running
+
+↓
+
+Ready
+
+Service remained operational.
+
+Internal DNS unchanged.
+
+Conclusion
+
+Deployment reconciliation functioning correctly.
+
+---
+
+# Kubernetes Architecture Concepts Learned
+
+Stateful workloads
+
+- Persistent data
+- StatefulSet
+- PVC
+- Stable Service
+
+Stateless workloads
+
+- Deployment
+- ReplicaSet
+- Disposable Pods
+- Self-healing
+
+Networking
+
+- ClusterIP
+- EndpointSlice
+- DNS
+
+Configuration
+
+- ConfigMap
+- Secret
+
+Storage
+
+- PVC
+
+Desired State
+
+Deployment continuously reconciles actual state with desired state.
+
+---
+
+# Final Validation
+
+Verified:
+
+bash
+kubectl get all
+kubectl get pvc
+kubectl get endpointslices
+kubectl get configmaps
+kubectl get secrets
+
+
+Cluster healthy.
+
+All resources operating normally.
