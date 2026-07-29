@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+
+metadata:
+  name: ops-platform-config
+  namespace: ops-platform
+
+data:
+  ENVIRONMENT: "development"
+  JWT_ALGORITHM: "HS256"

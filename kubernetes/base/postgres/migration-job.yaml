@@ -1,0 +1,40 @@
+apiVersion: batch/v1
+kind: Job
+
+metadata:
+  name: asset-service-migrations
+  namespace: ops-platform
+  labels:
+    app: asset-service
+    component: database-migration
+
+spec:
+  backoffLimit: 3
+
+  template:
+    metadata:
+      labels:
+        app: asset-service
+        component: database-migration
+
+    spec:
+      restartPolicy: Never
+
+      containers:
+        - name: alembic
+          image: visualbinary/ops-platform-asset-service:local
+          imagePullPolicy: IfNotPresent
+
+          command:
+            - python
+            - -m
+            - alembic
+            - upgrade
+            - head
+
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: ops-platform-secret
+                  key: DATABASE_URL
