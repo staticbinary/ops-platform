@@ -5707,21 +5707,6 @@ Complete developer onboarding and bootstrap automation before beginning Kubernet
 - Network Policies
 - Production hardening
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Future Development Roadmap
-
 ---
 
 # Phase 7 — Kubernetes Platform Migration (Current)
@@ -5763,6 +5748,87 @@ Complete developer onboarding and bootstrap automation before beginning Kubernet
 - Failure testing
 
 ---
+
+# Phase 7.1 — Kubernetes Observability - 7/30/2026
+
+## Completed
+
+### Metrics Server
+
+- Deployed Kubernetes Metrics Server
+- Resolved kubelet certificate validation issue
+- Enabled cluster resource metrics
+- Validated `kubectl top nodes`
+- Validated `kubectl top pods`
+
+### Resource Management
+
+- Added CPU and memory requests to Asset Service
+- Added CPU and memory limits to Asset Service
+- Added CPU and memory requests to Auth Service
+- Added CPU and memory limits to Auth Service
+- Validated resource scheduling
+
+### Horizontal Pod Autoscaling
+
+- Deployed HPA for Asset Service
+- Configured CPU-based autoscaling
+- Validated automatic scale-out
+- Validated automatic scale-in
+- Learned ReplicaSet / Deployment / HPA architecture
+
+### Tempo Migration
+
+- Migrated Tempo from Docker Compose to Kubernetes
+- Created Tempo Deployment
+- Created Tempo Service
+- Created Tempo ConfigMap
+- Verified OTLP endpoints
+- Validated cluster networking
+- Identified exporter connectivity issue
+
+### Prometheus Migration
+
+- Migrated Prometheus configuration to ConfigMap
+- Deployed Prometheus Deployment
+- Created Prometheus Service
+- Verified Prometheus startup
+- Verified ConfigMap mounting
+- Prepared Kubernetes-native scrape configuration
+
+## Remaining
+
+- Resolve Tempo OTLP exporter connectivity
+- Verify trace ingestion
+- Verify Prometheus scrape targets
+- Import Kubernetes Prometheus datasource into Grafana
+- Continue observability stack migration
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # Phase 8 — Enterprise Identity Platform
 

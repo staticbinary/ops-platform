@@ -1,7 +1,7 @@
 #!/bin/bash
 
-ASSET_BASE_URL="http://localhost:8001"
-AUTH_BASE_URL="http://localhost:8002"
+ASSET_BASE_URL="http://localhost/api/assets"
+AUTH_BASE_URL="http://localhost/api/auth"
 
 PROMETHEUS_BASE_URL="http://localhost:9090"
 GRAFANA_BASE_URL="http://localhost:3000"

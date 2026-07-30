@@ -8624,3 +8624,350 @@ kubectl get secrets
 Cluster healthy.
 
 All resources operating normally.
+
+# Kubernetes Observability Migration
+## Troubleshooting Notes
+
+**Date:** 2026-07-30
+
+---
+
+## Overview
+
+Successfully migrated the initial observability stack from Docker Compose into Kubernetes.
+
+Completed:
+
+- Tempo
+- Prometheus
+
+Validated:
+
+- OpenTelemetry trace export
+- Prometheus metrics scraping
+- Metrics Server
+- Horizontal Pod Autoscaler
+
+---
+
+## Tempo Migration
+
+### Initial Symptoms
+
+Immediately after deploying Tempo, Asset Service continued reporting OpenTelemetry export failures.
+
+Observed errors:
+
+```text
+Failed to export traces to tempo:4317
+
+StatusCode.UNAVAILABLE
+
+errors resolving tempo:4317
+
+Timeout while contacting DNS servers
+```
+
+After Kubernetes DNS propagated:
+
+```text
+Connection refused
+```
+
+appeared briefly before export recovered.
+
+---
+
+### Root Cause
+
+This was expected startup behavior.
+
+Asset Service attempted to export traces before:
+
+- Tempo Pod reached Ready state
+- Kubernetes DNS fully propagated the Service
+- Tempo began accepting OTLP gRPC connections
+
+Observed startup sequence:
+
+```text
+DNS lookup failure
+
+↓
+
+ClusterIP resolves
+
+↓
+
+Connection refused
+
+↓
+
+Tempo listener becomes available
+
+↓
+
+Trace export succeeds
+```
+
+No application changes were required.
+
+Asset Service automatically retried exports until Tempo became available.
+
+---
+
+### Validation
+
+Tempo Deployment:
+
+- Running
+- Ready
+- ClusterIP Service created
+- EndpointSlice populated
+
+Asset Service validation:
+
+```bash
+kubectl logs deployment/asset-service \
+-n ops-platform \
+--since=30s \
+| grep -iE 'tempo|export|unavailable|resolving'
+```
+
+Returned no output after Tempo completed startup.
+
+Tempo logs confirmed successful WAL block creation and trace ingestion.
+
+Result:
+
+- OTLP gRPC functioning
+- Trace export successful
+- Asset Service telemetry restored
+
+---
+
+## Prometheus Migration
+
+### Existing Docker Compose Configuration
+
+Original Compose configuration contained scrape targets for:
+
+- cadvisor
+- node-exporter
+- postgres-exporter
+- blackbox-exporter
+- reverse-proxy
+- grafana
+
+These services have not yet migrated into Kubernetes.
+
+---
+
+### Kubernetes Configuration
+
+Initial Kubernetes Prometheus deployment intentionally reduced scrape targets to Kubernetes-native services only:
+
+- prometheus
+- asset-service
+- auth-service
+
+This prevents unnecessary scrape failures while additional observability components migrate.
+
+---
+
+### Validation
+
+Deployment:
+
+- Running
+- Ready
+- ClusterIP Service created
+- EndpointSlice populated
+
+Prometheus Targets page confirmed:
+
+```text
+asset-service   UP
+
+auth-service    UP
+
+prometheus      UP
+```
+
+Scrape interval:
+
+```text
+15 seconds
+```
+
+Observed scrape duration:
+
+```text
+Approximately 4 ms
+```
+
+Metrics endpoint validation:
+
+```text
+Asset Service
+
+/metrics
+
+OK
+```
+
+```text
+Auth Service
+
+/metrics
+
+OK
+```
+
+Prometheus alert rules successfully loaded.
+
+---
+
+## Metrics Server
+
+### Issue
+
+Initial Metrics Server deployment failed readiness.
+
+Observed errors:
+
+```text
+x509 certificate validation failure
+```
+
+Docker Desktop kubelet certificates do not include IP SANs required by Metrics Server.
+
+---
+
+### Resolution
+
+Added:
+
+```text
+--kubelet-insecure-tls
+```
+
+to Metrics Server arguments.
+
+Validation:
+
+```bash
+kubectl top nodes
+
+kubectl top pods -n ops-platform
+```
+
+Both commands returned resource metrics successfully.
+
+---
+
+## Horizontal Pod Autoscaler Validation
+
+Performed successful load test against Asset Service.
+
+Observed scaling sequence:
+
+```text
+1 Pod
+
+↓
+
+2 Pods
+
+↓
+
+3 Pods
+
+↓
+
+Load removed
+
+↓
+
+2 Pods
+
+↓
+
+1 Pod
+```
+
+Observed Pod lifecycle:
+
+```text
+Pending
+
+↓
+
+ContainerCreating
+
+↓
+
+Running
+
+↓
+
+Terminating
+
+↓
+
+Completed
+```
+
+Confirmed:
+
+- Metrics Server supplying CPU metrics
+- HPA adjusting desired replica count
+- Deployment updating desired state
+- ReplicaSet creating and removing Pods
+- Service continued routing traffic without interruption
+
+---
+
+## Kubernetes Component Responsibilities
+
+Validated operational responsibilities during testing:
+
+### Horizontal Pod Autoscaler
+
+Determines desired replica count based on metrics.
+
+---
+
+### Deployment
+
+Maintains desired application state.
+
+Owns replica count and rolling updates.
+
+---
+
+### ReplicaSet
+
+Ensures the desired number of identical Pods exist.
+
+Creates replacement Pods automatically when necessary.
+
+---
+
+### Pod
+
+Runs the application workload.
+
+Pods are disposable and may be created or removed without affecting Service availability.
+
+---
+
+## Lessons Learned
+
+- Temporary DNS failures immediately after Service creation are normal during cluster startup.
+- Connection refused errors immediately following DNS resolution typically indicate the destination Pod is still initializing.
+- OpenTelemetry exporters automatically recover once the collector becomes available.
+- Prometheus migration should begin with Kubernetes-native scrape targets before migrating supporting observability services.
+- HPA determines the desired number of replicas.
+- ReplicaSets enforce that desired state.
+- Services continue routing traffic during Pod creation and termination, providing uninterrupted availability during autoscaling.

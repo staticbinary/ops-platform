@@ -1,0 +1,126 @@
+apiVersion: v1
+kind: ConfigMap
+
+metadata:
+  name: prometheus-config
+  namespace: ops-platform
+
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+
+    rule_files:
+      - /etc/prometheus/prometheus-alerts.yml
+
+    scrape_configs:
+      - job_name: "prometheus"
+        static_configs:
+          - targets: ["localhost:9090"]
+
+      - job_name: "asset-service"
+        metrics_path: /metrics
+        static_configs:
+          - targets: ["asset-service:8000"]
+
+      - job_name: "auth-service"
+        metrics_path: /metrics
+        static_configs:
+          - targets: ["auth-service:8000"]
+
+  prometheus-alerts.yml: |
+    groups:
+      - name: ops-platform-availability
+        rules:
+          - alert: AssetServiceDown
+            expr: up{job="asset-service"} == 0
+            for: 2m
+            labels:
+              severity: critical
+              category: platform
+              service: asset-service
+            annotations:
+              summary: "Asset Service is down"
+              description: "The asset-service Prometheus target has been unavailable for at least 2 minutes."
+              runbook: "docs/runbooks/service-outage.md"
+
+          - alert: AuthServiceDown
+            expr: up{job="auth-service"} == 0
+            for: 2m
+            labels:
+              severity: critical
+              category: platform
+              service: auth-service
+            annotations:
+              summary: "Auth Service is down"
+              description: "The auth-service Prometheus target has been unavailable for at least 2 minutes."
+              runbook: "docs/runbooks/service-outage.md"
+
+      - name: ops-platform-security
+        rules:
+          - alert: AuthenticationFailureSpike
+            expr: sum(increase(auth_login_failure_total[5m])) >= 5
+            for: 1m
+            labels:
+              severity: high
+              category: security
+            annotations:
+              summary: "Authentication failure spike detected"
+              description: "Five or more authentication failures occurred within five minutes."
+              runbook: "docs/runbooks/authentication-failure-spike.md"
+
+          - alert: InvalidTokenSpike
+            expr: sum(increase(invalid_token_total[5m])) >= 5
+            for: 1m
+            labels:
+              severity: medium
+              category: security
+            annotations:
+              summary: "Invalid token spike detected"
+              description: "Five or more invalid token events occurred within five minutes."
+              runbook: "docs/runbooks/invalid-token-spike.md"
+
+          - alert: PermissionDeniedSpike
+            expr: sum(increase(permission_denied_total[5m])) >= 5
+            for: 1m
+            labels:
+              severity: high
+              category: security
+            annotations:
+              summary: "Permission denied spike detected"
+              description: "Five or more permission denied events occurred within five minutes."
+              runbook: "docs/runbooks/permission-abuse.md"
+
+          - alert: RateLimitAbuseDetected
+            expr: sum(increase(rate_limit_exceeded_total[5m])) >= 10
+            for: 1m
+            labels:
+              severity: medium
+              category: security
+            annotations:
+              summary: "Rate limit abuse detected"
+              description: "Ten or more rate limit violations occurred within five minutes."
+              runbook: "docs/runbooks/rate-limit-abuse.md"
+
+          - alert: PrivilegeEscalationActivity
+            expr: sum(increase(privilege_escalation_attempt_total[5m])) >= 1
+            for: 0m
+            labels:
+              severity: critical
+              category: security
+            annotations:
+              summary: "Privilege escalation activity detected"
+              description: "One or more privilege escalation attempts were detected."
+              runbook: "docs/runbooks/privilege-escalation-activity.md"
+
+          - alert: AssetService5xxErrors
+            expr: sum(increase(http_requests_total{service="asset-service",status="5xx"}[5m])) >= 3
+            for: 2m
+            labels:
+              severity: high
+              category: platform
+              service: asset-service
+            annotations:
+              summary: "Asset Service 5xx errors detected"
+              description: "Three or more 5xx responses occurred in asset-service within five minutes and persisted for at least 2 minutes."
+              runbook: "docs/runbooks/service-outage.md"

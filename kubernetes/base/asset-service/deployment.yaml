@@ -2,34 +2,54 @@ apiVersion: apps/v1
 kind: Deployment
 
 metadata:
-  name: auth-service
+  name: asset-service
   namespace: ops-platform
   labels:
-    app: auth-service
+    app: asset-service
 
 spec:
   replicas: 1
 
   selector:
     matchLabels:
-      app: auth-service
+      app: asset-service
 
   template:
     metadata:
       labels:
-        app: auth-service
+        app: asset-service
 
     spec:
       containers:
-        - name: auth-service
-          image: visualbinary/ops-platform-auth-service:local
+        - name: asset-service
+          image: visualbinary/ops-platform-asset-service:local
           imagePullPolicy: IfNotPresent
 
           ports:
             - name: http
               containerPort: 8000
 
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi    
+
           env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: ops-platform-secret
+                  key: DATABASE_URL
+
+            - name: ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: ops-platform-config
+                  key: ENVIRONMENT
+
             - name: JWT_ALGORITHM
               valueFrom:
                 configMapKeyRef:
@@ -41,6 +61,9 @@ spec:
                 secretKeyRef:
                   name: ops-platform-secret
                   key: JWT_SECRET_KEY
+
+            - name: SERVICE_NAME
+              value: asset-service
 
           startupProbe:
             httpGet:
@@ -65,21 +88,3 @@ spec:
             periodSeconds: 30
             timeoutSeconds: 5
             failureThreshold: 3
-
-          volumeMounts:
-            - name: auth-data
-              mountPath: /app/data
-
-          resources:
-            requests:
-              cpu: 100m
-              memory: 128Mi
-            limits:
-              cpu: 500m
-              memory: 512Mi
-
-      volumes:
-        - name: auth-data
-          persistentVolumeClaim:
-            claimName: auth-data
-

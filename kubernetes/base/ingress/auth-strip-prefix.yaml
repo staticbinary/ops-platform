@@ -1,0 +1,11 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+
+metadata:
+  name: auth-strip-prefix
+  namespace: ops-platform
+
+spec:
+  stripPrefix:
+    prefixes:
+      - /api/auth
