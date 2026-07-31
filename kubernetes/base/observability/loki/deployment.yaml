@@ -1,0 +1,96 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loki
+  namespace: ops-platform
+  labels:
+    app: loki
+    component: observability
+spec:
+  replicas: 1
+
+  strategy:
+    type: Recreate
+
+  selector:
+    matchLabels:
+      app: loki
+
+  template:
+    metadata:
+      labels:
+        app: loki
+        component: observability
+
+    spec:
+      securityContext:
+        fsGroup: 10001
+        fsGroupChangePolicy: OnRootMismatch
+
+      containers:
+        - name: loki
+          image: grafana/loki:3.7.2
+          imagePullPolicy: IfNotPresent
+
+          args:
+            - -config.file=/etc/loki/loki.yaml
+
+          ports:
+            - name: http
+              containerPort: 3100
+              protocol: TCP
+
+            - name: grpc
+              containerPort: 9096
+              protocol: TCP
+
+          startupProbe:
+            httpGet:
+              path: /ready
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 30
+
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
+          volumeMounts:
+            - name: loki-config
+              mountPath: /etc/loki/loki.yaml
+              subPath: loki.yaml
+              readOnly: true
+
+            - name: loki-data
+              mountPath: /var/loki
+
+      volumes:
+        - name: loki-config
+          configMap:
+            name: loki-config
+
+        - name: loki-data
+          persistentVolumeClaim:
+            claimName: loki-data

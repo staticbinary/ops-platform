@@ -5804,7 +5804,199 @@ Complete developer onboarding and bootstrap automation before beginning Kubernet
 - Import Kubernetes Prometheus datasource into Grafana
 - Continue observability stack migration
 
+## Phase 7.1 — Kubernetes Observability Migration
 
+### Completed
+
+#### Platform Foundation
+
+- Kubernetes cluster established
+- Traefik Ingress Controller
+- Asset Service migration
+- Auth Service migration
+- PostgreSQL StatefulSet
+- Metrics Server
+- Horizontal Pod Autoscaler
+
+---
+
+#### Distributed Tracing
+
+Completed Tempo migration.
+
+Implemented:
+
+- ConfigMap
+- Deployment
+- Service
+- OTLP gRPC
+- OTLP HTTP
+
+Validated:
+
+- Trace ingestion
+- Service connectivity
+- Asset Service trace export
+
+---
+
+#### Metrics
+
+Completed Prometheus migration.
+
+Implemented:
+
+- ConfigMap
+- Deployment
+- Service
+
+Validated:
+
+- Scrape targets
+- Alert rule loading
+- Asset Service metrics
+- Auth Service metrics
+
+---
+
+#### Visualization
+
+Completed Grafana migration.
+
+Implemented:
+
+- Dashboard provisioning
+- Datasource provisioning
+- SMTP Secret
+- PersistentVolumeClaim
+- Deployment
+- Service
+- Traefik Ingress
+
+Validated:
+
+- Dashboard provisioning
+- Datasources
+- Persistent storage
+- Grafana health endpoint
+
+---
+
+#### Logging
+
+Completed Loki migration.
+
+Implemented:
+
+- ConfigMap
+- PersistentVolumeClaim
+- Deployment
+- Service
+
+Completed Grafana Alloy migration.
+
+Implemented:
+
+- ServiceAccount
+- Role
+- RoleBinding
+- ConfigMap
+- Deployment
+- Service
+
+Validated:
+
+- Kubernetes Pod discovery
+- Log ingestion
+- Structured JSON logging
+- Grafana Explore queries
+
+Current logging pipeline:
+
+Application
+
+↓
+
+stdout
+
+↓
+
+Kubernetes
+
+↓
+
+Grafana Alloy
+
+↓
+
+Loki
+
+↓
+
+Grafana
+
+---
+
+#### Platform Operations
+
+Implemented:
+
+```text
+scripts/kubernetes-platform-status.sh
+```
+
+Operational validation includes:
+
+- Cluster health
+- Deployments
+- StatefulSets
+- PVCs
+- Services
+- Ingress
+- HPA
+- Metrics Server
+- Pod health
+- Observability stack
+
+---
+
+### Remaining Observability
+
+- Alertmanager
+- PostgreSQL Exporter
+- Node Exporter
+- Blackbox Exporter
+- Evaluate native Kubernetes metrics vs standalone cAdvisor
+
+---
+
+### Final Observability Validation
+
+Before Phase 7 observability is considered complete:
+
+- Validate Prometheus targets
+- Validate Grafana dashboards
+- Validate Loki log ingestion
+- Validate Tempo traces
+- Validate Alertmanager notifications
+- Validate exporter metrics
+- Generate sustained platform traffic
+- Validate autoscaling
+- Update operational documentation
+
+---
+
+### Future Platform Goals
+
+Following observability completion:
+
+- Keycloak Operator
+- OpenID Connect (OIDC)
+- MFA
+- External Secrets
+- Helm packaging
+- GitOps
+- Terraform
 
 
 

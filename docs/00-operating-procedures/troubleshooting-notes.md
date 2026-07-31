@@ -8519,7 +8519,6 @@ Executed temporary curl Pod.
 
 Validated:
 
-
 http://auth-service:8000/health/ready
 
 
@@ -8658,7 +8657,6 @@ Immediately after deploying Tempo, Asset Service continued reporting OpenTelemet
 
 Observed errors:
 
-```text
 Failed to export traces to tempo:4317
 
 StatusCode.UNAVAILABLE
@@ -8666,13 +8664,10 @@ StatusCode.UNAVAILABLE
 errors resolving tempo:4317
 
 Timeout while contacting DNS servers
-```
 
 After Kubernetes DNS propagated:
 
-```text
 Connection refused
-```
 
 appeared briefly before export recovered.
 
@@ -8690,7 +8685,6 @@ Asset Service attempted to export traces before:
 
 Observed startup sequence:
 
-```text
 DNS lookup failure
 
 ↓
@@ -8708,7 +8702,7 @@ Tempo listener becomes available
 ↓
 
 Trace export succeeds
-```
+
 
 No application changes were required.
 
@@ -8727,12 +8721,11 @@ Tempo Deployment:
 
 Asset Service validation:
 
-```bash
+bash
 kubectl logs deployment/asset-service \
 -n ops-platform \
 --since=30s \
 | grep -iE 'tempo|export|unavailable|resolving'
-```
 
 Returned no output after Tempo completed startup.
 
@@ -8786,43 +8779,34 @@ Deployment:
 
 Prometheus Targets page confirmed:
 
-```text
 asset-service   UP
 
 auth-service    UP
 
 prometheus      UP
-```
 
 Scrape interval:
 
-```text
 15 seconds
-```
 
 Observed scrape duration:
 
-```text
 Approximately 4 ms
-```
 
 Metrics endpoint validation:
 
-```text
 Asset Service
 
 /metrics
 
 OK
-```
 
-```text
 Auth Service
 
 /metrics
 
 OK
-```
+
 
 Prometheus alert rules successfully loaded.
 
@@ -8836,9 +8820,7 @@ Initial Metrics Server deployment failed readiness.
 
 Observed errors:
 
-```text
 x509 certificate validation failure
-```
 
 Docker Desktop kubelet certificates do not include IP SANs required by Metrics Server.
 
@@ -8848,19 +8830,16 @@ Docker Desktop kubelet certificates do not include IP SANs required by Metrics S
 
 Added:
 
-```text
 --kubelet-insecure-tls
-```
 
 to Metrics Server arguments.
 
 Validation:
 
-```bash
+bash
 kubectl top nodes
 
 kubectl top pods -n ops-platform
-```
 
 Both commands returned resource metrics successfully.
 
@@ -8872,7 +8851,6 @@ Performed successful load test against Asset Service.
 
 Observed scaling sequence:
 
-```text
 1 Pod
 
 ↓
@@ -8894,11 +8872,9 @@ Load removed
 ↓
 
 1 Pod
-```
 
 Observed Pod lifecycle:
 
-```text
 Pending
 
 ↓
@@ -8916,7 +8892,6 @@ Terminating
 ↓
 
 Completed
-```
 
 Confirmed:
 
@@ -8971,3 +8946,303 @@ Pods are disposable and may be created or removed without affecting Service avai
 - HPA determines the desired number of replicas.
 - ReplicaSets enforce that desired state.
 - Services continue routing traffic during Pod creation and termination, providing uninterrupted availability during autoscaling.
+
+# Kubernetes Observability Migration Notes (Phase 7.1)
+
+## Grafana Migration
+
+Successfully migrated Grafana from Docker Compose to Kubernetes.
+
+Implemented:
+
+- Kubernetes ConfigMap for provisioning
+- Kubernetes ConfigMap for dashboards
+- Kubernetes Secret for SMTP credentials
+- PersistentVolumeClaim for Grafana data
+- Deployment
+- ClusterIP Service
+- Traefik Ingress (/grafana)
+
+### Image Version
+
+Pinned Grafana version:
+
+grafana/grafana:13.1.1
+
+Avoid using `latest` tags for production-style infrastructure.
+
+### SMTP Secret Management
+
+Grafana SMTP credentials are stored in:
+
+grafana-secret
+
+The Kubernetes Secret is generated locally and excluded from Git.
+
+kubernetes/base/observability/grafana/secret.yaml
+
+is intentionally ignored by `.gitignore`.
+
+Secrets should always be updated using:
+
+bash
+kubectl create secret generic grafana-secret \
+  --dry-run=client \
+  --output=yaml
+
+rather than manually editing base64 values.
+
+### Dashboard Migration
+
+Existing dashboard JSON files migrated successfully.
+
+Provisioning restored automatically through ConfigMaps.
+
+No manual dashboard import required.
+
+### Datasources
+
+Existing datasources migrated without modification.
+
+Validated:
+
+- Prometheus
+- Tempo
+- Loki (after Loki migration)
+
+### Validation
+
+Validated:
+
+- Deployment
+- Persistent Volume
+- Service
+- Ingress
+- Dashboard provisioning
+- Datasource provisioning
+- SMTP configuration
+
+---
+
+## Kubernetes Platform Status Script
+
+Added:
+
+scripts/kubernetes-platform-status.sh
+
+Purpose:
+
+Provides a Kubernetes-native operational health check replacing the previous Docker Compose startup workflow.
+
+Checks include:
+
+- Cluster connectivity
+- Namespace
+- Deployments
+- StatefulSets
+- PVC status
+- Services
+- EndpointSlices
+- Ingress
+- HPA
+- Metrics Server
+- Pod health
+- Observability stack status
+
+Known expected warnings:
+
+Loki has not been migrated yet
+Alertmanager has not been migrated yet
+
+Warnings automatically disappear as components are migrated.
+
+---
+
+## Loki Migration
+
+Successfully migrated Loki from Docker Compose.
+
+Implemented:
+
+- ConfigMap
+- PersistentVolumeClaim
+- Deployment
+- ClusterIP Service
+
+### Image Version
+
+Pinned:
+
+grafana/loki:3.7.2
+
+Filesystem storage is used for local Kubernetes development.
+
+Production deployments should migrate to object storage.
+
+### Validation
+
+Verified:
+
+- Deployment rollout
+- PVC binding
+- ClusterIP Service
+- Service DNS
+- /ready endpoint
+- Build information endpoint
+
+Validated version:
+
+3.7.2
+
+### Startup Messages
+
+Observed during initial startup:
+
+RulerStorage is nil. Not starting the ruler.
+
+Expected.
+
+The Loki ruler is intentionally not configured.
+
+Observed once:
+
+error getting ingester clients
+empty ring
+
+
+Expected during initial startup before the single-node ring initializes.
+
+No recurring warnings or errors observed after startup.
+
+---
+
+## Grafana Alloy Migration
+
+Promtail was retired.
+
+Reason:
+
+Promtail was configured specifically for Docker container discovery and Docker log files.
+
+Kubernetes migration uses Grafana Alloy.
+
+Implemented:
+
+- ServiceAccount
+- Role
+- RoleBinding
+- ConfigMap
+- Deployment
+- ClusterIP Service
+
+Pinned version:
+
+grafana/alloy:v1.18.0
+
+### Validation
+
+Verified:
+
+- Deployment
+- Service
+- Endpoint
+- No runtime warnings
+- No runtime errors
+
+Confirmed successful Kubernetes Pod discovery.
+
+Confirmed successful log forwarding into Loki.
+
+Validated in Grafana Explore.
+
+---
+
+## Logging Pipeline
+
+Current Kubernetes logging flow:
+
+Application
+
+↓
+
+stdout
+
+↓
+
+Kubernetes
+
+↓
+
+Grafana Alloy
+
+↓
+
+Loki
+
+↓
+
+Grafana Explore
+
+Structured JSON logging preserved.
+
+Fields verified:
+
+- trace_id
+- span_id
+- request_id
+- service
+- category
+- severity
+- duration_ms
+
+Trace correlation information is now available directly from log entries.
+
+---
+
+## Operational Validation
+
+Generated sustained application traffic.
+
+Validated:
+
+- Grafana dashboards
+- Prometheus metrics
+- Tempo traces
+- Loki logs
+- HPA autoscaling
+
+Observed HPA scaling:
+
+1
+
+↓
+
+2
+
+↓
+
+3
+
+↓
+
+2
+
+↓
+
+1
+
+Confirmed complete observability pipeline is operational.
+
+---
+
+## Lessons Learned
+
+Minimal container images may not contain diagnostic utilities such as:
+
+- wget
+- curl
+- bash
+
+Use temporary utility Pods (curlimages/curl) for in-cluster validation rather than assuming tooling exists inside production containers.
+
+Prefer validating Kubernetes Services rather than executing commands directly inside application containers whenever possible.
