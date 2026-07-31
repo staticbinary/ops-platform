@@ -16,3 +16,6 @@ Thumbs.db
 # Local infrastructure backups
 backups/
 kubernetes/base/config/secret.local.yaml
+
+# Local Kubernetes secrets
+kubernetes/base/observability/grafana/secret.yaml

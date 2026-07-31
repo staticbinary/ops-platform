@@ -1,0 +1,95 @@
+apiVersion: v1
+data:
+  contact-points.yml: |
+    apiVersion: 1
+
+    contactPoints:
+      - orgId: 1
+        name: Ops Platform Email
+        receivers:
+          - uid: ops-platform-email
+            type: email
+            settings:
+              addresses: staticbinaryops@gmail.com
+              singleEmail: false
+            disableResolveMessage: false
+  dashboards.yml: |
+    apiVersion: 1
+
+    providers:
+      - name: Ops Platform Dashboards
+        orgId: 1
+        folder: Ops Platform
+        folderUid: efqq4x24li58gb
+        type: file
+        disableDeletion: false
+        editable: false
+        updateIntervalSeconds: 30
+        options:
+          path: /var/lib/grafana/dashboards
+  datasources.yml: |
+    apiVersion: 1
+
+    datasources:
+      - name: Prometheus
+        uid: prometheus
+        type: prometheus
+        access: proxy
+        url: http://prometheus:9090
+        isDefault: true
+        editable: false
+
+      - name: Loki
+        uid: loki
+        type: loki
+        access: proxy
+        url: http://loki:3100
+        editable: false
+
+      - name: Tempo
+        uid: tempo
+        type: tempo
+        access: proxy
+        url: http://tempo:3200
+        editable: false
+  notification-policies.yml: |
+    apiVersion: 1
+
+    policies:
+      - orgId: 1
+        receiver: Ops Platform Email
+        group_by:
+          - grafana_folder
+          - alertname
+        group_wait: 30s
+        group_interval: 5m
+        repeat_interval: 4h
+  templates.yml: |
+    apiVersion: 1
+
+    templates:
+      - orgId: 1
+        name: Ops Platform Alert Template
+        template: |
+          {{ define "ops_platform_alert" }}
+          Ops Platform Alert
+
+          Status: {{ .Status }}
+
+          {{ range .Alerts }}
+          Alert: {{ .Labels.alertname }}
+          Severity: {{ .Labels.severity }}
+          Category: {{ .Labels.category }}
+          Service: {{ .Labels.service }}
+
+          Summary: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Runbook: {{ .Annotations.runbook }}
+
+          Starts At: {{ .StartsAt }}
+          {{ end }}
+          {{ end }}
+kind: ConfigMap
+metadata:
+  name: grafana-provisioning
+  namespace: ops-platform
