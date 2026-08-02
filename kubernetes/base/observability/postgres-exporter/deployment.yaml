@@ -106,4 +106,3 @@ spec:
         - name: postgres-exporter-config
           configMap:
             name: postgres-exporter-config
-            
