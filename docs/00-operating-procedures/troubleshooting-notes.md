@@ -9246,3 +9246,385 @@ Minimal container images may not contain diagnostic utilities such as:
 Use temporary utility Pods (curlimages/curl) for in-cluster validation rather than assuming tooling exists inside production containers.
 
 Prefer validating Kubernetes Services rather than executing commands directly inside application containers whenever possible.
+
+# Troubleshooting Notes — Phase 7.1 Observability Migration Completion
+
+## Date
+
+2026-08-02
+
+---
+
+# Summary
+
+Completed the Kubernetes-native observability stack migration and validation.
+
+The platform now uses Kubernetes-native deployments for:
+
+- Prometheus
+- Grafana
+- Loki
+- Tempo
+- Alloy
+- PostgreSQL Exporter
+- Node Exporter
+- Blackbox Exporter
+- Alertmanager
+
+Docker Compose dependencies for observability have now been fully eliminated.
+
+---
+
+# Blackbox Exporter Migration
+
+## Issue
+
+The original Docker Compose configuration used a dedicated Blackbox Exporter configuration.
+
+During migration the initial Prometheus configuration accidentally placed the cAdvisor scrape configuration inside the Blackbox scrape job.
+
+This prevented:
+
+- Blackbox HTTP probes
+- cAdvisor scraping
+- proper scrape configuration loading
+
+---
+
+## Resolution
+
+Separated the scrape jobs into independent Prometheus jobs.
+
+Final structure:
+
+yaml
+- prometheus
+- asset-service
+- auth-service
+- postgres-exporter
+- node-exporter
+- blackbox-http
+- cadvisor
+
+
+Validation:
+
+- probe_success == 1
+- 5 HTTP endpoints monitored
+- Blackbox Exporter healthy
+
+---
+
+# Node Exporter Migration
+
+## Migration
+
+Migrated from Docker Compose container to Kubernetes DaemonSet.
+
+Benefits:
+
+- one exporter per node
+- automatic node coverage
+- Kubernetes-native deployment
+
+Validation:
+
+- node_cpu_seconds_total metrics available
+- node_memory_* metrics available
+- Prometheus target UP
+
+---
+
+# PostgreSQL Exporter Migration
+
+## Migration
+
+Migrated PostgreSQL Exporter to Kubernetes Deployment.
+
+Validated:
+
+- pg_up == 1
+- database metrics available
+- Grafana panels operational
+
+---
+
+# Alertmanager Migration
+
+## Migration
+
+Implemented Kubernetes-native Alertmanager deployment.
+
+Components:
+
+- Deployment
+- Service
+- PVC
+- Secret
+- ConfigMap
+
+Prometheus configured with:
+
+yaml
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+---
+
+# Gmail SMTP Integration
+
+Configured Gmail SMTP relay using:
+
+- Kubernetes Secret
+- App Password authentication
+
+Receiver:
+
+ops-platform-email
+
+
+Validation:
+
+- notification metrics increment correctly
+- zero failed notifications
+- successful email delivery confirmed
+
+Metrics:
+
+
+alertmanager_notifications_total{integration="email"} > 0
+alertmanager_notifications_failed_total == 0
+
+---
+
+# Alert Pipeline Validation
+
+Created temporary validation rule:
+
+ObservabilityPipelineTest
+
+Validated:
+
+- Prometheus rule loading
+- Alert firing
+- Alert delivery
+- Gmail notification
+- Alert resolution
+- Resolved notification
+- Rule removal
+- Alert cleanup
+
+Confirmed:
+
+- firing notification received
+- resolved notification received
+- active alerts cleared
+- Prometheus rule removed
+
+---
+
+# Kubelet cAdvisor Migration
+
+## Decision
+
+Replaced standalone cAdvisor deployment with Kubernetes-native kubelet metrics.
+
+Reason:
+
+- enterprise best practice
+- fewer containers
+- reduced maintenance
+- matches managed Kubernetes environments
+
+---
+
+## Required RBAC
+
+Prometheus ServiceAccount granted:
+
+
+get nodes
+list nodes
+watch nodes
+get nodes/metrics
+get nodes/proxy
+
+Validation:
+
+kubectl auth can-i
+
+returned:
+
+yes
+
+for all required permissions.
+
+---
+
+# Prometheus Configuration Issue
+
+## Issue
+
+Initial cAdvisor configuration accidentally interrupted the Blackbox configuration due to YAML ordering.
+
+Symptoms:
+
+- missing Blackbox targets
+- missing cAdvisor target
+
+---
+
+## Resolution
+
+Reorganized scrape_configs so every job remained independent.
+
+Final scrape order:
+
+Prometheus
+Asset Service
+Auth Service
+PostgreSQL Exporter
+Node Exporter
+Blackbox HTTP
+Kubelet cAdvisor
+
+Validation:
+
+All scrape pools loaded successfully.
+
+---
+
+# Tempo Stability
+
+## Issue
+
+Using:
+
+yaml
+grafana/tempo:latest
+
+pulled:
+
+Tempo 3.0.0-rc.1
+
+The release candidate generated unexpected runtime behavior including panic output during validation.
+
+---
+
+## Resolution
+
+Pinned Tempo to:
+
+yaml
+grafana/tempo:2.10.5
+
+Validation:
+
+- readiness endpoint healthy
+- build info verified
+- no warnings
+- no errors
+- no panics
+
+---
+
+# Alloy Validation
+
+Observed temporary warnings immediately after Prometheus restart:
+
+pod not found
+tailer stopped; will retry
+
+Cause:
+
+Prometheus pod recreation during rollout.
+
+Resolution:
+
+Expected transient behavior.
+
+Validation:
+
+After rollout completed:
+
+PASS: no recent Alloy warnings or errors
+
+---
+
+# Final Observability Validation
+
+Validated:
+
+- Prometheus targets
+- PostgreSQL metrics
+- Node Exporter metrics
+- kubelet cAdvisor metrics
+- Blackbox HTTP probes
+- Alertmanager routing
+- Gmail notifications
+- Loki readiness
+- Alloy log collection
+- Tempo readiness
+- Grafana dashboards
+
+All services reported healthy.
+
+---
+
+# Kubernetes Platform Status
+
+Final validation script returned:
+
+HEALTHY — all checks passed
+
+Validated:
+
+- Cluster
+- Deployments
+- StatefulSets
+- DaemonSets
+- Services
+- EndpointSlices
+- PVCs
+- Prometheus targets
+- Service discovery
+- RBAC
+- Ingress
+- HPA
+- Metrics Server
+- Pod health
+
+No failed checks.
+
+---
+
+# Lessons Learned
+
+- Prefer Kubernetes-native telemetry sources over standalone exporters when available.
+- Pin observability component versions instead of using `latest`.
+- Validate Prometheus scrape jobs after every configuration change.
+- Always perform end-to-end alert validation (fire → notify → resolve) before considering Alertmanager complete.
+- EndpointSlice validation is more reliable than legacy Endpoints when confirming Kubernetes service discovery.
+- Temporary log warnings immediately after pod rollouts are expected; always verify that they clear before treating them as operational issues.
+
+---
+
+# Operational Result
+
+The Ops Platform observability stack is now fully Kubernetes-native, enterprise-aligned, and operationally validated.
+
+Completed platform capabilities include:
+
+- Metrics
+- Logging
+- Distributed tracing
+- Health probing
+- Host monitoring
+- Database monitoring
+- Alerting
+- Email notifications
+- Kubernetes-native service discovery
+- Automated operational validation

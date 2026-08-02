@@ -1,0 +1,15 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ops-platform-prometheus
+  labels:
+    app: prometheus
+    component: observability
+subjects:
+  - kind: ServiceAccount
+    name: prometheus
+    namespace: ops-platform
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: ops-platform-prometheus

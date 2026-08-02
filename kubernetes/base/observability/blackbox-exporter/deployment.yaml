@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blackbox-exporter
+  namespace: ops-platform
+  labels:
+    app: blackbox-exporter
+    component: observability
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: blackbox-exporter
+
+  template:
+    metadata:
+      labels:
+        app: blackbox-exporter
+        component: observability
+
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+
+      containers:
+        - name: blackbox-exporter
+          image: quay.io/prometheus/blackbox-exporter:v0.28.0
+          imagePullPolicy: IfNotPresent
+
+          args:
+            - --config.file=/etc/blackbox-exporter/blackbox.yml
+            - --web.listen-address=:9115
+
+          ports:
+            - name: http
+              containerPort: 9115
+              protocol: TCP
+
+          startupProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 30
+
+          readinessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+
+          volumeMounts:
+            - name: blackbox-exporter-config
+              mountPath: /etc/blackbox-exporter/blackbox.yml
+              subPath: blackbox.yml
+              readOnly: true
+
+      volumes:
+        - name: blackbox-exporter-config
+          configMap:
+            name: blackbox-exporter-config

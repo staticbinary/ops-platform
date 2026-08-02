@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-exporter-config
+  namespace: ops-platform
+  labels:
+    app: postgres-exporter
+    component: observability
+data:
+  postgres_exporter.yml: |
+    auth_modules: {}

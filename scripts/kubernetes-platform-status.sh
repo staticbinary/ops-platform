@@ -42,7 +42,9 @@ section() {
 }
 
 resource_exists() {
-    kubectl get "$1" "$2" -n "$NAMESPACE" >/dev/null 2>&1
+    kubectl get "$1" "$2" \
+        -n "$NAMESPACE" \
+        >/dev/null 2>&1
 }
 
 check_deployment() {
@@ -55,10 +57,19 @@ check_deployment() {
         return
     fi
 
-    desired="$(kubectl get deployment "$name" -n "$NAMESPACE" \
-        -o jsonpath='{.spec.replicas}' 2>/dev/null)"
-    available="$(kubectl get deployment "$name" -n "$NAMESPACE" \
-        -o jsonpath='{.status.availableReplicas}' 2>/dev/null)"
+    desired="$(
+        kubectl get deployment "$name" \
+            -n "$NAMESPACE" \
+            -o jsonpath='{.spec.replicas}' \
+            2>/dev/null
+    )"
+
+    available="$(
+        kubectl get deployment "$name" \
+            -n "$NAMESPACE" \
+            -o jsonpath='{.status.availableReplicas}' \
+            2>/dev/null
+    )"
 
     desired="${desired:-0}"
     available="${available:-0}"
@@ -67,6 +78,40 @@ check_deployment() {
         pass "$name Deployment ready ($available/$desired)"
     else
         fail "$name Deployment not ready ($available/$desired)"
+    fi
+}
+
+check_daemonset() {
+    local name="$1"
+    local desired
+    local ready
+
+    if ! resource_exists daemonset "$name"; then
+        fail "$name DaemonSet not found"
+        return
+    fi
+
+    desired="$(
+        kubectl get daemonset "$name" \
+            -n "$NAMESPACE" \
+            -o jsonpath='{.status.desiredNumberScheduled}' \
+            2>/dev/null
+    )"
+
+    ready="$(
+        kubectl get daemonset "$name" \
+            -n "$NAMESPACE" \
+            -o jsonpath='{.status.numberReady}' \
+            2>/dev/null
+    )"
+
+    desired="${desired:-0}"
+    ready="${ready:-0}"
+
+    if [[ "$ready" == "$desired" && "$desired" -gt 0 ]]; then
+        pass "$name DaemonSet ready ($ready/$desired)"
+    else
+        fail "$name DaemonSet not ready ($ready/$desired)"
     fi
 }
 
@@ -80,10 +125,19 @@ check_statefulset() {
         return
     fi
 
-    desired="$(kubectl get statefulset "$name" -n "$NAMESPACE" \
-        -o jsonpath='{.spec.replicas}' 2>/dev/null)"
-    ready="$(kubectl get statefulset "$name" -n "$NAMESPACE" \
-        -o jsonpath='{.status.readyReplicas}' 2>/dev/null)"
+    desired="$(
+        kubectl get statefulset "$name" \
+            -n "$NAMESPACE" \
+            -o jsonpath='{.spec.replicas}' \
+            2>/dev/null
+    )"
+
+    ready="$(
+        kubectl get statefulset "$name" \
+            -n "$NAMESPACE" \
+            -o jsonpath='{.status.readyReplicas}' \
+            2>/dev/null
+    )"
 
     desired="${desired:-0}"
     ready="${ready:-0}"
@@ -105,10 +159,14 @@ check_service_endpoints() {
     fi
 
     endpoints="$(
-        kubectl get endpoints "$name"             -n "$NAMESPACE"             -o jsonpath='{range .subsets[*].addresses[*]}{.ip}{" "}{end}'             2>/dev/null
+        kubectl get endpointslice \
+            -n "$NAMESPACE" \
+            -l "kubernetes.io/service-name=$name" \
+            -o jsonpath='{.items[*].endpoints[*].addresses[*]}' \
+            2>/dev/null
     )"
 
-    if [[ -n "${endpoints// }" ]]; then
+    if [[ -n "${endpoints//[[:space:]]/}" ]]; then
         pass "$name Service has endpoint(s): $endpoints"
     else
         fail "$name Service has no active endpoints"
@@ -124,13 +182,44 @@ check_pvc() {
         return
     fi
 
-    phase="$(kubectl get pvc "$name" -n "$NAMESPACE" \
-        -o jsonpath='{.status.phase}' 2>/dev/null)"
+    phase="$(
+        kubectl get pvc "$name" \
+            -n "$NAMESPACE" \
+            -o jsonpath='{.status.phase}' \
+            2>/dev/null
+    )"
 
     if [[ "$phase" == "Bound" ]]; then
         pass "$name PVC is Bound"
     else
         fail "$name PVC status is ${phase:-Unknown}"
+    fi
+}
+
+prometheus_query() {
+    local encoded_query="$1"
+
+    kubectl get --raw \
+        "/api/v1/namespaces/${NAMESPACE}/services/http:prometheus:9090/proxy/api/v1/query?query=${encoded_query}" \
+        2>/dev/null
+}
+
+check_prometheus_query_one() {
+    local description="$1"
+    local encoded_query="$2"
+    local response
+
+    response="$(prometheus_query "$encoded_query" || true)"
+
+    if [[ -z "$response" ]]; then
+        fail "$description query failed"
+        return
+    fi
+
+    if grep -Eq '"value":\[[^]]*,"1"\]' <<<"$response"; then
+        pass "$description"
+    else
+        fail "$description returned no healthy result"
     fi
 }
 
@@ -164,7 +253,8 @@ fi
 
 NOT_READY_NODES="$(
     kubectl get nodes \
-        --no-headers 2>/dev/null |
+        --no-headers \
+        2>/dev/null |
         awk '$2 !~ /^Ready/ {print $1}'
 )"
 
@@ -187,43 +277,116 @@ check_pvc postgres-data
 section "Observability"
 
 check_deployment prometheus
-check_deployment tempo
 check_deployment grafana
 check_pvc grafana-data
 
-if resource_exists deployment loki; then
-    check_deployment loki
-else
-    warn "Loki has not been migrated yet"
-fi
+check_deployment tempo
+check_deployment loki
+check_deployment alloy
 
-if resource_exists deployment alertmanager; then
-    check_deployment alertmanager
-else
-    warn "Alertmanager has not been migrated yet"
-fi
+check_deployment postgres-exporter
+check_daemonset node-exporter
+check_deployment blackbox-exporter
+
+check_deployment alertmanager
+check_pvc alertmanager-data
 
 section "Service Discovery"
 
 check_service_endpoints asset-service
 check_service_endpoints auth-service
 check_service_endpoints postgres
+
 check_service_endpoints prometheus
-check_service_endpoints tempo
 check_service_endpoints grafana
+check_service_endpoints tempo
+check_service_endpoints loki
+check_service_endpoints alloy
+
+check_service_endpoints postgres-exporter
+check_service_endpoints node-exporter
+check_service_endpoints blackbox-exporter
+check_service_endpoints alertmanager
+
+section "Prometheus Targets"
+
+check_prometheus_query_one \
+    "Prometheus target is up" \
+    'up%7Bjob%3D%22prometheus%22%7D'
+
+check_prometheus_query_one \
+    "Asset Service target is up" \
+    'up%7Bjob%3D%22asset-service%22%7D'
+
+check_prometheus_query_one \
+    "Auth Service target is up" \
+    'up%7Bjob%3D%22auth-service%22%7D'
+
+check_prometheus_query_one \
+    "PostgreSQL Exporter target is up" \
+    'up%7Bjob%3D%22postgres-exporter%22%7D'
+
+check_prometheus_query_one \
+    "Node Exporter target is up" \
+    'up%7Bjob%3D%22node-exporter%22%7D'
+
+check_prometheus_query_one \
+    "Kubelet cAdvisor target is up" \
+    'up%7Bjob%3D%22cadvisor%22%7D'
+
+check_prometheus_query_one \
+    "All Blackbox HTTP probes are successful" \
+    'min%28probe_success%7Bjob%3D%22blackbox-http%22%7D%29'
+
+section "Prometheus Access"
+
+PROMETHEUS_SERVICE_ACCOUNT="$(
+    kubectl get deployment prometheus \
+        -n "$NAMESPACE" \
+        -o jsonpath='{.spec.template.spec.serviceAccountName}' \
+        2>/dev/null
+)"
+
+if [[ "$PROMETHEUS_SERVICE_ACCOUNT" == "prometheus" ]]; then
+    pass "Prometheus uses the dedicated prometheus ServiceAccount"
+else
+    fail "Prometheus is using ServiceAccount ${PROMETHEUS_SERVICE_ACCOUNT:-default}"
+fi
+
+if kubectl auth can-i get nodes \
+    --subresource=metrics \
+    --as="system:serviceaccount:${NAMESPACE}:prometheus" \
+    >/dev/null 2>&1; then
+    pass "Prometheus ServiceAccount can read node metrics"
+else
+    fail "Prometheus ServiceAccount cannot read node metrics"
+fi
+
+if kubectl auth can-i get nodes \
+    --subresource=proxy \
+    --as="system:serviceaccount:${NAMESPACE}:prometheus" \
+    >/dev/null 2>&1; then
+    pass "Prometheus ServiceAccount can access the node proxy"
+else
+    fail "Prometheus ServiceAccount cannot access the node proxy"
+fi
 
 section "Networking"
 
 INGRESS_COUNT="$(
-    kubectl get ingress -n "$NAMESPACE" \
-        --no-headers 2>/dev/null |
+    kubectl get ingress \
+        -n "$NAMESPACE" \
+        --no-headers \
+        2>/dev/null |
         wc -l |
         tr -d ' '
 )"
 
 if [[ "$INGRESS_COUNT" -gt 0 ]]; then
     pass "$INGRESS_COUNT Ingress resource(s) configured"
-    kubectl get ingress -n "$NAMESPACE" \
+
+    kubectl get ingress \
+        -n "$NAMESPACE" \
         --no-headers \
         -o custom-columns='NAME:.metadata.name,CLASS:.spec.ingressClassName,ADDRESS:.status.loadBalancer.ingress[0].ip,PATHS:.spec.rules[0].http.paths[*].path' \
         2>/dev/null |
@@ -235,15 +398,19 @@ fi
 section "Scaling"
 
 HPA_COUNT="$(
-    kubectl get hpa -n "$NAMESPACE" \
-        --no-headers 2>/dev/null |
+    kubectl get hpa \
+        -n "$NAMESPACE" \
+        --no-headers \
+        2>/dev/null |
         wc -l |
         tr -d ' '
 )"
 
 if [[ "$HPA_COUNT" -gt 0 ]]; then
     pass "$HPA_COUNT HorizontalPodAutoscaler resource(s) configured"
-    kubectl get hpa -n "$NAMESPACE" \
+
+    kubectl get hpa \
+        -n "$NAMESPACE" \
         --no-headers \
         -o custom-columns='NAME:.metadata.name,MIN:.spec.minReplicas,MAX:.spec.maxReplicas,CURRENT:.status.currentReplicas,DESIRED:.status.desiredReplicas' \
         2>/dev/null |
@@ -261,14 +428,20 @@ fi
 section "Pod Health"
 
 UNHEALTHY_PODS="$(
-    kubectl get pods -n "$NAMESPACE" \
-        --no-headers 2>/dev/null |
-        awk '$3 != "Running" && $3 != "Completed" {print $1 " (" $3 ")"}'
+    kubectl get pods \
+        -n "$NAMESPACE" \
+        --no-headers \
+        2>/dev/null |
+        awk '$3 != "Running" && $3 != "Completed" {
+            print $1 " (" $3 ")"
+        }'
 )"
 
 NOT_READY_PODS="$(
-    kubectl get pods -n "$NAMESPACE" \
-        --no-headers 2>/dev/null |
+    kubectl get pods \
+        -n "$NAMESPACE" \
+        --no-headers \
+        2>/dev/null |
         awk '
             $3 == "Running" {
                 split($2, ready, "/")
@@ -281,11 +454,14 @@ NOT_READY_PODS="$(
 
 if [[ -z "$UNHEALTHY_PODS" && -z "$NOT_READY_PODS" ]]; then
     POD_COUNT="$(
-        kubectl get pods -n "$NAMESPACE" \
-            --no-headers 2>/dev/null |
+        kubectl get pods \
+            -n "$NAMESPACE" \
+            --no-headers \
+            2>/dev/null |
             wc -l |
             tr -d ' '
     )"
+
     pass "All $POD_COUNT Pod(s) are healthy"
 else
     if [[ -n "$UNHEALTHY_PODS" ]]; then
@@ -309,9 +485,11 @@ if [[ "$FAILURES" -eq 0 ]]; then
         printf "%s%sHEALTHY WITH %d EXPECTED WARNING(S)%s\n\n" \
             "$BOLD" "$YELLOW" "$WARNINGS" "$RESET"
     fi
+
     exit 0
 else
     printf "%s%sUNHEALTHY%s — %d failed check(s), %d warning(s)\n\n" \
         "$BOLD" "$RED" "$RESET" "$FAILURES" "$WARNINGS"
+
     exit 1
 fi

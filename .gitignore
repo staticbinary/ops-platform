@@ -19,3 +19,9 @@ kubernetes/base/config/secret.local.yaml
 
 # Local Kubernetes secrets
 kubernetes/base/observability/grafana/secret.yaml
+
+# PostgreSQL exporter local secret
+kubernetes/base/observability/postgres-exporter/secret.yaml
+
+# Alertmanager local SMTP secret
+kubernetes/base/observability/alertmanager/secret.yaml

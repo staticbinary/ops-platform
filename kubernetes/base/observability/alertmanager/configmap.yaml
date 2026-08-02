@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-config
+  namespace: ops-platform
+  labels:
+    app: alertmanager
+    component: observability
+data:
+  alertmanager.yml: |
+    global:
+      resolve_timeout: 5m
+      smtp_smarthost: smtp.gmail.com:587
+      smtp_from: staticbinaryops@gmail.com
+      smtp_auth_username: staticbinaryops@gmail.com
+      smtp_auth_password_file: /etc/alertmanager/secrets/smtp-password
+      smtp_require_tls: true
+
+    route:
+      receiver: ops-platform-email
+      group_by:
+        - alertname
+        - category
+        - service
+      group_wait: 10s
+      group_interval: 1m
+      repeat_interval: 4h
+
+    receivers:
+      - name: ops-platform-email
+        email_configs:
+          - to: staticbinaryops@gmail.com
+            send_resolved: true
+            headers:
+              subject: >-
+                [Ops Platform] {{ .Status | toUpper }}:
+                {{ .CommonLabels.alertname }}

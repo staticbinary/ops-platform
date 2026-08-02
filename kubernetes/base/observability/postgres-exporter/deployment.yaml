@@ -1,0 +1,109 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-exporter
+  namespace: ops-platform
+  labels:
+    app: postgres-exporter
+    component: observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-exporter
+  template:
+    metadata:
+      labels:
+        app: postgres-exporter
+        component: observability
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+
+      containers:
+        - name: postgres-exporter
+          image: quay.io/prometheuscommunity/postgres-exporter:v0.19.1
+          imagePullPolicy: IfNotPresent
+
+          args:
+            - --config.file=/etc/postgres-exporter/postgres_exporter.yml
+
+          ports:
+            - name: metrics
+              containerPort: 9187
+              protocol: TCP
+
+          env:
+            - name: DATA_SOURCE_URI
+              value: "postgres:5432/postgres?sslmode=disable"
+
+            - name: DATA_SOURCE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-exporter-secret
+                  key: DATA_SOURCE_USER
+
+            - name: DATA_SOURCE_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-exporter-secret
+                  key: DATA_SOURCE_PASS
+
+            - name: PG_EXPORTER_COLLECTION_TIMEOUT
+              value: "30s"
+
+          startupProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 30
+
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+
+          volumeMounts:
+            - name: postgres-exporter-config
+              mountPath: /etc/postgres-exporter/postgres_exporter.yml
+              subPath: postgres_exporter.yml
+              readOnly: true
+
+      volumes:
+        - name: postgres-exporter-config
+          configMap:
+            name: postgres-exporter-config
+            

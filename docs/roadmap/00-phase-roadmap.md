@@ -5941,9 +5941,7 @@ Grafana
 
 Implemented:
 
-```text
 scripts/kubernetes-platform-status.sh
-```
 
 Operational validation includes:
 
@@ -5998,6 +5996,348 @@ Following observability completion:
 - GitOps
 - Terraform
 
+# Ops Platform Roadmap Update
+
+---
+
+# Current Phase
+
+## Phase 7.1 — Kubernetes Platform & Observability Foundation
+
+**Status:** ✅ COMPLETE
+
+---
+
+## Completed
+
+### Kubernetes Foundation
+
+- Docker Desktop Kubernetes cluster
+- Dedicated namespace
+- ConfigMaps
+- Secrets
+- Services
+- Deployments
+- StatefulSets
+- PersistentVolumes
+- PersistentVolumeClaims
+- Ingress (Traefik)
+- Horizontal Pod Autoscaling
+- Metrics Server
+- Kubernetes operational validation scripts
+
+---
+
+### Core Platform
+
+- Asset Service
+- Auth Service
+- PostgreSQL StatefulSet
+- Alembic database migrations
+- Persistent storage validation
+
+---
+
+### Observability Platform
+
+#### Metrics
+
+- Prometheus
+
+#### Visualization
+
+- Grafana
+
+#### Logging
+
+- Loki
+- Alloy
+
+#### Tracing
+
+- Tempo (stable release pinned)
+
+#### Exporters
+
+- PostgreSQL Exporter
+- Node Exporter
+
+#### Health Monitoring
+
+- Blackbox Exporter
+
+#### Container Monitoring
+
+- Kubernetes kubelet cAdvisor metrics
+
+#### Alerting
+
+- Alertmanager
+
+#### Notifications
+
+- Gmail SMTP integration
+- Alert routing
+- Alert grouping
+- Resolved notifications
+
+---
+
+### Security & RBAC
+
+- Dedicated Prometheus ServiceAccount
+- Kubernetes RBAC
+- kubelet metrics authorization
+- node proxy authorization
+- enterprise-native permissions model
+
+---
+
+### Operational Validation
+
+Validated end-to-end:
+
+- Cluster health
+- Storage
+- Service discovery
+- EndpointSlices
+- Deployments
+- StatefulSets
+- DaemonSets
+- Ingress
+- HPA
+- Metrics Server
+- Prometheus targets
+- Node metrics
+- PostgreSQL metrics
+- Container metrics
+- HTTP endpoint probing
+- Alert pipeline
+- Email notifications
+- Grafana dashboards
+- Loki ingestion
+- Tempo readiness
+
+Platform status:
+
+HEALTHY — all checks passed
+
+---
+
+# Current Platform Architecture
+
+Internet
+     │
+Traefik Ingress
+     │
+────────────────────────────────────
+
+Asset Service
+
+Auth Service
+
+────────────────────────────────────
+
+PostgreSQL
+
+────────────────────────────────────
+
+Prometheus
+Grafana
+Loki
+Tempo
+Alloy
+
+Node Exporter
+PostgreSQL Exporter
+Blackbox Exporter
+
+Alertmanager
+
+Kubernetes kubelet metrics
+
+────────────────────────────────────
+
+Persistent Volumes
+
+---
+
+
+==========================================================================================================
+
+
+
+# Phase 7.2
+
+## Kubernetes Production Hardening
+
+### High Priority
+
+- Kubernetes resource quotas
+- LimitRanges
+- PodDisruptionBudgets
+- NetworkPolicies
+- Pod Security Standards
+- Security Con hardening
+- ReadOnlyRootFilesystem where applicable
+- Non-root containers
+- Capability reduction
+- Image pull policies review
+- Readiness/Liveness tuning
+- Startup probe optimization
+
+---
+
+### Configuration Management
+
+- Kustomize overlays
+
+Development
+
+Staging
+
+Production
+
+- Environment-specific configuration
+- ConfigMap refinement
+- Secret management improvements
+
+---
+
+### Kubernetes Operations
+
+- Rolling update strategy tuning
+- Deployment strategy review
+- Revision history limits
+- Pod affinity/anti-affinity
+- Topology spread constraints
+- Node selectors
+- Graceful termination improvements
+
+---
+
+### Storage
+
+- StorageClass review
+- Backup strategy
+- Restore validation
+- Snapshot strategy
+- Volume expansion testing
+
+---
+
+# Phase 7.3
+
+## Distributed Tracing Integration
+
+- OpenTelemetry SDK
+- Trace propagation
+- FastAPI instrumentation
+- PostgreSQL tracing
+- HTTP tracing
+- Grafana Tempo dashboards
+- Trace-to-log correlation
+- Trace-to-metric correlation
+
+---
+
+# Phase 7.4
+
+## Kubernetes CI/CD
+
+- Kubernetes deployment pipeline
+- Manifest validation
+- Kustomize validation
+- Deployment automation
+- Progressive rollout validation
+- Automated rollback testing
+- Release pipeline modernization
+
+---
+
+# Phase 7.5
+
+## Security Hardening
+
+- Secret rotation
+- Image vulnerability scanning
+- Trivy integration
+- SBOM generation
+- Admission policies
+- OPA/Gatekeeper evaluation
+- Runtime security improvements
+- Supply chain validation
+
+---
+
+# Phase 8
+
+## Enterprise Identity Platform
+
+- Keycloak
+- OpenID Connect
+- OAuth2
+- SAML
+- Single Sign-On
+- MFA
+- Service Accounts
+- API Tokens
+- Advanced RBAC
+- Identity federation
+
+---
+
+# Phase 9
+
+## Platform Applications
+
+Enterprise applications built on the platform:
+
+- Secure File Sharing
+- Internal Operations Portal
+- Device Inventory
+- Software Inventory
+- Patch Management
+- Configuration Management
+- Secrets Management
+- Operational Runbooks
+- Audit Portal
+- Incident Dashboard
+
+---
+
+# Phase 10
+
+## Home NOC / SOC
+
+- Suricata IDS
+- Wazuh
+- Threat Intelligence
+- GeoIP enrichment
+- Incident correlation
+- Network monitoring
+- Endpoint monitoring
+- Home infrastructure dashboards
+- Security operations workflows
+
+---
+
+# Long-Term Vision
+
+The platform has evolved from a Docker Compose learning environment into a Kubernetes-native platform engineering environment demonstrating practical experience with:
+
+- Kubernetes
+- Platform Engineering
+- Site Reliability Engineering
+- Infrastructure Engineering
+- Observability Engineering
+- DevSecOps
+- Enterprise Operations
+- Production Monitoring
+- Operational Automation
+- Cloud-native Architecture
+
+Future work will focus on production hardening, advanced automation, enterprise identity, and practical integrated applications while continuing to minimize technical debt and align with enterprise operational practices.
 
 
 
