@@ -25,3 +25,6 @@ kubernetes/base/observability/postgres-exporter/secret.yaml
 
 # Alertmanager local SMTP secret
 kubernetes/base/observability/alertmanager/secret.yaml
+
+# Keycloak identity Local secret
+kubernetes/base/identity/secret.yaml

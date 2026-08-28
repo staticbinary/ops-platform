@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-config
+  namespace: ops-platform
+data:
+  KC_DB: postgres
+  KC_DB_URL_HOST: postgres
+  KC_DB_URL_PORT: "5432"
+  KC_DB_URL_DATABASE: keycloak
+  KC_HTTP_ENABLED: "true"
+  KC_PROXY_HEADERS: xforwarded
+  KC_HEALTH_ENABLED: "true"
+  KC_METRICS_ENABLED: "true"
+  KC_HOSTNAME_STRICT: "false"
