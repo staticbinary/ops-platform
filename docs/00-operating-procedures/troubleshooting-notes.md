@@ -9628,3 +9628,248 @@ Completed platform capabilities include:
 - Email notifications
 - Kubernetes-native service discovery
 - Automated operational validation
+
+## Keycloak Production Startup Failed
+
+### Issue
+
+- Keycloak deployment entered a failed/restarting state after initial Kubernetes deployment.
+- Keycloak was started using production mode with `kc.sh start`.
+- Startup failed with:
+  - `hostname is not configured; either configure hostname, or set hostname-strict to false`
+
+### Root Cause
+
+- Production-mode Keycloak enables stricter hostname handling than development mode.
+- No explicit production hostname had been configured.
+- Keycloak therefore refused to complete startup with hostname strictness enabled.
+
+### Resolution
+
+- Added the following configuration to the Keycloak ConfigMap:
+  - `KC_HOSTNAME_STRICT: "false"`
+- Reapplied the configuration and restarted the deployment.
+- Keycloak successfully started in production mode.
+- Traefik forwarded the external request information correctly through the configured `xforwarded` proxy headers.
+- OIDC discovery subsequently generated externally accessible `localhost/keycloak` endpoints.
+
+---
+
+## Keycloak Ingress Returned HTTP 404
+
+### Issue
+
+- Keycloak was reachable internally through its Kubernetes Service.
+- Requests to:
+  - `http://localhost/keycloak`
+- returned HTTP `404` through Traefik.
+
+### Root Cause
+
+- Traefik forwarded the complete `/keycloak` path to Keycloak.
+- Keycloak was serving its application from `/`, so the forwarded `/keycloak` prefix did not correspond to an application route.
+
+### Resolution
+
+- Added a Traefik `StripPrefix` Middleware for:
+  - `/keycloak`
+- Associated the middleware with `keycloak-ingress`.
+- Traefik now removes the external prefix before forwarding requests to Keycloak.
+- Verified:
+  - `http://localhost/keycloak`
+  - returns HTTP `302`
+  - redirects to `/keycloak/admin/`
+- Keycloak administration and OIDC endpoints became accessible through the external route.
+
+---
+
+## OIDC Authorization Code Returned invalid_grant
+
+### Issue
+
+- Manual Authorization Code testing intermittently returned:
+  - `invalid_grant`
+  - `Code not valid`
+  - `User session not found`
+
+### Root Cause
+
+- OIDC authorization codes are short-lived and single-use.
+- Previously exchanged or expired authorization codes were reused during manual token testing.
+- A successful exchange invalidates the authorization code immediately.
+
+### Resolution
+
+- Generated a new authorization code through a fresh browser authorization request.
+- Copied only the value following the `code=` query parameter.
+- Stored the authorization code locally without exposing it in command history.
+- Performed exactly one token exchange and saved the resulting token response.
+- Reused the saved token response for subsequent inspection instead of attempting to exchange the authorization code again.
+
+### Validated Behaviors
+
+#### Authorization Code Flow
+
+- Browser authentication succeeded against the `ops-platform` realm.
+- Keycloak redirected successfully to the temporary local callback listener.
+- Authorization code exchange successfully returned Keycloak tokens.
+
+#### Token Claims
+
+- Access token contained the expected `opsadmin` identity information.
+- User profile claims were present.
+- `admin` was present in the Keycloak realm role claims.
+
+---
+
+## Keycloak Realm Export Terminated With Exit Code 137
+
+### Issue
+
+- Running the following realm export inside the live Keycloak pod failed:
+  - `kc.sh export`
+- The command terminated with exit code `137`.
+- No realm export file was produced.
+
+### Root Cause
+
+- The live Keycloak container had a 1 GiB memory limit.
+- Running `kc.sh export` started an additional Keycloak JVM inside the already-running application container.
+- The additional process exceeded the container's available memory and was terminated.
+
+### Resolution
+
+- Scaled the normal Keycloak deployment to zero replicas.
+- Created a temporary dedicated `keycloak-export` pod.
+- Configured the export pod with:
+  - 1 GiB memory request
+  - 2 GiB memory limit
+- Reused the existing Keycloak ConfigMap and Secret to connect to the dedicated Keycloak PostgreSQL database.
+- Successfully exported:
+  - `/tmp/keycloak-export/ops-platform-realm.json`
+
+### Validated Behaviors
+
+#### Realm Export
+
+- `ops-platform` realm exported successfully from the PostgreSQL-backed Keycloak configuration.
+- Export was subsequently available for sanitization and source control.
+
+#### Runtime Recovery
+
+- Temporary export pod was removed after export.
+- Normal Keycloak deployment was restored to one replica.
+- Keycloak returned to:
+  - `1/1 Running`
+
+---
+
+## kubectl cp Failed Against Keycloak Container
+
+### Issue
+
+- Attempting to copy the exported realm file with:
+  - `kubectl cp`
+- failed with:
+  - `exec: "tar": executable file not found in $PATH`
+
+### Root Cause
+
+- `kubectl cp` depends on the `tar` executable being available inside the source container.
+- The Keycloak container image does not include `tar`.
+
+### Resolution
+
+- Replaced `kubectl cp` with `kubectl exec` and `cat`.
+- Streamed the exported JSON directly from the container into a local repository file:
+  - `kubernetes/base/identity/realm/ops-platform-realm.json`
+- Verified that the resulting local file was present and readable.
+
+---
+
+## Keycloak Realm Export Contained Sensitive Material
+
+### Issue
+
+- Initial inspection of the exported realm JSON identified sensitive fields including:
+  - user credentials
+  - confidential client secret
+  - realm private keys
+  - key-provider secrets
+  - credential-bearing authenticator configuration
+- The raw export was therefore unsuitable for source control.
+
+### Root Cause
+
+- A Keycloak realm export can contain runtime state required to reproduce portions of the realm, including credential and cryptographic material.
+- The export was generated from the active `ops-platform` realm rather than from a source-control-safe template.
+
+### Resolution
+
+- Created a temporary local backup of the original realm export.
+- Sanitized the repository copy by removing:
+  - `users[*].credentials`
+  - `clients[*].secret`
+  - Keycloak `KeyProvider` components containing private key/secret material
+  - credential values contained in authenticator configuration
+- Performed a recursive structural scan for:
+  - `secret`
+  - `password`
+  - `credential`
+  - `credentials`
+  - `privateKey`
+  - `clientSecret`
+- Structural scan returned no remaining sensitive fields.
+- Remaining text matches such as `client-secret`, password policy names, credential flow names, and WebAuthn configuration were confirmed to be configuration identifiers rather than secret values.
+- Added the sanitized realm definition to source control.
+
+---
+
+## Keycloak Secret Manifest Was Not Ignored by Git
+
+### Issue
+
+- `git add -n kubernetes/base/identity` showed:
+  - `kubernetes/base/identity/secret.yaml`
+- `git check-ignore` initially returned no matching ignore rule.
+- The Kubernetes Secret manifest therefore would have been staged with the rest of the identity configuration.
+
+### Root Cause
+
+- No `.gitignore` rule existed for the Keycloak Secret manifest.
+
+### Resolution
+
+- Added:
+  - `kubernetes/base/identity/secret.yaml`
+- to `.gitignore`.
+- Verified the rule using:
+  - `git check-ignore -v`
+- Repeated the dry-run staging operation.
+- `secret.yaml` was no longer included.
+- Only the non-sensitive identity manifests and sanitized realm definition were staged.
+
+---
+
+## Git Commit Failed Due to Missing Author Identity
+
+### Issue
+
+- Initial Keycloak identity commit failed with:
+  - `Author identity unknown`
+  - `fatal: empty ident name`
+
+### Root Cause
+
+- The WSL Git environment did not have `user.name` and `user.email` configured.
+
+### Resolution
+
+- Configured the Git author identity.
+- Set the commit author name to the desired Git identity.
+- Configured an email associated with the GitHub account.
+- Retried the commit successfully.
+- Verified the new Keycloak identity commit was at `HEAD`.
+- Verified:
+  - `git status --short`
+- returned no output, confirming a clean working tree.

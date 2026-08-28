@@ -6162,11 +6162,6 @@ Persistent Volumes
 
 ---
 
-
-==========================================================================================================
-
-
-
 # Phase 7.2
 
 ## Kubernetes Production Hardening
@@ -6225,6 +6220,240 @@ Production
 - Volume expansion testing
 
 ---
+
+---
+
+# Phase 7.3
+
+## Identity and Access Management
+
+### Keycloak Platform Integration
+
+- [x] Deploy Keycloak to Kubernetes
+
+- [x] Configure Keycloak production startup
+
+- [x] Configure dedicated PostgreSQL database and runtime user
+
+- [x] Add Kubernetes ConfigMap
+
+- [x] Add Kubernetes Secret
+
+- [x] Add ClusterIP Service
+
+- [x] Add Traefik Ingress
+
+- [x] Configure `/keycloak` external route
+
+- [x] Configure startup, readiness, and liveness probes
+
+- [x] Enable Keycloak health endpoints
+
+- [x] Enable Keycloak metrics
+
+---
+
+### Realm and RBAC
+
+- [x] Create `ops-platform` realm
+
+- [x] Create `viewer` realm role
+
+- [x] Create `admin` realm role
+
+- [x] Create `opsadmin` test user
+
+- [x] Assign `admin` realm role
+
+- [x] Validate user identity claims
+
+- [x] Validate realm role claims
+
+---
+
+### OIDC Client
+
+- [x] Create confidential `auth-service` client
+
+- [x] Enable Authorization Code flow
+
+- [x] Disable Direct Access Grants
+
+- [x] Disable Implicit flow
+
+- [x] Configure local redirect URI
+
+- [x] Validate OIDC discovery document
+
+- [x] Validate authorization endpoint
+
+- [x] Validate token endpoint
+
+- [x] Validate JWKS endpoint
+
+- [x] Complete browser-based Authorization Code flow
+
+- [x] Exchange authorization code for tokens
+
+- [x] Decode and inspect Keycloak-issued access token
+
+---
+
+### Keycloak Configuration as Code
+
+- [x] Export `ops-platform` realm
+
+- [x] Remove user credential material from export
+
+- [x] Remove confidential client secrets from export
+
+- [x] Remove realm private signing/encryption keys
+
+- [x] Remove credential-bearing authenticator configuration
+
+- [x] Add sanitized realm definition to source control
+
+- [x] Exclude `secret.yaml` from Git
+
+- [x] Commit Kubernetes identity configuration
+
+---
+
+### Auth Service Integration
+
+- [ ] Add Keycloak/OIDC configuration to `auth-service`
+
+- [ ] Add JWKS retrieval and caching
+
+- [ ] Validate Keycloak JWT signatures
+
+- [ ] Validate token issuer
+
+- [ ] Validate token audience
+
+- [ ] Validate token expiration
+
+- [ ] Extract `realm_access.roles`
+
+- [ ] Map Keycloak roles into existing RBAC
+
+- [ ] Protect API endpoints with Keycloak-issued access tokens
+
+- [ ] Validate `viewer` authorization
+
+- [ ] Validate `admin` authorization
+
+- [ ] Add login/callback handling where appropriate
+
+- [ ] Add logout handling
+
+---
+
+### Authentication Migration
+
+- [ ] Review existing custom JWT implementation
+
+- [ ] Identify custom authentication logic superseded by Keycloak
+
+- [ ] Define migration path from custom JWT issuance
+
+- [ ] Preserve existing RBAC behavior during migration
+
+- [ ] Remove obsolete authentication code
+
+- [ ] Update authentication tests
+
+- [ ] Update API documentation
+
+---
+
+### Identity Hardening
+
+- [ ] Replace wildcard development redirect URI with exact callback URI
+
+- [ ] Review token lifetimes
+
+- [ ] Review session lifetimes
+
+- [ ] Configure MFA
+
+- [ ] Review brute-force protection
+
+- [ ] Review password policy
+
+- [ ] Review realm security headers
+
+- [ ] Review client scopes and token claims
+
+- [ ] Review service account requirements
+
+- [ ] Review API token strategy
+
+- [ ] Review secret rotation strategy
+
+---
+
+### Identity Operations
+
+- [ ] Automate realm bootstrap for fresh environments
+
+- [ ] Automate client provisioning
+
+- [ ] Automate realm role provisioning
+
+- [ ] Automate required database initialization
+
+- [ ] Document Keycloak backup strategy
+
+- [ ] Validate Keycloak database restore
+
+- [ ] Document realm export/import procedure
+
+- [ ] Add Keycloak health checks to platform status script
+
+- [ ] Add Keycloak metrics to Prometheus
+
+- [ ] Add Keycloak dashboard to Grafana
+
+- [ ] Add Keycloak alerting
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+==========================================================================================================
+
+
 
 # Phase 7.3
 
