@@ -9873,3 +9873,60 @@ Completed platform capabilities include:
 - Verified:
   - `git status --short`
 - returned no output, confirming a clean working tree.
+
+## Terraform Infrastructure as Code Foundation
+
+### Update
+- Installed Terraform CLI v1.16.2 in WSL.
+- Added the HashiCorp Kubernetes provider and initialized Terraform.
+- Configured Terraform to use the Docker Desktop Kubernetes context.
+- Created a temporary `terraform-demo` namespace through Terraform.
+- Validated the standard Terraform workflow:
+  - `terraform fmt`
+  - `terraform validate`
+  - `terraform plan`
+  - `terraform apply`
+  - Terraform state inspection
+  - `terraform destroy`
+- Modified a Terraform-managed Kubernetes resource in place.
+- Introduced a manual Kubernetes configuration change and confirmed Terraform detected the resulting drift.
+- Used `terraform apply` to reconcile the drift back to the declared configuration.
+- Destroyed the temporary namespace and verified both Kubernetes and Terraform state were clean.
+- Added Terraform repository hygiene:
+  - `.terraform/` excluded from source control.
+  - `*.tfstate` and `*.tfstate.*` excluded from source control.
+  - `.terraform.lock.hcl` retained for provider dependency locking.
+- Removed the temporary demonstration resource definition after lifecycle testing.
+
+### Next
+- Introduce Terraform input variables and outputs.
+- Establish the Terraform configuration structure for Ops Platform.
+- Review local versus remote Terraform state.
+- Define ownership boundaries between Terraform, Kubernetes manifests, and Helm.
+- Identify existing Ops Platform infrastructure appropriate for Terraform management or import.
+
+## Terraform Local Files Appeared in Git Status
+
+### Issue
+After initializing Terraform, local Terraform working files and state files appeared as untracked files in Git.
+
+Files included:
+- `.terraform/` provider binaries and supporting files
+- `terraform.tfstate`
+- `terraform.tfstate.backup`
+
+### Root Cause
+Terraform creates a local `.terraform/` working directory during `terraform init` and local state files after managing resources.
+
+The repository did not initially contain ignore rules for these Terraform-generated files.
+
+### Resolution
+Added the following rules to `.gitignore`:
+
+- `.terraform/`
+- `*.tfstate`
+- `*.tfstate.*`
+
+Retained `.terraform.lock.hcl` in source control to preserve provider version selections.
+
+Validated the ignore rules with `git check-ignore` and confirmed only intended Terraform configuration files remained visible to Git.

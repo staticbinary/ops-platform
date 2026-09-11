@@ -6417,6 +6417,56 @@ Production
 
 - [ ] Add Keycloak alerting
 
+# Phase 7.4
+## Terraform Infrastructure as Code
+
+### Terraform Foundation
+- [x] Install Terraform CLI
+- [x] Configure Kubernetes provider
+- [x] Connect Terraform to Docker Desktop Kubernetes context
+- [x] Initialize provider dependencies
+- [x] Add Terraform provider lock file to source control
+- [x] Exclude Terraform working directories and state files from source control
+
+### Terraform Lifecycle Validation
+- [x] Create Kubernetes namespace through Terraform
+- [x] Validate Terraform configuration
+- [x] Preview infrastructure changes with terraform plan
+- [x] Apply infrastructure changes
+- [x] Modify managed resource in place
+- [x] Inspect Terraform state
+- [x] Validate drift detection using manual Kubernetes change
+- [x] Reconcile configuration drift
+- [x] Destroy Terraform-managed resource
+- [x] Verify clean Terraform and Kubernetes state
+
+### Terraform Configuration
+- [ ] Introduce input variables
+- [ ] Introduce outputs
+- [ ] Organize Terraform configuration structure
+- [ ] Review local vs remote state
+- [ ] Evaluate backend configuration
+- [ ] Define environment-specific configuration
+
+### Ops Platform Integration
+- [ ] Identify infrastructure appropriate for Terraform ownership
+- [ ] Import selected existing infrastructure where appropriate
+- [ ] Define Terraform/Kubernetes/Helm ownership boundaries
+- [ ] Automate Kubernetes bootstrap prerequisites
+- [ ] Evaluate Terraform-managed Helm releases
+- [ ] Prepare Terraform structure for future cloud deployment
+
+### Future Cloud Infrastructure
+- [ ] AWS provider configuration
+- [ ] VPC and subnet provisioning
+- [ ] IAM infrastructure
+- [ ] EKS cluster provisioning
+- [ ] Node group provisioning
+- [ ] Storage and networking integration
+- [ ] Remote Terraform state and state locking
+
+
+
 
 
 

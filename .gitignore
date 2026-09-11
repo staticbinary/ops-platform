@@ -26,5 +26,12 @@ kubernetes/base/observability/postgres-exporter/secret.yaml
 # Alertmanager local SMTP secret
 kubernetes/base/observability/alertmanager/secret.yaml
 
-# Keycloak identity Local secret
+# Keycloak identity local secret
 kubernetes/base/identity/secret.yaml
+
+# Terraform local working directories
+.terraform/
+
+# Terraform state
+*.tfstate
+*.tfstate.*
