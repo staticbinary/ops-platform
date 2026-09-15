@@ -8401,7 +8401,6 @@ Excluded secrets.
 
 Committed only Kubernetes work.
 
-TSFA documentation intentionally left unstaged.
 
 # Troubleshooting Notes - Kubernetes Phase 3 (Day 2)
 
