@@ -9929,3 +9929,38 @@ Added the following rules to `.gitignore`:
 Retained `.terraform.lock.hcl` in source control to preserve provider version selections.
 
 Validated the ignore rules with `git check-ignore` and confirmed only intended Terraform configuration files remained visible to Git.
+
+---
+
+## Terraform Staging Module Not Detected
+
+### Issue
+
+* Initial `terraform init` and `terraform validate` completed successfully in `terraform/environments/staging`.
+* `terraform plan` unexpectedly reported:
+
+  * `No changes. Your infrastructure matches the configuration.`
+* The expected `terraform-lab-staging` namespace was not included in the plan.
+* Initialization did not display the expected module discovery output.
+
+### Root Cause
+
+* The Kubernetes provider configuration had been saved as `terraform/environments/staging/main.tf`.
+* The intended namespace module declaration was missing.
+* Terraform successfully validated the provider-only configuration because it contained no invalid declarations.
+
+### Resolution
+
+* Renamed the existing `main.tf` to `providers.tf`.
+* Created a new `main.tf` containing the namespace module declaration.
+* Reran `terraform init` and confirmed:
+
+  * `namespace in ../../modules/namespace`
+* Reran `terraform validate` successfully.
+* Confirmed the corrected execution plan:
+
+  * `Plan: 1 to add, 0 to change, 0 to destroy.`
+* Applied the configuration successfully.
+* Verified that `terraform-lab-staging` was Active.
+* Confirmed the staging state contains only `module.namespace.kubernetes_namespace_v1.this`.
+* Confirmed a subsequent `terraform plan` reported no changes.

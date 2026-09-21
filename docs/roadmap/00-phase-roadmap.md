@@ -1,5 +1,7 @@
 # Ops Platform — Phase Roadmap
 
+> **Roadmap conventions:** Detailed historical records below describe implementation at the time of each entry. Older “in progress” and “next step” notes are historical unless repeated in the current backlog. Checked items are documented completed work; unchecked items are planned. Terraform development and staging currently share one Docker Desktop Kubernetes cluster but maintain separate local state.
+
 ## Project Vision
 
 Build a modular enterprise platform that demonstrates modern Platform Engineering, Infrastructure Engineering, DevSecOps, Site Reliability Engineering (SRE), and Security Operations through practical implementation.
@@ -130,7 +132,7 @@ Key Concepts Learned:
 
 ---
 
-# Active Development Phase
+# Implementation History — Detailed Phase Records
 
 # Phase 3.5 — Operational Maturity & Service Decoupling
 
@@ -327,9 +329,9 @@ Tested health endpoint with response headers:
 bash
 curl -i <http://localhost:8080/api/assets/health>
 
-# Phase 4.0 — Authentication Foundation
+# Phase 4.0 — Authentication Foundation (Initial Progress Record)
 
-## In Progress
+## Historical Status: In Progress at Time of Entry
 
 ### JWT Authentication Setup
 
@@ -361,7 +363,7 @@ Validate:
 - invalid login failure
 - missing token failure
 
-# Phase 4.0 — Authentication Foundation
+# Phase 4.0 — Authentication Foundation (Completion Record)
 
 ## Completed
 
@@ -5709,7 +5711,7 @@ Complete developer onboarding and bootstrap automation before beginning Kubernet
 
 ---
 
-# Phase 7 — Kubernetes Platform Migration (Current)
+# Phase 7 — Kubernetes Platform Migration (Implementation Record)
 
 ## Platform Foundation
 
@@ -6440,15 +6442,22 @@ Production
 - [x] Destroy Terraform-managed resource
 - [x] Verify clean Terraform and Kubernetes state
 
-### Terraform Configuration
-- [ ] Introduce input variables
-- [ ] Introduce outputs
-- [ ] Organize Terraform configuration structure
-- [ ] Review local vs remote state
-- [ ] Evaluate backend configuration
-- [ ] Define environment-specific configuration
+### Terraform Configuration and Reusable Environments
+- [x] Introduce validated namespace input variables and test invalid input
+- [x] Introduce namespace name and UID outputs in the original lab root
+- [x] Review state resource addresses and inspect local state
+- [x] Preview namespace replacement for changed input without applying it
+- [x] Build reusable `terraform/modules/namespace` child module
+- [x] Create separate development and staging Terraform roots with provider lock files
+- [x] Initialize, validate, plan, and apply development and staging namespace modules
+- [x] Verify independent local state per root and no-change follow-up plans
+- [x] Confirm that all roots target the same Docker Desktop cluster; namespaces do not provide cluster isolation
+- [ ] Add root-module outputs to development and staging
+- [ ] Review local vs remote state and state locking
+- [ ] Evaluate backend configuration and state security
+- [ ] Evaluate stronger environment isolation
 
-### Ops Platform Integration
+### Ops Platform Integration — Planned
 - [ ] Identify infrastructure appropriate for Terraform ownership
 - [ ] Import selected existing infrastructure where appropriate
 - [ ] Define Terraform/Kubernetes/Helm ownership boundaries
@@ -6456,7 +6465,7 @@ Production
 - [ ] Evaluate Terraform-managed Helm releases
 - [ ] Prepare Terraform structure for future cloud deployment
 
-### Future Cloud Infrastructure
+### Future Cloud Infrastructure — Planned
 - [ ] AWS provider configuration
 - [ ] VPC and subnet provisioning
 - [ ] IAM infrastructure
@@ -6465,180 +6474,32 @@ Production
 - [ ] Storage and networking integration
 - [ ] Remote Terraform state and state locking
 
+### Terraform Next Steps — State Management and Infrastructure Ownership
 
+**State and environment management**
 
+* [ ] Add root-module outputs for development and staging.
+* [ ] Review local state, remote backends, and state locking.
+* [ ] Evaluate remote state options for future multi-machine or team workflows.
+* [ ] Review state security, backups, and recovery considerations.
+* [ ] Evaluate environment isolation beyond separate namespaces.
 
+**Infrastructure ownership**
 
+* [ ] Define ownership boundaries between Terraform, Kubernetes manifests, and Helm.
+* [ ] Identify existing Ops Platform resources appropriate for Terraform management.
+* [ ] Practice importing a selected noncritical existing resource.
+* [ ] Review Terraform lifecycle protections and destructive-change safeguards.
 
+**Future infrastructure**
 
+* [ ] Explore Terraform-managed Kubernetes bootstrap resources.
+* [ ] Evaluate AWS infrastructure provisioning, including VPC, IAM, and EKS.
 
+**Goal:** Establish safe, maintainable Terraform state and clear infrastructure ownership before expanding Terraform's responsibilities.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-==========================================================================================================
-
-
-
-# Phase 7.3
-
-## Distributed Tracing Integration
-
-- OpenTelemetry SDK
-- Trace propagation
-- FastAPI instrumentation
-- PostgreSQL tracing
-- HTTP tracing
-- Grafana Tempo dashboards
-- Trace-to-log correlation
-- Trace-to-metric correlation
 
 ---
-
-# Phase 7.4
-
-## Kubernetes CI/CD
-
-- Kubernetes deployment pipeline
-- Manifest validation
-- Kustomize validation
-- Deployment automation
-- Progressive rollout validation
-- Automated rollback testing
-- Release pipeline modernization
-
----
-
-# Phase 7.5
-
-## Security Hardening
-
-- Secret rotation
-- Image vulnerability scanning
-- Trivy integration
-- SBOM generation
-- Admission policies
-- OPA/Gatekeeper evaluation
-- Runtime security improvements
-- Supply chain validation
-
----
-
-# Phase 8
-
-## Enterprise Identity Platform
-
-- Keycloak
-- OpenID Connect
-- OAuth2
-- SAML
-- Single Sign-On
-- MFA
-- Service Accounts
-- API Tokens
-- Advanced RBAC
-- Identity federation
-
----
-
-# Phase 9
-
-## Platform Applications
-
-Enterprise applications built on the platform:
-
-- Secure File Sharing
-- Internal Operations Portal
-- Device Inventory
-- Software Inventory
-- Patch Management
-- Configuration Management
-- Secrets Management
-- Operational Runbooks
-- Audit Portal
-- Incident Dashboard
-
----
-
-# Phase 10
-
-## Home NOC / SOC
-
-- Suricata IDS
-- Wazuh
-- Threat Intelligence
-- GeoIP enrichment
-- Incident correlation
-- Network monitoring
-- Endpoint monitoring
-- Home infrastructure dashboards
-- Security operations workflows
-
----
-
-# Long-Term Vision
-
-The platform has evolved from a Docker Compose learning environment into a Kubernetes-native platform engineering environment demonstrating practical experience with:
-
-- Kubernetes
-- Platform Engineering
-- Site Reliability Engineering
-- Infrastructure Engineering
-- Observability Engineering
-- DevSecOps
-- Enterprise Operations
-- Production Monitoring
-- Operational Automation
-- Cloud-native Architecture
-
-Future work will focus on production hardening, advanced automation, enterprise identity, and practical integrated applications while continuing to minimize technical debt and align with enterprise operational practices.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 # Phase 8 — Enterprise Identity Platform
@@ -6664,6 +6525,13 @@ Future work will focus on production hardening, advanced automation, enterprise 
 
 # Phase 9 — GitOps & Platform Engineering
 
+## Kubernetes CI/CD — Planned
+
+- [ ] Kubernetes deployment pipeline and manifest validation
+- [ ] Kustomize validation and deployment automation
+- [ ] Progressive rollout validation and automated rollback testing
+- [ ] Release pipeline modernization
+
 ## Deployment Automation
 
 - Helm
@@ -6683,6 +6551,13 @@ Future work will focus on production hardening, advanced automation, enterprise 
 ---
 
 # Phase 10 — Security Operations Platform
+
+## Platform Security Hardening — Planned
+
+- [ ] Secret rotation and image vulnerability scanning
+- [ ] Trivy integration and SBOM generation
+- [ ] Admission policies and OPA/Gatekeeper evaluation
+- [ ] Runtime security and software supply-chain validation
 
 ## Network Security
 
@@ -6739,6 +6614,13 @@ Future work will focus on production hardening, advanced automation, enterprise 
 ---
 
 # Phase 12 — Enterprise Applications
+
+## Application Backlog — Planned
+
+- [ ] Media hosting and catalog services
+- [ ] Software inventory and patch management
+- [ ] Configuration and secrets management interfaces
+- [ ] Audit portal, incident dashboard, and operational runbooks
 
 ## Platform Services
 
